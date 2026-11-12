@@ -1,0 +1,31 @@
+# Chặn thư mục thư viện nặng
+node_modules/
+**/node_modules/
+vendor/
+**/vendor/
+
+# Chặn tuyệt đối các file chứa mật khẩu / API Key (.env)
+.env
+**/.env
+.env.*
+**/.env.*
+
+# Giữ lại file mẫu .env.example để thành viên nhóm cấu hình
+!.env.example
+!**/.env.example
+
+# Chặn file database cục bộ & file build tạm
+*.sqlite
+*.sqlite3
+/frontend/dist/
+/frontend/.vite/
+/backend/public/build/
+/backend/public/hot
+/backend/public/storage
+/backend/storage/*.key
+/backend/bootstrap/cache/*.php
+
+# File rác hệ điều hành & IDE
+.DS_Store
+Thumbs.db
+.phpunit.result.cache
