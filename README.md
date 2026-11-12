@@ -13,7 +13,7 @@
    - Quản lý giỏ hàng, đặt mua lẻ với phí vận chuyển tính tự động theo khoảng cách thực tế (km) từ nông trại đến địa chỉ nhận.
    - Thanh toán trực tuyến qua cổng **MoMo**.
    - Đăng ký gói nông sản định kỳ theo tháng (ví dụ: 3kg/lần vào Thứ 3 & Thứ 6 hằng tuần) để hệ thống tự động sinh đơn theo lịch.
-   - Theo dõi đơn hàng, tích lũy/quy đổi điểm thưởng và gửi yêu cầu khiếu nại/hoàn tiền kèm bằng chứng hình ảnh hoặc video.
+   - Theo dõi đơn hàng và gửi yêu cầu khiếu nại/hoàn tiền kèm bằng chứng hình ảnh hoặc video.
 3. **Nhân viên Nông trại (Farm Staff):**
    - Quản lý mùa vụ, cập nhật nhật ký canh tác theo mốc (gieo hạt, bón phân, tưới tiêu, thu hoạch) đính kèm hình ảnh/video thực tế.
    - Tạo lô hàng thu hoạch, tải lên chứng nhận chất lượng, kết quả kiểm định định kỳ và sinh/in tem mã QR cho từng lô.
