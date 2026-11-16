@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\CheckRole;
 use App\Traits\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -26,11 +25,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->alias([
-            'role' => CheckRole::class,
-            'permission' => CheckPermission::class,
-        ]);
-
         // Tránh redirect sang route('login') gây lỗi 500 trên các request API
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/login');
     })

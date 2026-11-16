@@ -111,12 +111,7 @@ axiosClient.interceptors.response.use(
     const message =
       resData.message || 'Không thể kết nối đến máy chủ Laravel API.';
 
-    if (status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('auth_user');
-      window.dispatchEvent(new Event('auth:unauthorized'));
-      notifyApiToast('error', message);
-    } else if ([403, 404, 405, 429].includes(status) || status >= 500 || status === 0) {
+    if ([401, 403, 404, 405, 429].includes(status) || status >= 500 || status === 0) {
       notifyApiToast('error', message);
     }
 
