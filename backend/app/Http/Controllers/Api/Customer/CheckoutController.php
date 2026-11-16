@@ -67,15 +67,18 @@ class CheckoutController extends Controller
 
             $remotePayment = $apiPay->getPaymentRequest($existingPayment->Ma_yeu_cau_apipay);
 
-            if (($remotePayment['status'] ?? null) === 'ACTIVE' && ! empty($remotePayment['payUrl'])) {
-                return response()->json([
-                    'data' => [
+if (($remotePayment['status'] ?? null) === 'ACTIVE' && ! empty($remotePayment['payUrl'])) {
+                return $this->successResponse(
+                    message: 'Lấy liên kết thanh toán ApiPay hiện có thành công.',
+                    data: [
                         'payment_request_id' => $existingPayment->Ma_yeu_cau_apipay,
-                        'pay_url' => $remotePayment['payUrl'],
-                        'qr_url' => $remotePayment['qrUrl'] ?? null,
-                        'status' => $remotePayment['status'],
+                        'pay_url'            => $remotePayment['payUrl'],
+                        'qr_url'             => $remotePayment['qrUrl'] ?? null,
+                        'status'             => $remotePayment['status'],
+                        'expires_at'         => $remotePayment['expiresAt'] ?? null,
                     ],
-                ]);
+                    status: 200
+                );
             }
 
             if (in_array($remotePayment['status'] ?? null, ['EXPIRED', 'CANCELLED'], true)) {
