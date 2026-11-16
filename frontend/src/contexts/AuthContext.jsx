@@ -5,14 +5,14 @@ const AuthContext = createContext(null);
 
 // Quy ước điều hướng tự động theo CV04.4
 export const getDefaultRouteByRole = (role) => {
-  switch (role) {
-    case 'Admin':
+  switch (String(role || '').toLowerCase()) {
+    case 'admin':
       return '/admin';
-    case 'Sales':
+    case 'sales':
       return '/sales';
-    case 'Farm_Staff':
+    case 'farm_staff':
       return '/farm';
-    case 'Customer':
+    case 'customer':
     default:
       return '/';
   }
