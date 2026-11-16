@@ -5,7 +5,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('Don_hang', function (Blueprint $table) {
@@ -25,7 +26,7 @@ return new class extends Migration {
             $table->decimal('Tien_giam_tu_diem', 12, 2)->default(0.00);
             $table->decimal('Tong_tien', 12, 2)->default(0.00);
             $table->enum('Trang_thai', ['Cho_thanh_toan', 'Cho_xac_nhan', 'Da_xac_nhan', 'Dang_giao', 'Hoan_thanh', 'Da_huy'])
-                  ->default('Cho_thanh_toan');
+                ->default('Cho_thanh_toan');
             $table->text('Ghi_chu')->nullable();
             $table->timestamps();
 
@@ -61,17 +62,21 @@ return new class extends Migration {
             $table->timestamps();
 
             $table->foreign('Ma_ct_don_hang', 'fk_pblh_ct_don_hang')
-                  ->references('Ma_ct_don_hang')->on('Chi_tiet_don_hang')->onDelete('cascade');
+                ->references('Ma_ct_don_hang')->on('Chi_tiet_don_hang')->onDelete('cascade');
             $table->foreign('Ma_lo_hang', 'fk_pblh_lo_hang')
-                  ->references('Ma_lo_hang')->on('Lo_hang');
+                ->references('Ma_lo_hang')->on('Lo_hang');
         });
 
         Schema::create('Thanh_toan', function (Blueprint $table) {
             $table->id('Ma_thanh_toan');
             $table->unsignedBigInteger('Ma_don_hang')->nullable();
             $table->unsignedBigInteger('Ma_dang_ky_goi')->nullable();
-            $table->enum('Phuong_thuc', ['MoMo', 'Mien_phi_goi', 'Giao_bu'])->default('MoMo');
-            $table->string('Ma_giao_dich_momo', 100)->nullable()->unique();
+            $table->enum('Phuong_thuc', ['ApiPay', 'Mien_phi_goi', 'Giao_bu'])->default('ApiPay');
+            $table->string('Ma_giao_dich_apipay', 100)->nullable()->unique();
+            $table->string('Ma_yeu_cau_apipay', 100)->nullable()->unique();
+            $table->string('Noi_dung_thanh_toan', 100)->nullable()->unique();
+            $table->string('Ma_tham_chieu_ngan_hang', 100)->nullable();
+            $table->string('Duong_dan_thanh_toan', 500)->nullable();
             $table->decimal('So_tien', 12, 2);
             $table->enum('Trang_thai', ['Khoi_tao', 'Thanh_cong', 'That_bai', 'Da_hoan_tien'])->default('Khoi_tao');
             $table->dateTime('Thoi_gian_thanh_toan')->nullable();
@@ -141,7 +146,7 @@ return new class extends Migration {
             $table->timestamps();
 
             $table->foreign('Ma_khieu_nai', 'fk_tbc_khieu_nai')
-                  ->references('Ma_khieu_nai')->on('Khieu_nai')->onDelete('cascade');
+                ->references('Ma_khieu_nai')->on('Khieu_nai')->onDelete('cascade');
         });
 
         Schema::create('Hoan_tien', function (Blueprint $table) {
@@ -149,7 +154,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('Ma_khieu_nai')->unique();
             $table->unsignedBigInteger('Ma_thanh_toan');
             $table->decimal('So_tien', 12, 2);
-            $table->string('Ma_giao_dich_hoan_momo', 100)->nullable();
+            $table->string('Ma_giao_dich_hoan_apipay', 100)->nullable();
             $table->enum('Trang_thai', ['Cho_xu_ly', 'Thanh_cong', 'That_bai'])->default('Cho_xu_ly');
             $table->dateTime('Ngay_hoan')->nullable();
             $table->timestamps();

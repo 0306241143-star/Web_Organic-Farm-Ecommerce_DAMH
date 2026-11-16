@@ -107,3 +107,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) use 
         'permissions' => $user->vaiTro?->quyens->pluck('Ten_quyen')->toArray() ?? [],
     ]);
 });
+
+// Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
+Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
+
+// Nhóm API Khách hàng (bảo vệ bằng auth:sanctum + role:customer)
+Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
+    Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
+});
