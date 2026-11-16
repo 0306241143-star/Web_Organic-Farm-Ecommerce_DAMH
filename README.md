@@ -62,11 +62,6 @@
 - **Kết nối API:** `axios` cấu hình Interceptors tự động đính kèm Token, hỗ trợ `FormData` upload media và bắt lỗi tập trung (`401`, `403`, `422`, `500`).
 - **Icon:** `lucide-react`.
 
-### Phạm vi CV03.3
-- CV03.3 tập trung vào client React-Laravel: cấu hình URL, gửi JSON/FormData, chuẩn hóa response và lỗi HTTP, cùng trang kiểm thử chỉ bật trong môi trường phát triển.
-- Đăng nhập/token, phân quyền RBAC và API nghiệp vụ từ CV04 trở đi chưa được triển khai trong phạm vi này; các CV đó để người phụ trách tương ứng tiếp tục.
-- CV03.1 và CV03.2 không được thay đổi trong phần việc CV03.3.
-
 ---
 
 ## 4. Cấu trúc thư mục dự án
