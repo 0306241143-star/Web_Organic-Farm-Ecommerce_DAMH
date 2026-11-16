@@ -77,30 +77,33 @@ if (app()->environment(['local', 'testing'])) {
 // Endpoint lấy thông tin phiên làm việc và quyền hạn người dùng hiện tại (CV04.6)
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) use ($standardOk) {
     $user = $request->user();
-    if ($user && method_exists($user, 'load')) {
-        $user->load('vaiTro.quyens');
+
+    if ($user->Trang_thai === 'Khoa') {
+        $user->currentAccessToken()?->delete();
+
+        return response()->json([
+            'success'    => false,
+            'message'    => 'Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ quản trị viên.',
+            'error_code' => 'FORBIDDEN',
+            'data'       => null,
+            'meta'       => null,
+            'errors'     => null,
+        ], 403);
     }
 
-    $roleSlug = method_exists($user, 'getRoleSlug')
-        ? $user->getRoleSlug()
-        : match ((int)$user->Ma_vai_tro) {
-            1 => 'admin',
-            2 => 'sales',
-            3 => 'farm_staff',
-            default => 'customer',
-        };
+    $user->loadMissing('vaiTro.quyens');
+    $roleSlug = $user->getRoleSlug();
 
     return $standardOk('Lấy thông tin phiên làm việc thành công.', [
         'user' => [
-            'id' => $user->Ma_nguoi_dung,
-            'name' => $user->Ho_ten,
-            'email' => $user->Email,
-            'phone' => $user->So_dien_thoai,
-            'role' => $roleSlug,
-            'roles' => [$roleSlug],
+            'id'     => $user->Ma_nguoi_dung,
+            'name'   => $user->Ho_ten,
+            'email'  => $user->Email,
+            'phone'  => $user->So_dien_thoai,
+            'role'   => $roleSlug,
+            'roles'  => [$roleSlug],
             'status' => $user->Trang_thai,
         ],
         'permissions' => $user->vaiTro?->quyens->pluck('Ten_quyen')->toArray() ?? [],
     ]);
 });
-
