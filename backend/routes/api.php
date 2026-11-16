@@ -104,5 +104,3 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) use 
     ]);
 });
 
-// Định tuyến xác thực người dùng và đăng ký tài khoản khách hàng
-require __DIR__ . '/auth.php';
