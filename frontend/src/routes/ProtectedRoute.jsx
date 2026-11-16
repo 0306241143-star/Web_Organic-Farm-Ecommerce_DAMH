@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 
 export default function ProtectedRoute({ allowedRoles }) {
   const { user, loading } = useAuth();
@@ -11,7 +11,7 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   // Chưa đăng nhập -> chuyển về trang đăng nhập và lưu lại đường dẫn cũ
   if (!user) {
-    return <Navigate to="/dang-nhap" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Chuẩn hóa chữ thường để khớp giữa CSDL ('Sales', 'Farm_Staff'...) và Route ('sales', 'farm_staff'...)

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getDefaultRouteByRole, useAuth } from '../contexts/AuthContext';
+import { getDefaultRouteByRole } from '../contexts/authRoutes';
+import { useAuth } from '../contexts/useAuth';
 import { FieldError, FormErrorBanner } from '../components/ErrorDisplay';
 
 export default function LoginTestPage() {
@@ -21,7 +22,7 @@ export default function LoginTestPage() {
     setSubmitting(true);
 
     try {
-      const loggedUser = await login(email, password);
+      const loggedUser = await login({ email, password });
       const target = location.state?.from?.pathname || getDefaultRouteByRole(loggedUser.role);
       navigate(target, { replace: true });
     } catch (err) {
