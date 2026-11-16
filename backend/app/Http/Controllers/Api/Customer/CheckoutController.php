@@ -9,6 +9,7 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
 use App\Models\ThanhToan;
+use App\Traits\ApiResponse
 use App\Services\ApiPayPaymentService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -145,14 +146,16 @@ class CheckoutController extends Controller
             'Duong_dan_thanh_toan' => $paymentRequest['pay_url'],
         ]);
 
-        return response()->json([
-            'data' => [
-                'payment_request_id' => $paymentRequest['public_id'],
-                'pay_url' => $paymentRequest['pay_url'],
-                'qr_url' => $paymentRequest['qr_url'],
-                'status' => $paymentRequest['status'],
-                'expires_at' => $paymentRequest['expires_at'],
-            ],
-        ], 201);
+            return $this->successResponse(
+                message: 'Khởi tạo yêu cầu thanh toán ApiPay thành công.',
+                data: [
+                    'payment_request_id' => $paymentRequest['public_id'],
+                    'pay_url'            => $paymentRequest['pay_url'],
+                    'qr_url'             => $paymentRequest['qr_url'],
+                    'status'             => $paymentRequest['status'],
+                    'expires_at'         => $paymentRequest['expires_at'],
+                ],
+                 status: 201
+        );
     }
 }
