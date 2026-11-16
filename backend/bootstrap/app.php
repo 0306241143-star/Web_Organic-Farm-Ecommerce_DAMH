@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\CheckRole;
 use App\Traits\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
