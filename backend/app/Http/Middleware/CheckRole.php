@@ -2,43 +2,50 @@
 
 namespace App\Http\Middleware;
 
+use App\Traits\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
+    use ApiResponse;
+
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        $user = $request->user();
+        $user = $request->user()?->loadMissing('vaiTro');
 
         if (!$user) {
-            return response()->json([
-                'success'    => false,
-                'message'    => 'Vui lòng đăng nhập để tiếp tục.',
-                'error_code' => 'UNAUTHENTICATED',
-                'errors'     => null,
-            ], 401);
+            return $this->errorResponse(
+                message: 'Chưa đăng nhập hoặc phiên làm việc đã hết hạn.',
+                status: 401,
+                errorCode: self::ERR_UNAUTHENTICATED
+            );
         }
 
         if ($user->Trang_thai === 'Khoa') {
-            return response()->json([
-                'success'    => false,
-                'message'    => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.',
-                'error_code' => 'FORBIDDEN',
-                'errors'     => null,
-            ], 403);
+            $token = $user->currentAccessToken();
+            if ($token instanceof PersonalAccessToken) {
+                $token->delete();
+            }
+
+            return $this->errorResponse(
+                message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.',
+                status: 403,
+                errorCode: self::ERR_FORBIDDEN
+            );
         }
 
-        $userRole = $user->vaiTro?->Ten_vai_tro;
+        $userRole = strtolower((string) $user->vaiTro?->Ten_vai_tro);
+        $allowedRoles = array_map('strtolower', $roles);
 
-        if (!empty($roles) && !in_array($userRole, $roles, true)) {
-            return response()->json([
-                'success'    => false,
-                'message'    => "Vai trò [{$userRole}] không có quyền truy cập chức năng này.",
-                'error_code' => 'FORBIDDEN',
-                'errors'     => null,
-            ], 403);
+        if ($userRole === '' || (!empty($allowedRoles) && !in_array($userRole, $allowedRoles, true))) {
+            return $this->errorResponse(
+                message: "Vai trò [{$userRole}] không có quyền truy cập chức năng này.",
+                status: 403,
+                errorCode: self::ERR_FORBIDDEN
+            );
         }
 
         return $next($request);

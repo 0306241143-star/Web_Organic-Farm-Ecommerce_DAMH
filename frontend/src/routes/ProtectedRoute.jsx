@@ -14,8 +14,13 @@ export default function ProtectedRoute({ allowedRoles }) {
     return <Navigate to="/dang-nhap" state={{ from: location }} replace />;
   }
 
-  // Sai vai trò -> chặn truy cập (cô lập quyền giữa Farm_Staff, Sales, Admin, Customer)
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // Chuẩn hóa chữ thường để khớp giữa CSDL ('Sales', 'Farm_Staff'...) và Route ('sales', 'farm_staff'...)
+  const currentRole = String(user.role || '').toLowerCase();
+  const normalizedAllowed = Array.isArray(allowedRoles)
+    ? allowedRoles.map((r) => String(r).toLowerCase())
+    : [];
+
+  if (normalizedAllowed.length > 0 && !normalizedAllowed.includes(currentRole)) {
     return <Navigate to="/403" replace />;
   }
 

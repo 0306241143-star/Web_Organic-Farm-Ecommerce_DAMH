@@ -24,7 +24,7 @@ export default function App() {
           <Route path="/truy-xuat-qr/:maLo" element={<PlaceholderPage title="Quét QR & Truy xuất nguồn gốc" cvCode="CV04.11" />} />
 
           {/* 2. KHU VỰC KHÁCH HÀNG (Customer) */}
-          <Route element={<ProtectedRoute allowedRoles={['Customer']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
             <Route path="/gio-hang" element={<PlaceholderPage title="Quản lý giỏ hàng" cvCode="CV04.12" />} />
             <Route path="/thanh-toan" element={<PlaceholderPage title="Đặt mua lẻ & Thanh toán MoMo" cvCode="CV04.13" />} />
             <Route path="/goi-dinh-ky" element={<PlaceholderPage title="Đăng ký gói giao hàng định kỳ" cvCode="CV04.14" />} />
@@ -33,7 +33,7 @@ export default function App() {
           </Route>
 
           {/* 3. KHU VỰC NHÂN VIÊN NÔNG TRẠI (Farm_Staff) */}
-          <Route element={<ProtectedRoute allowedRoles={['Farm_Staff', 'Admin']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['farm_staff', 'admin']} />}>
             <Route path="/farm" element={<PlaceholderPage title="Quản lý mùa vụ & Nhật ký canh tác" cvCode="CV04.17" />} />
             <Route path="/farm/lo-hang" element={<PlaceholderPage title="Tạo lô hàng & In mã QR" cvCode="CV04.18 - CV04.20" />} />
             <Route path="/farm/chung-nhan" element={<PlaceholderPage title="Tải lên chứng nhận & Kiểm định" cvCode="CV04.19" />} />
@@ -41,7 +41,7 @@ export default function App() {
           </Route>
 
           {/* 4. KHU VỰC NHÂN VIÊN BÁN HÀNG / CSKH (Sales) */}
-          <Route element={<ProtectedRoute allowedRoles={['Sales', 'Admin']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['sales', 'admin']} />}>
             <Route path="/sales" element={<PlaceholderPage title="Xem & Xác nhận đơn hàng" cvCode="CV04.22" />} />
             <Route path="/sales/ton-kho-fefo" element={<PlaceholderPage title="Tồn kho FEFO & Flash Sale" cvCode="CV04.23" />} />
             <Route path="/sales/giao-nhan" element={<PlaceholderPage title="Điều phối giao nhận" cvCode="CV04.24" />} />
@@ -49,7 +49,7 @@ export default function App() {
           </Route>
 
           {/* 5. KHU VỰC QUẢN TRỊ VIÊN (Admin) */}
-          <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<PlaceholderPage title="Báo cáo & Thống kê quản trị" cvCode="CV04.28" />} />
             <Route path="/admin/nguoi-dung" element={<PlaceholderPage title="Quản lý tài khoản & Phân quyền" cvCode="CV04.26" />} />
             <Route path="/admin/cau-hinh" element={<PlaceholderPage title="Cấu hình tham số vận hành" cvCode="CV04.27" />} />
