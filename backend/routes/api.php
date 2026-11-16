@@ -10,3 +10,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
+
+Route::middleware(['auth:sanctum'])->prefix('customer')->group(function () {
+    Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
+});

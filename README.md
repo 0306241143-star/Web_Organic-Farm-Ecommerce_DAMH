@@ -11,7 +11,7 @@
    - Quét mã QR trên bao bì để truy xuất nguồn gốc lô hàng (ngày thu hoạch, người phụ trách, hạn sử dụng, nhật ký chăm sóc và giấy kiểm định đất/nước).
 2. **Khách hàng (Customer):**
    - Quản lý giỏ hàng, đặt mua lẻ với phí vận chuyển tính tự động theo khoảng cách thực tế (km) từ nông trại đến địa chỉ nhận.
-   - Thanh toán trực tuyến qua cổng **MoMo**.
+   - Thanh toán trực tuyến qua **ApiPay** (Open Banking/chuyển khoản ngân hàng).
    - Đăng ký gói nông sản định kỳ theo tháng (ví dụ: 3kg/lần vào Thứ 3 & Thứ 6 hằng tuần) để hệ thống tự động sinh đơn theo lịch.
    - Theo dõi đơn hàng và gửi yêu cầu khiếu nại/hoàn tiền kèm bằng chứng hình ảnh hoặc video.
 3. **Nhân viên Nông trại (Farm Staff):**
@@ -21,7 +21,7 @@
 4. **Nhân viên Bán hàng & CSKH (Sales):**
    - Xác nhận đơn hàng mua lẻ và đơn tự động sinh từ gói định kỳ.
    - Quản lý tồn kho theo lô áp dụng nguyên tắc **FEFO** (ưu tiên xuất lô có hạn sử dụng gần nhất), ghi nhận hao hụt/xuất hủy và cấu hình **Flash Sale** cho lô cận hạn.
-   - Điều phối giao nhận và tiếp nhận, xử lý khiếu nại (duyệt hoàn tiền MoMo hoặc tạo đơn giao bù).
+   - Điều phối giao nhận và tiếp nhận, xử lý khiếu nại (hoàn tiền theo phương thức được hỗ trợ hoặc tạo đơn giao bù).
 5. **Quản trị viên (Admin):**
    - Quản lý tài khoản và thiết lập ma trận phân quyền người dùng (RBAC).
    - Cấu hình tham số vận hành hệ thống (đơn giá ship/km, tỷ lệ điểm thưởng, ngưỡng cảnh báo cận hạn).
@@ -35,7 +35,7 @@
 | :---: | :--- | :--- |
 | 1 | **Nguyễn Hoài Linh** | Khởi tạo cấu trúc dự án (Laravel & React), kết nối API, cấu hình Cloudflare R2, xây dựng luồng Xác thực & Phân quyền RBAC. |
 | 2 | **Ngô Gia Bảo** | Thiết kế CSDL MySQL (Migration & Model), luồng Chi tiết sản phẩm, Truy xuất QR, Quản lý đơn hàng & Tồn kho FEFO / Flash Sale. |
-| 3 | **Lê Minh Quân** | Tích hợp MoMo & Google Maps API, xây dựng toàn bộ luồng Khách hàng (Giỏ hàng, Thanh toán, Gói định kỳ, Điểm thưởng, Khiếu nại). |
+| 3 | **Lê Minh Quân** | Phụ trách tích hợp ApiPay & Goong Maps API và luồng Khách hàng (triển khai chức năng theo các giai đoạn dự án). |
 | 4 | **Nguyễn Vũ Anh Khoa** | Thiết kế Storefront Layout, Dashboard Layout (Menu động) và xây dựng toàn bộ phân hệ Nhân viên Nông trại (Mùa vụ, Nhật ký, Lô hàng, In QR). |
 | 5 | **Lê Minh Tài** | Xây dựng Trang chủ, Danh mục, Bộ lọc tìm kiếm, Câu chuyện thương hiệu, Điều phối giao nhận và Trung tâm xử lý khiếu nại CSKH. |
 
@@ -54,7 +54,7 @@
   - `spatie/laravel-query-builder`: Tìm kiếm và lọc sản phẩm/đơn hàng đa tiêu chí.
   - `simplesoftwareio/simple-qrcode` & `barryvdh/laravel-dompdf`: Sinh mã QR lô hàng và xuất file PDF in tem nhãn.
   - `maatwebsite/excel`: Xuất báo cáo thống kê quản trị ra Excel.
-- **Tích hợp bên thứ ba:** Cổng thanh toán **MoMo API** (kèm IPN Webhook) và **Google Maps Distance Matrix API** (tính khoảng cách km giao hàng).
+- **Tích hợp bên thứ ba:** Backend khởi tạo yêu cầu thanh toán ApiPay và xác nhận giao dịch qua webhook có chữ ký HMAC; cấu hình Goong Maps Distance Matrix API đã sẵn sàng, phần tính khoảng cách sẽ được triển khai riêng.
 
 ### Frontend (`frontend/`)
 - **Core:** React.js (khởi tạo bằng Vite) & **Tailwind CSS v4** (`@tailwindcss/vite`).
@@ -91,7 +91,7 @@ nong-san-sach/
 │   │   │   │       │   └── QrTraceController.php   # Tra cứu thông tin lô hàng, nhật ký & kiểm định qua mã QR
 │   │   │   │       ├── Customer/                   # Nhóm API Khách hàng (yêu cầu role:customer)
 │   │   │   │       │   ├── CartController.php      # Thêm, sửa số lượng, xóa giỏ hàng & kiểm tra tồn kho
-│   │   │   │       │   ├── CheckoutController.php  # Tính phí ship theo km & tạo đơn mua lẻ thanh toán MoMo
+│   │   │   │       │   ├── CheckoutController.php  # Tạo yêu cầu thanh toán ApiPay cho đơn hàng chờ thanh toán
 │   │   │   │       │   ├── SubscriptionController.php # Đăng ký & quản lý gói rau củ định kỳ theo tháng
 │   │   │   │       │   ├── OrderController.php     # Xem lịch sử đơn hàng & tiến trình giao nhận
 │   │   │   │       │   ├── RewardPointController.php # Xem ví điểm thưởng & quy đổi điểm ưu đãi
@@ -113,7 +113,7 @@ nong-san-sach/
 │   │   │   │       │   ├── SystemSettingController.php # Cấu hình đơn giá ship/km, tỷ lệ điểm thưởng, cảnh báo HSD
 │   │   │   │       │   └── ReportController.php    # Thống kê doanh thu, số đơn, tỷ lệ hao hụt & tỷ lệ mua lại
 │   │   │   │       └── Webhook/
-│   │   │   │           └── MomoIpnController.php   # Nhận phản hồi kết quả thanh toán tự động (IPN) từ MoMo
+│   │   │   │           └── ApiPayWebhookController.php # Xác minh webhook và cập nhật trạng thái thanh toán
 │   │   │   ├── Middleware/
 │   │   │   │   └── EnsureEmailIsVerified.php       # Kiểm tra trạng thái xác thực email của tài khoản
 │   │   │   └── Requests/                           # Lớp kiểm tra tính hợp lệ dữ liệu đầu vào (Validation)
@@ -127,9 +127,9 @@ nong-san-sach/
 │   │   │   └── AppServiceProvider.php              # Đăng ký các Service & cấu hình dùng chung toàn ứng dụng
 │   │   └── Services/                               # Tầng xử lý logic nghiệp vụ chuyên sâu
 │   │       ├── FefoStockService.php                # Thuật toán chọn lô có HSD gần nhất & trừ tồn kho tự động
-│   │       ├── MomoPaymentService.php              # Tạo URL thanh toán, xác thực chữ ký HMAC & hoàn tiền MoMo
+│   │       ├── ApiPayPaymentService.php             # Gọi API ApiPay để tạo và tra cứu yêu cầu thanh toán
 │   │       ├── QrCodeGeneratorService.php          # Sinh mã QR định danh truy xuất nguồn gốc từng lô hàng
-│   │       ├── ShippingDistanceService.php         # Gọi Google Maps API tính khoảng cách km & cước vận chuyển
+│   │       ├── ShippingDistanceService.php         # Điểm tích hợp dự kiến cho Goong Maps (triển khai ở Giai đoạn 4)
 │   │       └── SubscriptionGeneratorService.php    # Logic tự động khởi tạo đơn hàng khi đến kỳ giao gói tháng
 │   ├── bootstrap/
 │   │   └── app.php                                 # Khai báo routing, alias middleware RBAC & chuẩn hóa JSON lỗi
@@ -138,7 +138,7 @@ nong-san-sach/
 │   │   ├── database.php                            # Cấu hình kết nối cơ sở dữ liệu MySQL
 │   │   ├── filesystems.php                         # Khai báo disk 'r2' kết nối Cloudflare R2 Storage
 │   │   ├── sanctum.php                             # Cấu hình thời hạn & cơ chế hoạt động của Access Token
-│   │   └── services.php                            # Khai báo thông số kết nối MoMo & Google Maps API
+│   │   └── services.php                            # Khai báo thông số kết nối ApiPay & Goong Maps API
 │   ├── database/
 │   │   ├── migrations/                             # Các tệp tạo cấu trúc bảng MySQL (users, tokens, RBAC, nghiệp vụ...)
 │   │   └── seeders/DatabaseSeeder.php              # Khởi tạo dữ liệu mẫu vai trò (Roles) & tài khoản mặc định
@@ -245,12 +245,20 @@ php artisan key:generate
 3. Mở tệp `backend/.env` và cập nhật các thông số kết nối thực tế của bạn:
 Nội dung file lấy trong Page 1 của GoogleSheet phân công (Link: https://docs.google.com/spreadsheets/d/1ZZi2E22fx_av9RZEKb9CaVfWUn_D-lV-Y-HPzRZE2Ks/edit?gid=1813174237#gid=1813174237&range=B20:G20 )
 
-4. Khởi tạo các bảng dữ liệu trong MySQL và dữ liệu mẫu phân quyền:
+4. Chuẩn bị thông tin dịch vụ cho **Giai đoạn 4** trong `backend/.env`:
+   - **ApiPay:** `APIPAY_DASHBOARD_URL` chỉ là trang quản lý; API base URL mặc định là `https://app.apipay.vn/v1/client`. Điền `APIPAY_ACCESS_KEY` và `APIPAY_SECRET_KEY` lấy từ dashboard vào `.env` (không đưa lên Git). Tạo webhook trên dashboard trỏ đến `https://<backend-domain>/api/webhooks/apipay`, rồi đặt secret webhook tương ứng vào `APIPAY_WEBHOOK_SECRET`. ApiPay yêu cầu HTTPS truy cập công khai cho webhook.
+   - **Goong Maps:** điền `GOONG_API_KEY` từ Goong Platform; `GOONG_DISTANCE_MATRIX_URL` đã đặt endpoint Distance Matrix mặc định. Giới hạn key theo các API cần dùng và không đưa key này vào biến `VITE_*` hoặc mã frontend.
+   - Không commit thông tin xác thực thật. Luồng thanh toán ApiPay đã được nối cho đơn hàng đã tồn tại; giao dịch chỉ được xác nhận sau webhook đã xác minh chữ ký, nội dung và số tiền.
+   - Endpoint `POST /api/customer/checkout` nhận `order_id` và `bank_public_id`, chỉ tạo thanh toán cho đơn chờ thanh toán của người dùng đang đăng nhập; URL thanh toán trả về trong `data.pay_url`. Luồng tạo đơn từ giỏ hàng và giao diện checkout vẫn cần được hoàn thiện riêng.
+   - Webhook sandbox và webhook kiểm tra trực tiếp không cập nhật đơn hàng; chỉ webhook giao dịch thật đã xác minh mới có thể xác nhận thanh toán. Nếu yêu cầu tạo thanh toán bị timeout/lỗi không rõ kết quả, bản ghi vẫn ở trạng thái khởi tạo để chờ webhook/đối soát, không nên thử tạo yêu cầu mới ngay.
+   - Chạy `php artisan migrate` để chuyển schema thanh toán hoàn toàn sang ApiPay (bao gồm SQLite); mã giao dịch cũ được lưu dưới dạng tham chiếu lưu trữ. ApiPay hiện chỉ xác nhận tiền vào, chưa triển khai hoàn tiền.
+
+5. Khởi tạo các bảng dữ liệu trong MySQL và dữ liệu mẫu phân quyền:
 ```bash
 php artisan migrate --seed
 ```
 
-5. Khởi chạy máy chủ Backend API (mặc định chạy tại `http://localhost:8000`):
+6. Khởi chạy máy chủ Backend API (mặc định chạy tại `http://localhost:8000`):
 ```bash
 php artisan serve
 ```

@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    'apipay' => [
+        'dashboard_url' => env('APIPAY_DASHBOARD_URL', 'https://my.apipay.vn'),
+        'api_base_url' => env('APIPAY_API_BASE_URL', 'https://app.apipay.vn/v1/client'),
+        'access_key' => env('APIPAY_ACCESS_KEY'),
+        'secret_key' => env('APIPAY_SECRET_KEY'),
+        'webhook_secret' => env('APIPAY_WEBHOOK_SECRET'),
+        'webhook_url' => env('APIPAY_WEBHOOK_URL'),
+    ],
+
+    'goong' => [
+        'api_key' => env('GOONG_API_KEY'),
+        'distance_matrix_url' => env('GOONG_DISTANCE_MATRIX_URL', 'https://rsapi.goong.io/DistanceMatrix'),
+    ],
+
 ];

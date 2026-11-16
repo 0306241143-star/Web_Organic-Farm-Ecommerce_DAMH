@@ -148,7 +148,7 @@ INSERT INTO Chuong_trinh_flash_sale (Ma_flash_sale, Ma_sales_tao, Ten_chuong_tri
 INSERT INTO Chi_tiet_flash_sale (Ma_ct_flash_sale, Ma_flash_sale, Ma_lo_hang, Gia_giam, So_luong_gioi_han, So_luong_da_ban) VALUES
 (1, 1, 1, 25000.00, 30.00, 2.00);
 
--- 6. Đơn hàng, Phân bổ FEFO, Thanh toán MoMo & Giao hàng
+-- 6. Đơn hàng, Phân bổ FEFO, Thanh toán ApiPay & Giao hàng
 INSERT INTO Don_hang (Ma_don_hang, Ma_nguoi_dung, Ma_dia_chi, Ma_nhan_vien_xac_nhan, Ma_dang_ky_goi, Ma_don_goc, Ma_khieu_nai, Loai_don, Ngay_dat, Tien_hang, Khoang_cach_km, Phi_giao_hang, So_diem_su_dung, Tien_giam_tu_diem, Tong_tien, Trang_thai, Ghi_chu) VALUES
 (1, 5, 1, 2, NULL, NULL, NULL, 'Mua_le', '2026-11-12 09:15:00', 185000.00, 12.50, 25000.00, 50, 50000.00, 160000.00, 'Hoan_thanh', 'Giao giờ hành chính giúp mình'),
 (2, 5, 1, 2, NULL, NULL, NULL, 'Mua_le', '2026-11-12 14:20:00', 166000.00, 12.50, 25000.00, 0, 0.00, 191000.00, 'Hoan_thanh', NULL),
@@ -175,10 +175,10 @@ INSERT INTO Phan_bo_lo_hang (Ma_phan_bo, Ma_ct_don_hang, Ma_lo_hang, So_luong_xu
 (7, 7, 5, 1.00, '2026-11-13 06:30:00'),
 (8, 8, 3, 1.00, '2026-11-13 09:10:00');
 
-INSERT INTO Thanh_toan (Ma_thanh_toan, Ma_don_hang, Ma_dang_ky_goi, Phuong_thuc, Ma_giao_dich_momo, So_tien, Trang_thai, Thoi_gian_thanh_toan) VALUES
-(1, NULL, 1, 'MoMo', 'MOMO_SUB_20261101_001', 950000.00, 'Thanh_cong', '2026-11-01 08:10:00'),
-(2, 1, NULL, 'MoMo', 'MOMO_ORD_20261112_001', 160000.00, 'Thanh_cong', '2026-11-12 09:16:30'),
-(3, 2, NULL, 'MoMo', 'MOMO_ORD_20261112_002', 191000.00, 'Thanh_cong', '2026-11-12 14:21:15'),
+INSERT INTO Thanh_toan (Ma_thanh_toan, Ma_don_hang, Ma_dang_ky_goi, Phuong_thuc, Ma_giao_dich_apipay, So_tien, Trang_thai, Thoi_gian_thanh_toan) VALUES
+(1, NULL, 1, 'ApiPay', 'APIPAY_SUB_20261101_001', 950000.00, 'Thanh_cong', '2026-11-01 08:10:00'),
+(2, 1, NULL, 'ApiPay', 'APIPAY_ORD_20261112_001', 160000.00, 'Thanh_cong', '2026-11-12 09:16:30'),
+(3, 2, NULL, 'ApiPay', 'APIPAY_ORD_20261112_002', 191000.00, 'Thanh_cong', '2026-11-12 14:21:15'),
 (4, 3, 1, 'Mien_phi_goi', NULL, 0.00, 'Thanh_cong', '2026-11-13 06:00:00'),
 (5, 4, NULL, 'Giao_bu', NULL, 0.00, 'Thanh_cong', '2026-11-13 09:00:00');
 
@@ -206,8 +206,8 @@ INSERT INTO Tep_bang_chung (Ma_tep, Ma_khieu_nai, Loai_tep, Duong_dan) VALUES
 (2, 1, 'Video', '/uploads/complaints/kn1_mo_hop_video.mp4'),
 (3, 2, 'Hinh_anh', '/uploads/complaints/kn2_kiem_hang.jpg');
 
-INSERT INTO Hoan_tien (Ma_hoan_tien, Ma_khieu_nai, Ma_thanh_toan, So_tien, Ma_giao_dich_hoan_momo, Trang_thai, Ngay_hoan) VALUES
-(1, 2, 2, 20000.00, 'MOMO_REFUND_20261112_001', 'Thanh_cong', '2026-11-12 18:20:00');
+INSERT INTO Hoan_tien (Ma_hoan_tien, Ma_khieu_nai, Ma_thanh_toan, So_tien, Ma_giao_dich_hoan_apipay, Trang_thai, Ngay_hoan) VALUES
+(1, 2, 2, 20000.00, 'APIPAY_REFUND_20261112_001', 'Thanh_cong', '2026-11-12 18:20:00');
 
 INSERT INTO Cau_hinh_he_thong (Ma_cau_hinh, Khoa, Gia_tri, Mo_ta) VALUES
 (1, 'phi_ship_moi_km', '2000', 'Đơn giá phí giao hàng tính trên mỗi kilomet (VNĐ/km)'),
