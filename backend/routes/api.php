@@ -55,6 +55,55 @@ if (app()->environment(['local', 'testing'])) {
     Route::get('/test/error-500', function () {
         throw new \RuntimeException('Giả lập lỗi hệ thống nội bộ 500 để kiểm thử Exception Handler.');
     });
+
+    // Các endpoint kiểm thử phân quyền RBAC (chỉ khả dụng trong local/testing)
+    Route::middleware(['auth:sanctum', 'role:admin'])->get('/test/rbac/admin', function () use ($standardOk) {
+        return $standardOk('Quyền Quản trị viên (Admin) hợp lệ.');
+    });
+
+    Route::middleware(['auth:sanctum', 'role:farm_staff'])->get('/test/rbac/farm', function () use ($standardOk) {
+        return $standardOk('Quyền Kỹ thuật nông trại (Farm Staff) hợp lệ.');
+    });
+
+    Route::middleware(['auth:sanctum', 'role:sales'])->get('/test/rbac/sales', function () use ($standardOk) {
+        return $standardOk('Quyền Nhân viên bán hàng (Sales) hợp lệ.');
+    });
+
+    Route::middleware(['auth:sanctum', 'role:customer'])->get('/test/rbac/customer', function () use ($standardOk) {
+        return $standardOk('Quyền Khách hàng (Customer) hợp lệ.');
+    });
 }
 
-// Các API nghiệp vụ CV04 trở đi để trống, chờ người phụ trách từng CV triển khai.
+// Endpoint lấy thông tin phiên làm việc và quyền hạn người dùng hiện tại (CV04.6)
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) use ($standardOk) {
+    $user = $request->user();
+
+    if ($user->Trang_thai === 'Khoa') {
+        $user->currentAccessToken()?->delete();
+
+        return response()->json([
+            'success'    => false,
+            'message'    => 'Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ quản trị viên.',
+            'error_code' => 'FORBIDDEN',
+            'data'       => null,
+            'meta'       => null,
+            'errors'     => null,
+        ], 403);
+    }
+
+    $user->loadMissing('vaiTro.quyens');
+    $roleSlug = $user->getRoleSlug();
+
+    return $standardOk('Lấy thông tin phiên làm việc thành công.', [
+        'user' => [
+            'id'     => $user->Ma_nguoi_dung,
+            'name'   => $user->Ho_ten,
+            'email'  => $user->Email,
+            'phone'  => $user->So_dien_thoai,
+            'role'   => $roleSlug,
+            'roles'  => [$roleSlug],
+            'status' => $user->Trang_thai,
+        ],
+        'permissions' => $user->vaiTro?->quyens->pluck('Ten_quyen')->toArray() ?? [],
+    ]);
+});

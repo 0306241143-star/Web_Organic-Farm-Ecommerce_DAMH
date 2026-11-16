@@ -33,4 +33,24 @@ class NguoiDung extends Authenticatable
     {
         return $this->vaiTro?->quyens()->where('Ten_quyen', $tenQuyen)->exists() ?? false;
     }
+
+    public function getRoleSlug(): string
+    {
+        return match ((int)$this->Ma_vai_tro) {
+            1 => 'admin',
+            2 => 'sales',
+            3 => 'farm_staff',
+            default => 'customer',
+        };
+    }
+
+    public function hasRole(string|array $roles): bool
+    {
+        $currentRole = $this->getRoleSlug();
+        if (is_array($roles)) {
+            $normalized = array_map(fn ($r) => strtolower(trim($r)), $roles);
+            return in_array($currentRole, $normalized, true);
+        }
+        return $currentRole === strtolower(trim($roles));
+    }
 }
