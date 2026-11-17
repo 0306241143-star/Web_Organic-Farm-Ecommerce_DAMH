@@ -70,10 +70,19 @@ return new class extends Migration
             $table->foreign('Ma_nguoi_dung', 'fk_dc_nguoi_dung')
                 ->references('Ma_nguoi_dung')->on('nguoi_dung')->onDelete('cascade');
         });
+
+        Schema::create('cau_hinh_he_thong', function (Blueprint $table) {
+            $table->string('Khoa', 100)->primary();
+            $table->text('Gia_tri')->nullable();
+            $table->string('Mo_ta', 255)->nullable();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('cau_hinh_he_thong');
         Schema::dropIfExists('dia_chi_giao_hang');
         Schema::dropIfExists('nguoi_dung');
         Schema::dropIfExists('vai_tro_quyen');

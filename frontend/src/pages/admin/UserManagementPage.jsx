@@ -83,19 +83,24 @@ export default function UserManagementPage() {
     }
   };
 
-  const getRoleBadge = (roleName) => {
-    switch (roleName) {
-      case "Quản trị viên":
-        return { label: "Admin", bg: "bg-[#00450d] text-white border-[#006e1c]" };
-      case "Nhân viên nông trại":
-        return { label: "Farm Staff", bg: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-      case "Nhân viên bán hàng":
-        return { label: "Sales", bg: "bg-amber-100 text-amber-900 border-amber-300" };
-      case "Khách hàng":
-        return { label: "Customer", bg: "bg-blue-50 text-blue-700 border-blue-200" };
-      default:
-        return { label: roleName || "User", bg: "bg-slate-100 text-slate-700 border-slate-200" };
+  const getRoleBadge = (roleName, roleId) => {
+    const normalized = String(roleName || "").trim().toLowerCase();
+    const id = Number(roleId);
+
+    if (id === 1 || normalized === "admin" || normalized === "quản trị viên") {
+      return { label: "Admin", bg: "bg-[#00450d] text-white border-[#006e1c]" };
     }
+    if (id === 2 || normalized === "sales" || normalized === "nhân viên bán hàng") {
+      return { label: "Sales", bg: "bg-amber-100 text-amber-900 border-amber-300" };
+    }
+    if (id === 3 || normalized === "farm_staff" || normalized === "farm staff" || normalized === "nhân viên nông trại") {
+      return { label: "Farm Staff", bg: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+    }
+    if (id === 4 || normalized === "customer" || normalized === "khách hàng") {
+      return { label: "Customer", bg: "bg-blue-50 text-blue-700 border-blue-200" };
+    }
+
+    return { label: roleName || "User", bg: "bg-slate-100 text-slate-700 border-slate-200" };
   };
 
   return (
@@ -197,7 +202,7 @@ export default function UserManagementPage() {
                 </tr>
               ) : (
                 users.map((u) => {
-                  const roleBadge = getRoleBadge(u.vai_tro?.Ten_vai_tro);
+                  const roleBadge = getRoleBadge(u.vai_tro?.Ten_vai_tro, u.Ma_vai_tro);
                   const isLocked = u.Trang_thai === "Khoa";
                   const isUpdating = updatingId === u.Ma_nguoi_dung;
 
@@ -293,7 +298,7 @@ export default function UserManagementPage() {
           </div>
         ) : (
           users.map((u) => {
-            const roleBadge = getRoleBadge(u.vai_tro?.Ten_vai_tro);
+            const roleBadge = getRoleBadge(u.vai_tro?.Ten_vai_tro, u.Ma_vai_tro);
             const isLocked = u.Trang_thai === "Khoa";
             const isUpdating = updatingId === u.Ma_nguoi_dung;
 

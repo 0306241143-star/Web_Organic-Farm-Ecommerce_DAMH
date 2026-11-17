@@ -182,15 +182,26 @@ export default function AddFarmingLogModal({
             <select
               value={plotId}
               onChange={(e) => setPlotId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
+              className="w-full max-w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
               required
             >
               <option value="">-- Chọn lô canh tác --</option>
-              {plots.map((plot) => (
-                <option key={plot.id} value={plot.id}>
-                  {plot.plot_name} — {plot.product_name || "Nông sản"}{plot.season_name ? ` (Mùa vụ: ${plot.season_name})` : ""}
-                </option>
-              ))}
+              {plots.map((plot) => {
+                const plotName = (plot.plot_name || "Lô canh tác").trim();
+                const prodName = (plot.product_name || "").trim();
+                let label = plotName;
+                if (prodName && !plotName.toLowerCase().includes(prodName.toLowerCase())) {
+                  label = `${plotName} • ${prodName}`;
+                }
+                if (label.length > 36) {
+                  label = label.slice(0, 33) + "...";
+                }
+                return (
+                  <option key={plot.id} value={plot.id} title={`${plot.plot_name} (${plot.product_name || 'Nông sản'})`}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
 
             {/* Thông tin nhanh về lô đang chọn */}

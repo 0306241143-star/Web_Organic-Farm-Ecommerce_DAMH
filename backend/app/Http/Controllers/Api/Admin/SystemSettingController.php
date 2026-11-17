@@ -11,10 +11,71 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SystemSettingController extends Controller
 {
     use ApiResponse;
+
+    private array $defaultSettings = [
+        'delivery_max_distance_km' => 25,
+        'shipping_fee_base'        => 20000,
+        'shipping_fee_per_km'      => 5000,
+        'fefo_warning_days'        => 3,
+        'flash_sale_discount_pct'  => 40,
+        'reward_point_rate'        => 1000, // 1000 VND = 1 điểm
+        'auto_cancel_unpaid_hours' => 24,
+        'support_hotline'          => '1900 8888',
+        'support_email'            => 'cskh@nongsansach.vn',
+    ];
+
+    /**
+     * Lấy cấu hình hệ thống từ MySQL (kèm fallback mặc định).
+     */
+    private function getSettingsFromDatabase(): array
+    {
+        $settings = $this->defaultSettings;
+
+        $this->ensureTableExists();
+
+        $dbRows = DB::table('cau_hinh_he_thong')->get();
+        foreach ($dbRows as $row) {
+            $key = $row->Khoa;
+            $val = $row->Gia_tri;
+
+            if (array_key_exists($key, $settings)) {
+                $default = $settings[$key];
+                if (is_int($default)) {
+                    $settings[$key] = (int) $val;
+                } elseif (is_float($default) || is_numeric($default)) {
+                    $settings[$key] = is_numeric($val) ? (float) $val : $val;
+                } else {
+                    $settings[$key] = $val;
+                }
+            } else {
+                $settings[$key] = $val;
+            }
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Đảm bảo bảng cau_hinh_he_thong luôn tồn tại trong CSDL.
+     */
+    private function ensureTableExists(): void
+    {
+        if (! Schema::hasTable('cau_hinh_he_thong')) {
+            Schema::create('cau_hinh_he_thong', function ($table) {
+                $table->string('Khoa', 100)->primary();
+                $table->text('Gia_tri')->nullable();
+                $table->string('Mo_ta', 255)->nullable();
+                $table->timestamp('created_at')->nullable()->useCurrent();
+                $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+            });
+        }
+    }
 
     /**
      * Lấy cấu hình hệ thống hiện tại.
@@ -22,17 +83,7 @@ class SystemSettingController extends Controller
     public function index(): JsonResponse
     {
         $settings = Cache::remember('system_settings_config', 3600, function () {
-            return [
-                'delivery_max_distance_km' => 25,
-                'shipping_fee_base'        => 20000,
-                'shipping_fee_per_km'      => 5000,
-                'fefo_warning_days'        => 3,
-                'flash_sale_discount_pct'  => 40,
-                'reward_point_rate'        => 1000, // 1000 VND = 1 điểm
-                'auto_cancel_unpaid_hours' => 24,
-                'support_hotline'          => '1900 8888',
-                'support_email'            => 'cskh@nongsansach.vn',
-            ];
+            return $this->getSettingsFromDatabase();
         });
 
         return $this->successResponse(
@@ -42,7 +93,7 @@ class SystemSettingController extends Controller
     }
 
     /**
-     * Cập nhật cấu hình hệ thống.
+     * Cập nhật cấu hình hệ thống và đồng bộ vào MySQL.
      */
     public function update(Request $request): JsonResponse
     {
@@ -57,19 +108,23 @@ class SystemSettingController extends Controller
             'support_email'            => ['nullable', 'email'],
         ]);
 
-        $current = Cache::get('system_settings_config', [
-            'delivery_max_distance_km' => 25,
-            'shipping_fee_base'        => 20000,
-            'shipping_fee_per_km'      => 5000,
-            'fefo_warning_days'        => 3,
-            'flash_sale_discount_pct'  => 40,
-            'reward_point_rate'        => 1000,
-            'auto_cancel_unpaid_hours' => 24,
-            'support_hotline'          => '1900 8888',
-            'support_email'            => 'cskh@nongsansach.vn',
-        ]);
+        $this->ensureTableExists();
 
-        $updated = array_merge($current, array_filter($validated, fn($val) => !is_null($val)));
+        $filtered = array_filter($validated, fn ($val) => ! is_null($val));
+
+        // Lưu từng cặp Khoa - Gia_tri vào bảng cau_hinh_he_thong
+        foreach ($filtered as $key => $value) {
+            DB::table('cau_hinh_he_thong')->updateOrInsert(
+                ['Khoa' => $key],
+                [
+                    'Gia_tri'    => (string) $value,
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        // Đọc lại từ CSDL và lưu đệm vào Cache
+        $updated = $this->getSettingsFromDatabase();
         Cache::put('system_settings_config', $updated, 86400);
 
         return $this->successResponse(

@@ -1033,13 +1033,13 @@ export default function SeasonManagePage() {
                 <select
                   value={plotForm.product_id}
                   onChange={(e) => setPlotForm({ ...plotForm, product_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
+                  className="w-full max-w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
                   required
                 >
                   <option value="">-- Chọn loại rau / củ / quả --</option>
                   {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.unit})
+                    <option key={p.id} value={p.id} title={`${p.name} (${p.unit})`}>
+                      {p.name?.length > 36 ? p.name.slice(0, 33) + "..." : p.name} ({p.unit})
                     </option>
                   ))}
                 </select>
@@ -1189,12 +1189,12 @@ export default function SeasonManagePage() {
                 <select
                   value={editPlotForm.product_id}
                   onChange={(e) => setEditPlotForm({ ...editPlotForm, product_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
+                  className="w-full max-w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
                 >
                   <option value="">-- Giữ nguyên hoặc chọn loại khác --</option>
                   {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.unit})
+                    <option key={p.id} value={p.id} title={`${p.name} (${p.unit})`}>
+                      {p.name?.length > 36 ? p.name.slice(0, 33) + "..." : p.name} ({p.unit})
                     </option>
                   ))}
                 </select>
