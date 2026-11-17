@@ -129,3 +129,20 @@ Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookC
 Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
 });
+
+// Nhóm API Nhân viên Nông trại (bảo vệ bằng auth:sanctum + role:farm_staff)
+Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(function () {
+    Route::get('/seasons', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'index']);
+    Route::post('/seasons', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'store']);
+    Route::get('/seasons/{id}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'show']);
+    Route::put('/seasons/{id}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'update']);
+    Route::delete('/seasons/{id}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'destroy']);
+    Route::post('/seasons/{id}/plots', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'storePlot']);
+    Route::put('/seasons/{id}/plots/{plotId}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'updatePlot']);
+    Route::delete('/seasons/{id}/plots/{plotId}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'destroyPlot']);
+    Route::get('/products', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'getProducts']);
+
+    Route::get('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'index']);
+    Route::post('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'store']);
+    Route::delete('/farming-logs/{id}', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'destroy']);
+});
