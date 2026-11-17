@@ -46,8 +46,10 @@
 ### Backend (`backend/`)
 - **Framework:** Laravel (PHP >= 8.2) theo kiến trúc RESTful API.
 - **Xác thực & Phân quyền:**
-  - `laravel/breeze` (chế độ API) + `laravel/sanctum`: Xác thực bằng Bearer Token (`auth:sanctum`).
-  - `spatie/laravel-permission`: Quản lý vai trò (`customer`, `farm_staff`, `sales`, `admin`) và phân quyền qua Middleware `role`.
+  - `laravel/breeze` (chế độ API) + `laravel/sanctum`: Xác thực Stateless bằng Bearer Token (`auth:sanctum`).
+  - Hệ thống phân quyền RBAC tùy biến (`nguoi_dung`, `vai_tro`, `quyen`, `vai_tro_quyen`) kết hợp Middleware `role`, `permission`, `role_or_permission`.
+- **Dịch vụ Email & Hàng đợi (Queue):**
+  - **Mailpit** (SMTP cục bộ cổng `1025`, giao diện web cổng `8025`) kết hợp **Laravel Queue** (`database` driver) để gửi email khôi phục mật khẩu bất đồng bộ nhanh chóng.
 - **Quản lý Media & Lưu trữ đám mây:**
   - `league/flysystem-aws-s3-v3` + `spatie/laravel-medialibrary`: Kết nối **Cloudflare R2** lưu trữ ảnh/video nhật ký canh tác, bằng chứng khiếu nại và bản scan kiểm định.
 - **Tiện ích nghiệp vụ:**
@@ -76,8 +78,8 @@ nong-san-sach/
 │   │   │   └── GenerateRecurringOrders.php         # Cronjob tự động sinh đơn hàng định kỳ theo lịch gói tháng
 │   │   ├── Http/
 │   │   │   ├── Controllers/
-│   │   │   │   ├── Auth/                           # Bộ Controller xác thực từ Laravel Breeze API
-│   │   │   │   │   ├── AuthenticatedSessionController.php  # Đăng nhập (trả Token + Roles) & Đăng xuất
+│   │   │   │   ├── Auth/                           # Bộ Controller xác thực Stateless API
+│   │   │   │   │   ├── AuthenticatedSessionController.php  # Đăng nhập (trả Token + Roles/Permissions) & Đăng xuất
 │   │   │   │   │   ├── RegisteredUserController.php        # Đăng ký tài khoản Khách hàng mới
 │   │   │   │   │   ├── PasswordResetLinkController.php     # Gửi yêu cầu quên mật khẩu qua Email
 │   │   │   │   │   ├── NewPasswordController.php           # Đặt lại mật khẩu mới
@@ -115,6 +117,9 @@ nong-san-sach/
 │   │   │   │       └── Webhook/
 │   │   │   │           └── ApiPayWebhookController.php # Xác minh webhook và cập nhật trạng thái thanh toán
 │   │   │   ├── Middleware/
+│   │   │   │   ├── CheckRole.php                   # Kiểm tra vai trò người dùng (admin, sales, farm_staff, customer)
+│   │   │   │   ├── CheckPermission.php             # Kiểm tra quyền hạn chi tiết theo ma trận RBAC
+│   │   │   │   ├── CheckRoleOrPermission.php       # Kiểm tra kết hợp vai trò hoặc quyền hạn
 │   │   │   │   └── EnsureEmailIsVerified.php       # Kiểm tra trạng thái xác thực email của tài khoản
 │   │   │   └── Requests/                           # Lớp kiểm tra tính hợp lệ dữ liệu đầu vào (Validation)
 │   │   │       ├── Auth/LoginRequest.php           # Validate thông tin đăng nhập & giới hạn số lần thử sai
@@ -122,9 +127,13 @@ nong-san-sach/
 │   │   │       ├── FarmStaff/                      # StoreFarmingLogRequest, StoreBatchRequest, UploadCertificateRequest
 │   │   │       └── Sales/                          # RecordWastageRequest, StoreFlashSaleRequest, ResolveClaimRequest
 │   │   ├── Models/
-│   │   │   └── User.php                            # Model người dùng (tích hợp Sanctum HasApiTokens & Spatie HasRoles)
+│   │   │   ├── NguoiDung.php                       # Model người dùng (Sanctum HasApiTokens, RBAC & Password Reset)
+│   │   │   ├── VaiTro.php                          # Model vai trò hệ thống
+│   │   │   └── Quyen.php                           # Model quyền hạn chi tiết
+│   │   ├── Notifications/
+│   │   │   └── QueuedResetPasswordNotification.php # Notification gửi email khôi phục mật khẩu qua hàng đợi Queue
 │   │   ├── Providers/
-│   │   │   └── AppServiceProvider.php              # Đăng ký các Service & cấu hình dùng chung toàn ứng dụng
+│   │   │   └── AppServiceProvider.php              # Đăng ký các Service, URL đặt lại mật khẩu & cấu hình dùng chung
 │   │   └── Services/                               # Tầng xử lý logic nghiệp vụ chuyên sâu
 │   │       ├── FefoStockService.php                # Thuật toán chọn lô có HSD gần nhất & trừ tồn kho tự động
 │   │       ├── ApiPayPaymentService.php             # Gọi API ApiPay để tạo và tra cứu yêu cầu thanh toán
@@ -140,11 +149,12 @@ nong-san-sach/
 │   │   ├── sanctum.php                             # Cấu hình thời hạn & cơ chế hoạt động của Access Token
 │   │   └── services.php                            # Khai báo thông số kết nối ApiPay & Goong Maps API
 │   ├── database/
-│   │   ├── migrations/                             # Các tệp tạo cấu trúc bảng MySQL (users, tokens, RBAC, nghiệp vụ...)
-│   │   └── seeders/DatabaseSeeder.php              # Khởi tạo dữ liệu mẫu vai trò (Roles) & tài khoản mặc định
+│   │   ├── migrations/                             # Các tệp tạo cấu trúc bảng MySQL, chỉ mục & Stored Functions
+│   │   └── seeders/
+│   │       ├── DatabaseSeeder.php                  # Nạp dữ liệu mẫu từ tệp SQL vào cơ sở dữ liệu
+│   │       └── sql/seed_nong_san_sach.sql          # Dữ liệu mẫu vai trò, quyền hạn, tài khoản, nông trại & đơn hàng
 │   ├── routes/
-│   │   ├── api.php                                 # Định tuyến toàn bộ RESTful API chia theo 5 nhóm quyền
-│   │   ├── auth.php                                # Định tuyến xác thực (register, login, logout, reset-password)
+│   │   ├── api.php                                 # Định tuyến toàn bộ RESTful API chia theo 5 nhóm quyền & Auth
 │   │   └── console.php                             # Khai báo lịch chạy Cronjob tự động sinh đơn định kỳ
 │   ├── .env.example                                # Tệp mẫu các biến môi trường cần cấu hình
 │   └── composer.json                               # Danh sách các gói thư viện PHP/Laravel của dự án
@@ -216,7 +226,8 @@ nong-san-sach/
 ### Yêu cầu môi trường trên máy
 - **PHP** >= 8.2 và **Composer**
 - **Node.js** >= 18.x và **npm**
-- **MySQL** >= 8.0 (XAMPP, Laragon hoặc Docker)
+- **MySQL** >= 8.0 / MariaDB (XAMPP, Laragon hoặc Docker)
+- **Mailpit** (khuyến nghị để kiểm thử gửi/nhận email khôi phục mật khẩu tại cục bộ)
 
 ---
 
@@ -253,12 +264,12 @@ Nội dung file lấy trong Page 1 của GoogleSheet phân công (Link: https://
    - Webhook sandbox và webhook kiểm tra trực tiếp không cập nhật đơn hàng; chỉ webhook giao dịch thật đã xác minh mới có thể xác nhận thanh toán. Nếu yêu cầu tạo thanh toán bị timeout/lỗi không rõ kết quả, bản ghi vẫn ở trạng thái khởi tạo để chờ webhook/đối soát, không nên thử tạo yêu cầu mới ngay.
    - Chạy `php artisan migrate` để chuyển schema thanh toán hoàn toàn sang ApiPay (bao gồm SQLite); mã giao dịch cũ được lưu dưới dạng tham chiếu lưu trữ. ApiPay hiện chỉ xác nhận tiền vào, chưa triển khai hoàn tiền.
 
-5. Khởi tạo các bảng dữ liệu trong MySQL và dữ liệu mẫu phân quyền:
+5. Khởi tạo các bảng dữ liệu, hàm lưu trữ (Stored Functions) trong MySQL và dữ liệu mẫu phân quyền:
 ```bash
-php artisan migrate --seed
+php artisan migrate:fresh --seed
 ```
 
-6. Khởi chạy máy chủ Backend API (mặc định chạy tại `http://localhost:8000`):
+6. Khởi chạy máy chủ Backend API (mặc định chạy tại `http://127.0.0.1:8000`):
 ```bash
 php artisan serve
 ```
@@ -270,7 +281,46 @@ php artisan schedule:work
 
 ---
 
-### Bước 3: Cài đặt và cấu hình Frontend (React)
+### Bước 3: Cấu hình và chạy dịch vụ Email (Mailpit & Queue Worker)
+
+Để sử dụng chức năng **Quên mật khẩu / Đặt lại mật khẩu** và nhận email kiểm thử cục bộ mà không bị chậm khi gửi:
+
+1. **Kiểm tra cấu hình SMTP & Queue trong `backend/.env`:**
+```env
+FRONTEND_URL=http://localhost:5173
+QUEUE_CONNECTION=database
+
+MAIL_MAILER=smtp
+MAIL_SCHEME=null
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_EHLO_DOMAIN=127.0.0.1
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="no-reply@xanhfarm.vn"
+MAIL_FROM_NAME="XanhFarm Nông Sản Sạch"
+```
+*(Nếu vừa chỉnh sửa `.env`, chạy `php artisan config:clear` trong thư mục `backend`.)*
+
+2. **Khởi động máy chủ Mailpit:**
+   - **Nếu dùng Laragon:** Chuột phải vào khay hệ thống Laragon → **Mailpit → Start Mailpit** (hoặc bật trong *Menu → Preferences → Services & Ports*).
+   - **Nếu dùng Docker:**
+     ```bash
+     docker run -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
+     ```
+   - **Nếu dùng tệp thực thi độc lập:** Mở terminal tại thư mục chứa `mailpit.exe` và chạy `./mailpit.exe`.
+   - Kiểm tra hòm thư điện tử giả lập tại trình duyệt: **`http://127.0.0.1:8025`**.
+
+3. **Khởi chạy Queue Worker để xử lý gửi email bất đồng bộ:**
+   Mở một cửa sổ terminal riêng tại thư mục `backend` và chạy:
+   ```bash
+   php artisan queue:work --tries=3
+   ```
+   *(Lưu ý: Phải giữ tiến trình `queue:work` này chạy nền thì các email trong hàng đợi mới được đẩy sang Mailpit.)*
+
+---
+
+### Bước 4: Cài đặt và cấu hình Frontend (React)
 
 1. Mở một cửa sổ terminal mới, di chuyển vào thư mục `frontend` và cài đặt thư viện:
 ```bash
@@ -280,7 +330,7 @@ npm install
 
 2. Tạo tệp `frontend/.env` và khai báo địa chỉ máy chủ Backend API:
 ```env
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://127.0.0.1:8000/api
 ```
 
 3. Khởi chạy ứng dụng React (mặc định chạy tại `http://localhost:5173`):
@@ -289,3 +339,11 @@ npm run dev
 ```
 
 Truy cập trình duyệt tại địa chỉ **`http://localhost:5173`** để bắt đầu sử dụng hệ thống.
+
+### Tài khoản mẫu sau khi chạy `--seed` (Mật khẩu chung: `password`)
+| Vai trò | Email đăng nhập | Đường dẫn mặc định |
+| :--- | :--- | :--- |
+| **Quản trị viên (Admin)** | `admin@nongsansach.vn` | `/admin` |
+| **Bán hàng & CSKH (Sales)** | `sales.ha@nongsansach.vn` | `/sales/orders` |
+| **Kỹ sư Nông trại (Farm Staff)** | `farm.kythuat@nongsansach.vn` | `/farm/seasons` |
+| **Khách hàng (Customer)** | `ngocanh.khach@gmail.com` | `/` |

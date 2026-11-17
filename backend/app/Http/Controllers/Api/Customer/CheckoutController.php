@@ -9,7 +9,7 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
 use App\Models\ThanhToan;
-use App\Traits\ApiResponse
+use App\Traits\ApiResponse;
 use App\Services\ApiPayPaymentService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
