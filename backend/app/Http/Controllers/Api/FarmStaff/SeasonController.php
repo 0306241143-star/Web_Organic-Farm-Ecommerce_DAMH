@@ -9,10 +9,12 @@ namespace App\Http\Controllers\Api\FarmStaff;
 use App\Http\Controllers\Controller;
 use App\Models\LoCanhTac;
 use App\Models\MuaVu;
+use App\Models\NongTrai;
 use App\Models\SanPham;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class SeasonController extends Controller
 {
@@ -23,11 +25,30 @@ class SeasonController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $hasFilters = $request->filled('status') || $request->filled('search');
+
+        if (! $hasFilters) {
+            $seasons = Cache::remember('farm_seasons_all', 60, function () use ($request) {
+                return $this->fetchSeasonsCollection($request);
+            });
+        } else {
+            $seasons = $this->fetchSeasonsCollection($request);
+        }
+
+        return $this->successResponse(
+            message: 'Lấy danh sách mùa vụ thành công.',
+            data: $seasons
+        );
+    }
+
+    /**
+     * Helper truy vấn và chuẩn hóa danh sách mùa vụ & các lô canh tác.
+     */
+    private function fetchSeasonsCollection(Request $request)
+    {
         $query = MuaVu::with([
             'loCanhTacs.sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien',
-            'loCanhTacs.nhatKyCanhTacs' => function ($q) {
-                $q->latest('Thoi_gian_thuc_hien')->limit(1);
-            },
+            'loCanhTacs.latestNhatKyCanhTac',
         ])
             ->withCount('loCanhTacs')
             ->orderByRaw("CASE WHEN Trang_thai = 'Dang_dien_ra' THEN 0 ELSE 1 END")
@@ -42,7 +63,7 @@ class SeasonController extends Controller
             $query->where('Ten_mua_vu', 'like', "%{$keyword}%");
         }
 
-        $seasons = $query->get()->map(function ($season) {
+        return $query->get()->map(function ($season) {
             $totalArea = $season->loCanhTacs->sum('Dien_tich');
             $activePlotsCount = $season->loCanhTacs->where('Trang_thai', 'Dang_canh_tac')->count();
             $harvestedPlotsCount = $season->loCanhTacs->where('Trang_thai', 'Da_thu_hoach')->count();
@@ -59,7 +80,7 @@ class SeasonController extends Controller
                 'harvested_plots_count'  => $harvestedPlotsCount,
                 'total_area_m2'          => (float) $totalArea,
                 'plots'                  => $season->loCanhTacs->map(function ($plot) {
-                    $latestLog = $plot->nhatKyCanhTacs->first();
+                    $latestLog = $plot->latestNhatKyCanhTac;
 
                     return [
                         'id'             => $plot->Ma_lo_canh_tac,
@@ -82,11 +103,6 @@ class SeasonController extends Controller
                 'created_at'             => $season->created_at?->toISOString(),
             ];
         });
-
-        return $this->successResponse(
-            message: 'Lấy danh sách mùa vụ thành công.',
-            data: $seasons
-        );
     }
 
     /**
@@ -113,6 +129,8 @@ class SeasonController extends Controller
             'Ngay_ket_thuc'  => $validated['end_date'] ?? null,
             'Trang_thai'     => $validated['status'] ?? 'Dang_dien_ra',
         ]);
+
+        Cache::forget('farm_seasons_all');
 
         return $this->successResponse(
             message: 'Tạo mùa vụ mới thành công.',
@@ -194,6 +212,7 @@ class SeasonController extends Controller
         }
 
         $season->save();
+        Cache::forget('farm_seasons_all');
 
         return $this->successResponse(
             message: 'Cập nhật mùa vụ thành công.',
@@ -245,6 +264,8 @@ class SeasonController extends Controller
             'Ngay_gieo_trong' => $validated['planting_date'],
             'Trang_thai'      => $validated['status'] ?? 'Dang_canh_tac',
         ]);
+
+        Cache::forget('farm_seasons_all');
 
         $plot->load('sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien');
 
@@ -313,6 +334,7 @@ class SeasonController extends Controller
         }
 
         $plot->save();
+        Cache::forget('farm_seasons_all');
         $plot->load('sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien');
 
         return $this->successResponse(
@@ -396,6 +418,8 @@ class SeasonController extends Controller
             $season->delete();
         });
 
+        Cache::forget('farm_seasons_all');
+
         return $this->successResponse(message: 'Xóa mùa vụ thành công.');
     }
 
@@ -429,6 +453,8 @@ class SeasonController extends Controller
             $plot->delete();
         });
 
+        Cache::forget('farm_seasons_all');
+
         return $this->successResponse(message: 'Xóa lô canh tác thành công.');
     }
 
@@ -437,23 +463,95 @@ class SeasonController extends Controller
      */
     public function getProducts(): JsonResponse
     {
-        $products = SanPham::select('Ma_san_pham', 'Ten_san_pham', 'Don_vi_tinh', 'Hinh_anh_dai_dien', 'Gia_ban')
-            ->where('Trang_thai', 'Dang_ban')
-            ->orderBy('Ten_san_pham', 'asc')
-            ->get()
-            ->map(function ($p) {
-                return [
-                    'id'    => $p->Ma_san_pham,
-                    'name'  => $p->Ten_san_pham,
-                    'unit'  => $p->Don_vi_tinh,
-                    'price' => (float) $p->Gia_ban,
-                    'image' => $p->Hinh_anh_dai_dien,
-                ];
-            });
+        $products = Cache::remember('farm_active_products', 300, function () {
+            return SanPham::select('Ma_san_pham', 'Ten_san_pham', 'Don_vi_tinh', 'Hinh_anh_dai_dien', 'Gia_ban')
+                ->where('Trang_thai', 'Dang_ban')
+                ->orderBy('Ten_san_pham', 'asc')
+                ->get()
+                ->map(function ($p) {
+                    return [
+                        'id'    => $p->Ma_san_pham,
+                        'name'  => $p->Ten_san_pham,
+                        'unit'  => $p->Don_vi_tinh,
+                        'price' => (float) $p->Gia_ban,
+                        'image' => $p->Hinh_anh_dai_dien,
+                    ];
+                });
+        });
 
         return $this->successResponse(
             message: 'Lấy danh sách nông sản thành công.',
             data: $products
+        );
+    }
+
+    /**
+     * Lấy thông tin cơ sở nông trại (tên, địa chỉ) - Cached 1 giờ để đạt < 10ms.
+     */
+    public function getFarmInfo(): JsonResponse
+    {
+        $farmData = Cache::remember('farm_info_singleton', 3600, function () {
+            $farm = NongTrai::first();
+            if (!$farm) {
+                $farm = NongTrai::create([
+                    'Ten_nong_trai' => 'Nông Trại Xanh Củ Chi',
+                    'Dia_chi'       => 'Ấp 3, Xã Nhuận Đức, Huyện Củ Chi, TP. Hồ Chí Minh',
+                    'Vi_do'         => 10.9985000,
+                    'Kinh_do'       => 106.5123000,
+                ]);
+            }
+            return [
+                'id'        => $farm->Ma_nong_trai,
+                'name'      => $farm->Ten_nong_trai,
+                'address'   => $farm->Dia_chi,
+                'latitude'  => (float) $farm->Vi_do,
+                'longitude' => (float) $farm->Kinh_do,
+            ];
+        });
+
+        return $this->successResponse(
+            message: 'Lấy thông tin cơ sở nông trại thành công.',
+            data: $farmData
+        );
+    }
+
+    /**
+     * Cập nhật thông tin cơ sở nông trại (tên, địa chỉ) và xóa cache.
+     */
+    public function updateFarmInfo(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name'    => ['nullable', 'string', 'max:200'],
+            'address' => ['required', 'string', 'max:255'],
+        ], [
+            'address.required' => 'Vui lòng nhập địa chỉ cơ sở nông trại.',
+            'address.max'      => 'Địa chỉ không được vượt quá 255 ký tự.',
+        ]);
+
+        $farm = NongTrai::first();
+        if (!$farm) {
+            $farm = new NongTrai();
+            $farm->Vi_do = 10.9985000;
+            $farm->Kinh_do = 106.5123000;
+        }
+
+        if (!empty($validated['name'])) {
+            $farm->Ten_nong_trai = trim($validated['name']);
+        }
+        $farm->Dia_chi = trim($validated['address']);
+        $farm->save();
+
+        Cache::forget('farm_info_singleton');
+
+        return $this->successResponse(
+            message: 'Cập nhật địa chỉ cơ sở nông trại thành công.',
+            data: [
+                'id'        => $farm->Ma_nong_trai,
+                'name'      => $farm->Ten_nong_trai,
+                'address'   => $farm->Dia_chi,
+                'latitude'  => (float) $farm->Vi_do,
+                'longitude' => (float) $farm->Kinh_do,
+            ]
         );
     }
 }

@@ -111,11 +111,21 @@ class ApiIntegrationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true);
 
-        // 5. Ghi nhật ký canh tác kèm tệp hình ảnh
+        // 5. Kiểm tra UC14.1 2a: Chặn mốc thời gian trong tương lai
+        $this->postJson("/api/farm/farming-logs", [
+            'Ma_lo_canh_tac'      => $plotId,
+            'Loai_hoat_dong'      => 'Gieo_hat',
+            'Thoi_gian_thuc_hien' => now()->addDays(2)->toDateTimeString(),
+            'Noi_dung'            => 'Gieo hạt ngày tương lai không hợp lệ.',
+        ], $headers)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['Thoi_gian_thuc_hien']);
+
+        // 5b. Ghi nhật ký canh tác hợp lệ kèm tệp hình ảnh
         $logRes = $this->post("/api/farm/farming-logs", [
             'Ma_lo_canh_tac'      => $plotId,
             'Loai_hoat_dong'      => 'Gieo_hat',
-            'Thoi_gian_thuc_hien' => '2027-03-05 08:30:00',
+            'Thoi_gian_thuc_hien' => now()->subHours(2)->toDateTimeString(),
             'Noi_dung'            => 'Gieo hạt giống hữu cơ kiểm định.',
             'media'               => [
                 UploadedFile::fake()->image('gieo_hat.jpg', 600, 400),
