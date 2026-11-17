@@ -60,4 +60,82 @@ class ApiIntegrationTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.original_name', 'quality.jpg');
     }
+
+    public function test_farm_staff_seasons_and_farming_logs_flow(): void
+    {
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
+
+        $staffUser = \App\Models\NguoiDung::where('Email', 'farm.kythuat@nongsansach.vn')->first();
+        if (! $staffUser) {
+            $this->markTestSkipped('Staff user not found in database.');
+        }
+
+        $token = $staffUser->createToken('test_staff_token')->plainTextToken;
+        $headers = ['Authorization' => 'Bearer ' . $token];
+
+        // 1. Lấy danh sách mùa vụ
+        $this->getJson('/api/farm/seasons', $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure(['success', 'message', 'data' => [['id', 'name', 'status', 'plots']]]);
+
+        // 2. Tạo mùa vụ mới
+        $newSeasonRes = $this->postJson('/api/farm/seasons', [
+            'name'       => 'Vụ Xuân Hè 2027 - Khu Mới',
+            'start_date' => '2027-03-01',
+            'end_date'   => '2027-06-30',
+            'status'     => 'Dang_dien_ra',
+        ], $headers)
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'Vụ Xuân Hè 2027 - Khu Mới');
+
+        $seasonId = $newSeasonRes->json('data.id');
+
+        // 3. Thêm lô canh tác vào mùa vụ mới
+        $firstProduct = \App\Models\SanPham::first();
+        $plotRes = $this->postJson("/api/farm/seasons/{$seasonId}/plots", [
+            'product_id'    => $firstProduct->Ma_san_pham,
+            'plot_name'     => 'Lô Thử Nghiệm X01',
+            'area_m2'       => 500.5,
+            'planting_date' => '2027-03-05',
+        ], $headers)
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.plot_name', 'Lô Thử Nghiệm X01');
+
+        $plotId = $plotRes->json('data.id');
+
+        // 4. Lấy danh sách nông sản
+        $this->getJson('/api/farm/products', $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // 5. Ghi nhật ký canh tác kèm tệp hình ảnh
+        $logRes = $this->post("/api/farm/farming-logs", [
+            'Ma_lo_canh_tac'      => $plotId,
+            'Loai_hoat_dong'      => 'Gieo_hat',
+            'Thoi_gian_thuc_hien' => '2027-03-05 08:30:00',
+            'Noi_dung'            => 'Gieo hạt giống hữu cơ kiểm định.',
+            'media'               => [
+                UploadedFile::fake()->image('gieo_hat.jpg', 600, 400),
+            ],
+        ], array_merge($headers, ['Accept' => 'application/json']))
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.plot_id', $plotId);
+
+        $logId = $logRes->json('data.id');
+
+        // 6. Lấy danh sách nhật ký theo lô
+        $this->getJson("/api/farm/farming-logs?plot_id={$plotId}", $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data');
+
+        // 7. Dọn dẹp bản ghi kiểm thử
+        \App\Models\NhatKyCanhTac::destroy($logId);
+        \App\Models\LoCanhTac::destroy($plotId);
+        \App\Models\MuaVu::destroy($seasonId);
+    }
 }
