@@ -206,9 +206,5 @@ INSERT INTO Tep_bang_chung (Ma_tep, Ma_khieu_nai, Loai_tep, Duong_dan) VALUES
 (2, 1, 'Video', '/uploads/complaints/kn1_mo_hop_video.mp4'),
 (3, 2, 'Hinh_anh', '/uploads/complaints/kn2_kiem_hang.jpg');
 
-INSERT INTO Hoan_tien (Ma_hoan_tien, Ma_khieu_nai, Ma_thanh_toan, So_tien, Ma_giao_dich_hoan_apipay, Trang_thai, Ngay_hoan) VALUES
+INSERT INTO Hoan_tien (Ma_hoan_tien, Ma_khieu_nai, Ma_thanh_toan, So_tien, Ma_giao_dich_hoan_tham_chieu_cu, Trang_thai, Ngay_hoan) VALUES
 (1, 2, 2, 20000.00, 'APIPAY_REFUND_20261112_001', 'Thanh_cong', '2026-11-12 18:20:00');
-
-INSERT INTO Cau_hinh_he_thong (Ma_cau_hinh, Khoa, Gia_tri, Mo_ta) VALUES
-(1, 'phi_ship_moi_km', '2000', 'Đơn giá phí giao hàng tính trên mỗi kilomet (VNĐ/km)'),
-(2, 'so_ngay_canh_bao_het_han', '3', 'Số ngày trước hạn sử dụng để cảnh báo lô hàng sắp hết hạn');

@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -74,38 +78,48 @@ if (app()->environment(['local', 'testing'])) {
     });
 }
 
-// Endpoint lấy thông tin phiên làm việc và quyền hạn người dùng hiện tại (CV04.6)
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) use ($standardOk) {
-    $user = $request->user();
+// Các API xác thực người dùng công khai (CV04.3 - CV04.5)
+Route::post('/register', [RegisteredUserController::class, 'store']);
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
+Route::post('/reset-password', [NewPasswordController::class, 'store']);
 
-    if ($user->Trang_thai === 'Khoa') {
-        $user->currentAccessToken()?->delete();
+// Các API yêu cầu đăng nhập qua Sanctum Token (CV04.4 & CV04.6)
+Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
 
-        return response()->json([
-            'success'    => false,
-            'message'    => 'Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ quản trị viên.',
-            'error_code' => 'FORBIDDEN',
-            'data'       => null,
-            'meta'       => null,
-            'errors'     => null,
-        ], 403);
-    }
+    Route::get('/user', function (Request $request) use ($standardOk) {
+        $user = $request->user();
 
-    $user->loadMissing('vaiTro.quyens');
-    $roleSlug = $user->getRoleSlug();
+        if ($user->Trang_thai === 'Khoa') {
+            $user->currentAccessToken()?->delete();
 
-    return $standardOk('Lấy thông tin phiên làm việc thành công.', [
-        'user' => [
-            'id'     => $user->Ma_nguoi_dung,
-            'name'   => $user->Ho_ten,
-            'email'  => $user->Email,
-            'phone'  => $user->So_dien_thoai,
-            'role'   => $roleSlug,
-            'roles'  => [$roleSlug],
-            'status' => $user->Trang_thai,
-        ],
-        'permissions' => $user->vaiTro?->quyens->pluck('Ten_quyen')->toArray() ?? [],
-    ]);
+            return response()->json([
+                'success'    => false,
+                'message'    => 'Tài khoản của bạn đã bị tạm khóa. Vui lòng liên hệ quản trị viên.',
+                'error_code' => 'FORBIDDEN',
+                'data'       => null,
+                'meta'       => null,
+                'errors'     => null,
+            ], 403);
+        }
+
+        $user->loadMissing('vaiTro.quyens');
+        $roleSlug = $user->getRoleSlug();
+
+        return $standardOk('Lấy thông tin phiên làm việc thành công.', [
+            'user' => [
+                'id'     => $user->Ma_nguoi_dung,
+                'name'   => $user->Ho_ten,
+                'email'  => $user->Email,
+                'phone'  => $user->So_dien_thoai,
+                'role'   => $roleSlug,
+                'roles'  => [$roleSlug],
+                'status' => $user->Trang_thai,
+            ],
+            'permissions' => $user->vaiTro?->quyens->pluck('Ten_quyen')->toArray() ?? [],
+        ]);
+    });
 });
 
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
