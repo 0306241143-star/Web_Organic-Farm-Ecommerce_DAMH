@@ -14,6 +14,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,6 +27,28 @@ class FarmingLogController extends Controller
      * Danh sách nhật ký canh tác (hỗ trợ lọc theo lô, mùa vụ, loại hoạt động).
      */
     public function index(Request $request): JsonResponse
+    {
+        $plotId = $request->query('plot_id');
+        $hasOtherFilters = $request->filled('activity_type') || $request->filled('season_id');
+
+        if ($plotId && ! $hasOtherFilters) {
+            $logs = Cache::remember("farm_logs_plot_{$plotId}", 60, function () use ($request) {
+                return $this->fetchLogsCollection($request);
+            });
+        } else {
+            $logs = $this->fetchLogsCollection($request);
+        }
+
+        return $this->successResponse(
+            message: 'Lấy danh sách nhật ký canh tác thành công.',
+            data: $logs
+        );
+    }
+
+    /**
+     * Helper truy vấn và chuẩn hóa danh sách nhật ký canh tác.
+     */
+    private function fetchLogsCollection(Request $request)
     {
         $query = NhatKyCanhTac::with([
             'nhanVien:Ma_nguoi_dung,Ho_ten',
@@ -49,7 +72,7 @@ class FarmingLogController extends Controller
             });
         }
 
-        $logs = $query->get()->map(function ($log) {
+        return $query->get()->map(function ($log) {
             return [
                 'id'            => $log->Ma_nhat_ky,
                 'plot_id'       => $log->Ma_lo_canh_tac,
@@ -73,11 +96,6 @@ class FarmingLogController extends Controller
                 'created_at'    => $log->created_at?->toISOString(),
             ];
         });
-
-        return $this->successResponse(
-            message: 'Lấy danh sách nhật ký canh tác thành công.',
-            data: $logs
-        );
     }
 
     /**
@@ -126,6 +144,9 @@ class FarmingLogController extends Controller
             'loCanhTac.sanPham',
         ]);
 
+        Cache::forget("farm_logs_plot_{$validated['Ma_lo_canh_tac']}");
+        Cache::forget('farm_seasons_all');
+
         return $this->successResponse(
             message: 'Ghi nhật ký canh tác thành công.',
             data: [
@@ -169,7 +190,11 @@ class FarmingLogController extends Controller
             ], 404);
         }
 
+        $plotId = $log->Ma_lo_canh_tac;
         $log->delete();
+
+        Cache::forget("farm_logs_plot_{$plotId}");
+        Cache::forget('farm_seasons_all');
 
         return $this->successResponse(message: 'Xóa nhật ký canh tác thành công.');
     }

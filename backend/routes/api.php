@@ -141,8 +141,19 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::put('/seasons/{id}/plots/{plotId}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'updatePlot']);
     Route::delete('/seasons/{id}/plots/{plotId}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'destroyPlot']);
     Route::get('/products', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'getProducts']);
+    Route::get('/info', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'getFarmInfo']);
+    Route::put('/info', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'updateFarmInfo']);
 
     Route::get('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'index']);
     Route::post('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'store']);
     Route::delete('/farming-logs/{id}', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'destroy']);
+});
+
+// Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/reports/dashboard', [\App\Http\Controllers\Api\Admin\ReportController::class, 'dashboard']);
+    Route::get('/users', [\App\Http\Controllers\Api\Admin\UserRoleController::class, 'index']);
+    Route::put('/users/{id}/status', [\App\Http\Controllers\Api\Admin\UserRoleController::class, 'updateStatus']);
+    Route::get('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'index']);
+    Route::put('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'update']);
 });

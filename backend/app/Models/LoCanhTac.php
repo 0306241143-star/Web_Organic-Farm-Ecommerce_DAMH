@@ -27,6 +27,11 @@ class LoCanhTac extends Model
         return $this->hasMany(NhatKyCanhTac::class, 'Ma_lo_canh_tac', 'Ma_lo_canh_tac');
     }
 
+    public function latestNhatKyCanhTac(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(NhatKyCanhTac::class, 'Ma_lo_canh_tac', 'Ma_lo_canh_tac')->latestOfMany('Thoi_gian_thuc_hien');
+    }
+
     public function loHangs(): HasMany
     {
         return $this->hasMany(LoHang::class, 'Ma_lo_canh_tac', 'Ma_lo_canh_tac');
