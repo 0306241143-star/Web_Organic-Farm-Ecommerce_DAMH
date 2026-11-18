@@ -1,5 +1,6 @@
 /* Declares routes for authentication and the five application areas. */
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import ApiTestPage from "../pages/ApiTestPage";
 import DashboardLayout from "../layouts/DashboardLayout";
 import StorefrontLayout from "../layouts/StorefrontLayout";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
@@ -71,6 +72,7 @@ export default function AppRouter() {
             </Route>
           </Route>
         </Route>
+        {import.meta.env.DEV && <Route path="test-api" element={<ApiTestPage />} />}
       </Routes>
     </BrowserRouter>
   );
