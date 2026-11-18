@@ -10,7 +10,6 @@ import {
   Lock,
   Unlock,
   RefreshCw,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -20,6 +19,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 import { showGlobalToast, confirmGlobalDialog } from "../../components/GlobalToast";
 
 const ROLE_FILTER_OPTIONS = [
@@ -35,7 +35,6 @@ export default function UserManagementPage() {
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
-  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
@@ -62,7 +61,6 @@ export default function UserManagementPage() {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const res = await adminApi.getUsers({
         page,
@@ -80,7 +78,7 @@ export default function UserManagementPage() {
         });
       }
     } catch (err) {
-      setError("Không thể tải danh sách tài khoản. Vui lòng thử lại.");
+      notifyApiErrorToast(err, "Không thể tải danh sách tài khoản. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -119,10 +117,7 @@ export default function UserManagementPage() {
           : `Đã mở khóa tài khoản "${user.Ho_ten}".`
       );
     } catch (err) {
-      showGlobalToast(
-        err?.response?.data?.message || "Không thể cập nhật trạng thái tài khoản.",
-        "error"
-      );
+      notifyApiErrorToast(err, "Không thể cập nhật trạng thái tài khoản.");
     } finally {
       setUpdatingId(null);
     }
@@ -176,13 +171,6 @@ export default function UserManagementPage() {
           <span>Làm mới</span>
         </button>
       </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-xs text-red-700">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
 
       {/* Filter and Search Controls */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">

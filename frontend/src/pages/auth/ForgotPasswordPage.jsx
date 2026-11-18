@@ -16,7 +16,11 @@ import {
   Sprout,
 } from "lucide-react";
 import { authApi } from "../../services/authApi";
-import { notifyApiToast } from "../../services/axiosClient";
+import {
+  isApiValidationError,
+  notifyApiErrorToast,
+  notifyApiToast,
+} from "../../services/axiosClient";
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -43,7 +47,6 @@ export default function ForgotPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [resetSuccessMessage, setResetSuccessMessage] = useState("");
-  const [resetErrorMessage, setResetErrorMessage] = useState("");
   const [resetFieldErrors, setResetFieldErrors] = useState({});
 
   const handleRequestSubmit = async (e) => {
@@ -79,13 +82,13 @@ export default function ForgotPasswordPage() {
         email: requestEmail.trim().toLowerCase(),
       }));
     } catch (err) {
-      const rawEmailErr = err?.fieldErrors?.email;
-      const emailErrMsg = Array.isArray(rawEmailErr) ? rawEmailErr[0] : rawEmailErr;
-      const msg =
-        emailErrMsg ||
-        err?.message ||
-        "Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng kiểm tra lại email.";
-      setRequestErrorMessage(msg);
+      if (isApiValidationError(err)) {
+        const rawEmailErr = err.fieldErrors.email;
+        const emailErrMsg = Array.isArray(rawEmailErr) ? rawEmailErr[0] : rawEmailErr;
+        setRequestErrorMessage(emailErrMsg || err.message || "Email không hợp lệ.");
+      } else {
+        notifyApiErrorToast(err, "Không thể gửi yêu cầu đặt lại mật khẩu.");
+      }
     } finally {
       setIsRequestLoading(false);
     }
@@ -93,7 +96,6 @@ export default function ForgotPasswordPage() {
 
   const handleResetSubmit = async (e) => {
     e.preventDefault();
-    setResetErrorMessage("");
     setResetSuccessMessage("");
     setResetFieldErrors({});
 
@@ -140,23 +142,15 @@ export default function ForgotPasswordPage() {
         navigate("/login", { replace: true });
       }, 2500);
     } catch (err) {
-      const serverFieldErrors = err?.fieldErrors || err?.response?.data?.errors;
-      if (serverFieldErrors && typeof serverFieldErrors === "object") {
+      if (isApiValidationError(err)) {
         const formatted = {};
-        for (const [key, val] of Object.entries(serverFieldErrors)) {
+        for (const [key, val] of Object.entries(err.fieldErrors)) {
           formatted[key] = Array.isArray(val) ? val[0] : val;
         }
         setResetFieldErrors(formatted);
+      } else {
+        notifyApiErrorToast(err, "Không thể đặt lại mật khẩu.");
       }
-
-      const rawEmailErr = err?.fieldErrors?.email;
-      const rawTokenErr = err?.fieldErrors?.token;
-      const msg =
-        (Array.isArray(rawEmailErr) ? rawEmailErr[0] : rawEmailErr) ||
-        (Array.isArray(rawTokenErr) ? rawTokenErr[0] : rawTokenErr) ||
-        err?.message ||
-        "Không thể đặt lại mật khẩu. Token có thể đã hết hạn hoặc không hợp lệ.";
-      setResetErrorMessage(msg);
     } finally {
       setIsResetLoading(false);
     }
@@ -212,7 +206,6 @@ export default function ForgotPasswordPage() {
               type="button"
               onClick={() => {
                 setMode("reset");
-                setResetErrorMessage("");
               }}
               className={`flex-1 py-2 text-[12.5px] font-bold rounded-lg transition-all cursor-pointer ${mode === "reset"
                 ? "bg-white text-[#00450d] shadow-2xs"
@@ -339,18 +332,6 @@ export default function ForgotPasswordPage() {
 
           {mode === "reset" && (
             <div className="space-y-4">
-              {resetErrorMessage && (
-                <div
-                  role="alert"
-                  className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-[13px] flex items-start gap-2.5 animate-in fade-in duration-200"
-                >
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                  <div className="flex-1 font-medium leading-relaxed">
-                    {resetErrorMessage}
-                  </div>
-                </div>
-              )}
-
               {resetSuccessMessage && (
                 <div className="p-4 rounded-2xl bg-green-50 border border-green-200 text-green-900 text-[13px] space-y-2 animate-in fade-in duration-200">
                   <div className="flex items-start gap-2.5">

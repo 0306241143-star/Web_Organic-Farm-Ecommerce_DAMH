@@ -1,19 +1,37 @@
 import axios from 'axios';
 
 export class ApiError extends Error {
-  constructor({ status, message, errorCode, fieldErrors, rawErrors }) {
+  constructor({ status, message, errorCode, fieldErrors, rawErrors, toastNotified }) {
     super(message);
     this.name = 'ApiError';
     this.status = status || 0;
     this.errorCode = errorCode || 'UNKNOWN_ERROR';
     this.fieldErrors = fieldErrors || {};
     this.rawErrors = rawErrors || null;
+    this.toastNotified = Boolean(toastNotified);
   }
 }
 
 export const notifyApiToast = (type, message) => {
   window.dispatchEvent(
     new CustomEvent('app:toast', { detail: { type, message } })
+  );
+};
+
+export const isApiValidationError = (error) =>
+  error?.status === 422 && Object.keys(error?.fieldErrors || {}).length > 0;
+
+export const getApiValidationMessage = (error) => {
+  const firstError = Object.values(error?.fieldErrors || {})[0];
+  const message = Array.isArray(firstError) ? firstError[0] : firstError;
+  return message ? String(message) : "";
+};
+
+export const notifyApiErrorToast = (error, fallbackMessage) => {
+  if (error?.toastNotified) return;
+  notifyApiToast(
+    'error',
+    error?.message || fallbackMessage || 'Đã xảy ra lỗi. Vui lòng thử lại.'
   );
 };
 
@@ -92,7 +110,7 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Bóc payload 6 khóa chuẩn & xử lý tập trung 401, 403, 404, 405, 422, 429, 500
+// Response Interceptor: normalize API errors and notify globally except field-level 422 validation.
 axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
@@ -111,7 +129,10 @@ axiosClient.interceptors.response.use(
     const message =
       resData.message || 'Không thể kết nối đến máy chủ Laravel API.';
 
-    if ([401, 403, 404, 405, 429].includes(status) || status >= 500 || status === 0) {
+    const toastNotified =
+      !error.config?.skipGlobalToast &&
+      !(status === 422 && Object.keys(fieldErrors).length > 0);
+    if (toastNotified) {
       notifyApiToast('error', message);
     }
 
@@ -122,6 +143,7 @@ axiosClient.interceptors.response.use(
         errorCode,
         fieldErrors,
         rawErrors: resData.errors || null,
+        toastNotified,
       })
     );
   }
