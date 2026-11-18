@@ -1,8 +1,7 @@
-/* Registration page for new customers (CV04.3). */
+/* Registration page for new customers. */
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   Eye,
@@ -16,7 +15,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { authApi } from "../../services/authApi";
-import { notifyApiToast } from "../../services/axiosClient";
+import {
+  isApiValidationError,
+  notifyApiErrorToast,
+  notifyApiToast,
+} from "../../services/axiosClient";
 
 export default function RegisterPage() {
   const { user, login } = useAuth();
@@ -34,7 +37,6 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
@@ -48,9 +50,6 @@ export default function RegisterPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: null }));
-    }
-    if (errorMessage) {
-      setErrorMessage("");
     }
   };
 
@@ -92,7 +91,6 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage("");
 
     if (!validateForm()) {
       return;
@@ -123,20 +121,19 @@ export default function RegisterPage() {
 
       navigate("/", { replace: true });
     } catch (err) {
-      const serverFieldErrors = err?.fieldErrors || err?.response?.data?.errors;
-      if (serverFieldErrors && typeof serverFieldErrors === "object") {
+      const serverFieldErrors = err?.fieldErrors;
+      if (isApiValidationError(err)) {
         const formatted = {};
         for (const [key, val] of Object.entries(serverFieldErrors)) {
           formatted[key] = Array.isArray(val) ? val[0] : val;
         }
         setFieldErrors(formatted);
+      } else {
+        notifyApiErrorToast(
+          err,
+          "Đăng ký không thành công. Vui lòng kiểm tra lại thông tin đã nhập."
+        );
       }
-
-      const msg =
-        err?.message ||
-        err?.response?.data?.message ||
-        "Đăng ký không thành công. Vui lòng kiểm tra lại thông tin đã nhập.";
-      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }
@@ -172,16 +169,6 @@ export default function RegisterPage() {
         </div>
 
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#c0c9bb]/30">
-          {errorMessage && (
-            <div
-              role="alert"
-              className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-[13px] flex items-start gap-2.5 animate-in fade-in duration-200"
-            >
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium leading-relaxed">{errorMessage}</div>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label

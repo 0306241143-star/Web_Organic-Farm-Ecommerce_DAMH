@@ -1,4 +1,4 @@
-/* Dashboard navigation sidebar with role-based menu isolation (CV04.2). */
+/* Dashboard navigation sidebar with role-based menu isolation. */
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {

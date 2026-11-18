@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Api\Public\StorefrontController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -83,6 +84,12 @@ Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
 Route::post('/reset-password', [NewPasswordController::class, 'store']);
+//Home Page danh mucj + sản phẩm bán chạy và flash sale
+Route::get('/categories', [StorefrontController::class, 'categories']);
+Route::get('/products', [StorefrontController::class, 'products']);
+Route::get('/flash-sales/active', [StorefrontController::class, 'flashSales']);
+Route::get('/subscriptions', [StorefrontController::class, 'subscriptions']);
+
 
 // Các API yêu cầu đăng nhập qua Sanctum Token (CV04.4 & CV04.6)
 Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
@@ -122,6 +129,11 @@ Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
     });
 });
 
+// Nhóm API Công khai: Danh mục & Sản phẩm nông sản (Guest & Customer)
+Route::get('/categories', [\App\Http\Controllers\Api\Public\CategoryController::class, 'index']);
+Route::get('/products', [\App\Http\Controllers\Api\Public\ProductController::class, 'index']);
+Route::get('/products/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
+
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
 Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
 
@@ -147,6 +159,23 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::get('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'index']);
     Route::post('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'store']);
     Route::delete('/farming-logs/{id}', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'destroy']);
+
+    // Quản lý lô hàng thu hoạch & QR (CV04.18, CV04.20, CV04.21)
+    Route::get('/batches/eligible-plots', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'eligiblePlots']);
+    Route::get('/batches/disposals', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'disposalsList']);
+    Route::get('/batches', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'index']);
+    Route::post('/batches', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'store']);
+    Route::get('/batches/{id}', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'show']);
+    Route::put('/batches/{id}', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'update']);
+    Route::post('/batches/{id}/wastage', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'recordWastage']);
+    Route::post('/batches/{id}/qr', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'generate']);
+    Route::get('/batches/{id}/qr-print', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'printTemplate']);
+
+    // Quản lý chứng nhận chất lượng & kết quả kiểm định gắn vào lô hàng
+    Route::get('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'index']);
+    Route::post('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'store']);
+    Route::put('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'update']);
+    Route::delete('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'destroy']);
 });
 
 // Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)

@@ -1,5 +1,5 @@
 /* Modal for recording a farm log and attaching media. */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Upload,
@@ -12,11 +12,33 @@ import {
   AlertCircle,
   Loader2,
   Trash2,
+  ChevronDown,
+  Check,
+  Film,
 } from "lucide-react";
 import { farmApi } from "../../../services/farmApi";
+import {
+  getApiValidationMessage,
+  isApiValidationError,
+  notifyApiErrorToast,
+} from "../../../services/axiosClient";
+
+function getDistinctCropName(plotName, prodName) {
+  const cleanPlot = (plotName || "").trim();
+  const cleanProd = (prodName || "").trim();
+  if (!cleanProd) return "";
+  if (cleanPlot.toLowerCase().includes(cleanProd.toLowerCase())) return "";
+  return cleanProd;
+}
 
 const getCurrentDateTimeLocal = () => {
   const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().slice(0, 16);
+};
+
+const getMaxDateTimeLocal = () => {
+  const now = new Date(Date.now() + 15 * 60 * 1000);
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   return now.toISOString().slice(0, 16);
 };
@@ -36,21 +58,81 @@ export default function AddFarmingLogModal({
   const [filePreviews, setFilePreviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isPlotMenuOpen, setIsPlotMenuOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const plotDropdownRef = useRef(null);
 
   // Cập nhật giá trị khi mở modal hoặc thay đổi defaultPlotId
   useEffect(() => {
     if (isOpen) {
-      if (defaultPlotId) {
-        setPlotId(String(defaultPlotId));
-      } else {
-        setPlotId("");
-      }
+      setPlotId(defaultPlotId ? String(defaultPlotId) : "");
+      setActionTime(getCurrentDateTimeLocal());
+      setErrorMsg("");
+      setContent("");
+      setSelectedFiles([]);
+      setFilePreviews([]);
+      setActivityType("Gieo_hat");
+      setIsPlotMenuOpen(false);
+      setHighlightedIndex(-1);
     }
   }, [isOpen, defaultPlotId]);
+
+  useEffect(() => {
+    if (!isPlotMenuOpen) return;
+    const handleOutside = (e) => {
+      if (plotDropdownRef.current && !plotDropdownRef.current.contains(e.target)) {
+        setIsPlotMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [isPlotMenuOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        if (isPlotMenuOpen) {
+          e.stopPropagation();
+          setIsPlotMenuOpen(false);
+        } else if (!loading) {
+          onClose();
+        }
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [isOpen, isPlotMenuOpen, loading, onClose]);
 
   if (!isOpen) return null;
 
   const selectedPlotInfo = plots.find((p) => String(p.id) === String(plotId));
+
+  const handlePlotKeyDown = (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!isPlotMenuOpen) {
+        setIsPlotMenuOpen(true);
+        setHighlightedIndex(0);
+      } else if (plots.length > 0) {
+        setHighlightedIndex((prev) => (prev + 1) % plots.length);
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (isPlotMenuOpen && plots.length > 0) {
+        setHighlightedIndex((prev) => (prev <= 0 ? plots.length - 1 : prev - 1));
+      }
+    } else if (e.key === "Enter" || e.key === " ") {
+      if (isPlotMenuOpen && highlightedIndex >= 0 && plots[highlightedIndex]) {
+        e.preventDefault();
+        setPlotId(String(plots[highlightedIndex].id));
+        setIsPlotMenuOpen(false);
+      } else if (e.key === " ") {
+        e.preventDefault();
+        setIsPlotMenuOpen((prev) => !prev);
+      }
+    }
+  };
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
@@ -81,12 +163,12 @@ export default function AddFarmingLogModal({
       setErrorMsg("Vui lòng chọn lô canh tác cần ghi nhật ký.");
       return;
     }
-    // UC14.1 Alternative Flow 2a: Thời gian thực hiện không lớn hơn hiện tại
-    if (new Date(actionTime) > new Date()) {
+    // Cho phép dung sai 10 phút để tránh việc lệch giây/phút giữa đồng hồ máy tính và trình duyệt
+    if (new Date(actionTime).getTime() > Date.now() + 10 * 60 * 1000) {
       setErrorMsg("Mốc thời gian thực hiện không được lớn hơn thời điểm hiện tại.");
       return;
     }
-    // UC14.1 Alternative Flow 5a: Thiếu thông tin bắt buộc khi bón phân (loại phân bón, liều lượng)
+    //  Thiếu thông tin bắt buộc khi bón phân (loại phân bón, liều lượng)
     if (activityType === "Bon_phan" && content.trim().length < 10) {
       setErrorMsg("Hoạt động bón phân bắt buộc ghi rõ thông tin loại phân bón hữu cơ và liều lượng sử dụng.");
       return;
@@ -114,8 +196,11 @@ export default function AddFarmingLogModal({
       onSuccess();
       onClose();
     } catch (err) {
-      const respError = err?.response?.data?.message || err?.response?.data?.errors?.Noi_dung?.[0];
-      setErrorMsg(respError || "Không thể lưu nhật ký. Vui lòng thử lại.");
+      if (isApiValidationError(err)) {
+        setErrorMsg(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể lưu nhật ký. Vui lòng thử lại.");
+      }
     } finally {
       setLoading(false);
     }
@@ -165,44 +250,132 @@ export default function AddFarmingLogModal({
         <form
           id="add-farming-log-form"
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4 text-left"
+          className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-6 space-y-4 text-left"
         >
           {errorMsg && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-700">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
-              <span>{errorMsg}</span>
+              <span className="break-words min-w-0">{errorMsg}</span>
             </div>
           )}
 
-          {/* Chọn Lô canh tác */}
+          {/* Chọn Lô canh tác (Custom Dropdown khóa chiều rộng 100%) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label
+              id="add-log-plot-label"
+              className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
+            >
               Chọn Lô Canh Tác <span className="text-red-500">*</span>
             </label>
-            <select
-              value={plotId}
-              onChange={(e) => setPlotId(e.target.value)}
-              className="w-full max-w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
-              required
-            >
-              <option value="">-- Chọn lô canh tác --</option>
-              {plots.map((plot) => {
-                const plotName = (plot.plot_name || "Lô canh tác").trim();
-                const prodName = (plot.product_name || "").trim();
-                let label = plotName;
-                if (prodName && !plotName.toLowerCase().includes(prodName.toLowerCase())) {
-                  label = `${plotName} • ${prodName}`;
-                }
-                if (label.length > 36) {
-                  label = label.slice(0, 33) + "...";
-                }
-                return (
-                  <option key={plot.id} value={plot.id} title={`${plot.plot_name} (${plot.product_name || 'Nông sản'})`}>
-                    {label}
-                  </option>
-                );
-              })}
-            </select>
+            <div ref={plotDropdownRef} className="relative w-full">
+              <button
+                type="button"
+                aria-labelledby="add-log-plot-label"
+                aria-haspopup="listbox"
+                aria-expanded={isPlotMenuOpen}
+                onClick={() => setIsPlotMenuOpen((prev) => !prev)}
+                onKeyDown={handlePlotKeyDown}
+                className={`w-full min-w-0 px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs sm:text-sm text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  isPlotMenuOpen
+                    ? "bg-white border-emerald-500 ring-2 ring-emerald-500/20"
+                    : "border-slate-300 hover:border-slate-400 hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {selectedPlotInfo ? (
+                    <>
+                      <Sprout className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-semibold text-slate-800 truncate">
+                        {selectedPlotInfo.plot_name}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-slate-500 truncate">Chọn lô canh tác</span>
+                  )}
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-150 ${
+                    isPlotMenuOpen ? "rotate-180 text-emerald-600" : ""
+                  }`}
+                />
+              </button>
+
+              {isPlotMenuOpen && (
+                <div
+                  role="listbox"
+                  aria-labelledby="add-log-plot-label"
+                  className="absolute left-0 right-0 top-full mt-1.5 z-30 w-full max-w-full bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-900/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                >
+                  {plots.length === 0 ? (
+                    <div className="px-4 py-5 text-center text-xs text-slate-500">
+                      Chưa có lô canh tác nào. Hãy tạo lô đất mới trước khi ghi nhật ký.
+                    </div>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto overflow-x-hidden p-1.5 space-y-1">
+                      {plots.map((plot, idx) => {
+                        const pid = String(plot.id);
+                        const plotName = (plot.plot_name || "Lô canh tác").trim();
+                        const distinctProd = getDistinctCropName(plotName, plot.product_name);
+                        const subtitleParts = [
+                          distinctProd,
+                          plot.season_name ? plot.season_name.trim() : "",
+                          plot.area_m2 ? `${plot.area_m2} m²` : "",
+                        ].filter(Boolean);
+                        const isSelected = String(plotId) === pid;
+                        const isHighlighted = highlightedIndex === idx;
+
+                        return (
+                          <button
+                            key={pid}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onMouseEnter={() => setHighlightedIndex(idx)}
+                            onClick={() => {
+                              setPlotId(pid);
+                              setIsPlotMenuOpen(false);
+                              setErrorMsg("");
+                            }}
+                            className={`w-full min-w-0 text-left px-3 py-2.5 rounded-xl flex items-start justify-between gap-2.5 transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/80"
+                                : isHighlighted
+                                  ? "bg-slate-50 text-slate-900"
+                                  : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <div
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                  isSelected
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-emerald-50 text-emerald-700"
+                                }`}
+                              >
+                                <Sprout className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs sm:text-[13px] font-semibold text-slate-800 break-words leading-snug">
+                                  {plotName}
+                                </div>
+                                {subtitleParts.length > 0 && (
+                                  <div className="text-[11px] text-slate-500 break-words leading-snug mt-0.5">
+                                    {subtitleParts.join(" · ")}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-1" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Thông tin nhanh về lô đang chọn */}
             {selectedPlotInfo && (
@@ -263,7 +436,7 @@ export default function AddFarmingLogModal({
                 type="datetime-local"
                 value={actionTime}
                 onChange={(e) => setActionTime(e.target.value)}
-                max={getCurrentDateTimeLocal()}
+                max={getMaxDateTimeLocal()}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all pl-10"
                 required
               />
@@ -330,8 +503,9 @@ export default function AddFarmingLogModal({
                     className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-video bg-slate-900"
                   >
                     {preview.isVideo ? (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-white bg-slate-800 p-1 text-center">
-                        🎥 Video
+                      <div className="w-full h-full flex items-center justify-center gap-1.5 text-xs text-white bg-slate-800 p-1 text-center">
+                        <Film className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                        <span>Video</span>
                       </div>
                     ) : (
                       <img
