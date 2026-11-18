@@ -139,6 +139,11 @@ Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookC
 
 // Nhóm API Khách hàng (bảo vệ bằng auth:sanctum + role:customer)
 Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
+    // Cart APIs không nhận user_id từ client: controller luôn lấy giỏ theo phiên Sanctum hiện tại.
+    Route::get('/cart', [\App\Http\Controllers\Api\Customer\CartController::class, 'index']);
+    Route::post('/cart/items', [\App\Http\Controllers\Api\Customer\CartController::class, 'store']);
+    Route::put('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'update'])->whereNumber('productId');
+    Route::delete('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'destroy'])->whereNumber('productId');
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
 });
 

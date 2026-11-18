@@ -1,6 +1,6 @@
 /* Thẻ hiển thị sản phẩm nông sản: hình ảnh, giá bán, ưu đãi, chứng nhận, tồn kho và mã QR truy xuất. */
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Apple,
   Carrot,
@@ -16,7 +16,9 @@ import {
 import Badge from "../common/Badge";
 import { showGlobalToast } from "../GlobalToast";
 import { useCart } from "../../context/useCart";
+import { useAuth } from "../../context/useAuth";
 import { formatCurrencyVnd } from "../../services/publicApi";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 function formatShortDate(isoDate) {
   if (!isoDate) return "";
@@ -138,7 +140,7 @@ function ProductPriceDisplay({ product }) {
 }
 
 /* ================= THÀNH PHẦN CON 3: TÌNH TRẠNG TỒN KHO & NÚT THÊM GIỎ HÀNG ================= */
-function ProductStockFooter({ product, onQuickAdd }) {
+function ProductStockFooter({ product, onQuickAdd, isAdding }) {
   const inStock = Boolean(product.in_stock);
   const stockQty = Number(product.available_stock || 0);
   const formattedQty = Number.isInteger(stockQty)
@@ -170,7 +172,7 @@ function ProductStockFooter({ product, onQuickAdd }) {
 
       <button
         type="button"
-        disabled={!inStock}
+        disabled={!inStock || isAdding}
         onClick={() => onQuickAdd(product)}
         aria-label={
           inStock
@@ -178,13 +180,15 @@ function ProductStockFooter({ product, onQuickAdd }) {
             : `${product.name} hiện tạm hết hàng`
         }
         className={`shrink-0 min-w-[38px] min-h-[38px] px-3 rounded-xl text-[12.5px] font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
-          inStock
+          inStock && !isAdding
             ? "bg-[#00450d] hover:bg-[#006e1c] text-white shadow-2xs cursor-pointer"
             : "bg-[#eceeec] text-[#5a6357] cursor-not-allowed"
         }`}
       >
         <Plus className="w-4 h-4 shrink-0" />
-        <span className="hidden sm:inline">{inStock ? "Thêm" : "Hết hàng"}</span>
+        <span className="hidden sm:inline">
+          {isAdding ? "Đang thêm" : inStock ? "Thêm" : "Hết hàng"}
+        </span>
       </button>
     </div>
   );
@@ -211,42 +215,43 @@ export function ProductCardSkeleton() {
 
 /* ================= THÀNH PHẦN CHÍNH: THẺ SẢN PHẨM ================= */
 export default function ProductCard({ product, onAddToCart = null }) {
-  const { setItems } = useCart();
+  const { addItem } = useCart();
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isAdding, setIsAdding] = useState(false);
 
   if (!product) return null;
 
-  const handleQuickAdd = (item) => {
+  const handleQuickAdd = async (item) => {
     if (!item.in_stock) return;
 
+    // Callback tùy biến của trang cha được ưu tiên; luồng mặc định dùng API giỏ của khách.
     if (typeof onAddToCart === "function") {
       onAddToCart(item);
       return;
     }
 
-    setItems((prev) => {
-      const list = Array.isArray(prev) ? prev : [];
-      const existing = list.find((entry) => entry.id === item.id);
-      if (existing) {
-        return list.map((entry) =>
-          entry.id === item.id
-            ? { ...entry, quantity: (entry.quantity || 1) + 1 }
-            : entry
-        );
-      }
-      return [
-        ...list,
-        {
-          id: item.id,
-          name: item.name,
-          unit: item.unit,
-          price: item.effective_price ?? item.price,
-          image_url: item.image_url,
-          quantity: 1,
-        },
-      ];
-    });
+    // Khớp với quyền backend: chỉ khách hàng đăng nhập mới được lưu giỏ vào tài khoản.
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      showGlobalToast("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.", "info");
+      return;
+    }
+    if (user.role !== "customer") {
+      showGlobalToast("Chỉ tài khoản khách hàng mới có thể mua sản phẩm.", "warning");
+      return;
+    }
 
-    showGlobalToast(`Đã thêm "${item.name}" vào giỏ hàng.`, "success");
+    setIsAdding(true);
+    try {
+      await addItem(item);
+      showGlobalToast(`Đã thêm "${item.name}" vào giỏ hàng.`, "success");
+    } catch (error) {
+      notifyApiErrorToast(error, "Không thể thêm sản phẩm vào giỏ hàng.");
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -278,7 +283,11 @@ export default function ProductCard({ product, onAddToCart = null }) {
 
         <div className="mt-auto pt-3">
           <ProductPriceDisplay product={product} />
-          <ProductStockFooter product={product} onQuickAdd={handleQuickAdd} />
+          <ProductStockFooter
+            product={product}
+            onQuickAdd={handleQuickAdd}
+            isAdding={isAdding}
+          />
         </div>
       </div>
     </article>
