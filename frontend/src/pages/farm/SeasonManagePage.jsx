@@ -277,16 +277,16 @@ export default function SeasonManagePage() {
   }, []);
 
   // Tải danh sách mùa vụ
-  const fetchSeasons = useCallback(async (force = true) => {
+  const fetchSeasons = useCallback(async (force = true, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await farmApi.getSeasons(null, force);
       const seasonData = res.data?.data || res.data || [];
       setSeasons(Array.isArray(seasonData) ? seasonData : []);
     } catch (err) {
       notifyApiErrorToast(err, "Không thể tải danh sách mùa vụ.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -359,16 +359,26 @@ export default function SeasonManagePage() {
     setSeasonSubmitting(true);
     setSeasonError("");
     try {
-      await farmApi.createSeason({
+      const res = await farmApi.createSeason({
         name: seasonForm.name.trim(),
         start_date: seasonForm.start_date,
         end_date: seasonForm.end_date || null,
         status: "Dang_dien_ra",
       });
+      const createdSeason = res?.data?.data ?? res?.data;
+      if (createdSeason?.id != null) {
+        setSeasons((prev) => [
+          {
+            ...createdSeason,
+            plots: Array.isArray(createdSeason.plots) ? createdSeason.plots : [],
+          },
+          ...prev.filter((season) => String(season.id) !== String(createdSeason.id)),
+        ]);
+      }
       showToast("Khởi tạo mùa vụ mới thành công!");
       setIsAddSeasonOpen(false);
       setSeasonForm({ name: "", start_date: "", end_date: "" });
-      fetchSeasons();
+      fetchSeasons(true, true);
     } catch (err) {
       if (isApiValidationError(err)) {
         setSeasonError(getApiValidationMessage(err));
@@ -390,16 +400,55 @@ export default function SeasonManagePage() {
     setPlotSubmitting(true);
     setPlotError("");
     try {
-      await farmApi.createPlot(activeSeasonForPlot.id, {
+      const res = await farmApi.createPlot(activeSeasonForPlot.id, {
         product_id: plotForm.product_id,
         plot_name: plotForm.plot_name.trim(),
         area_m2: plotForm.area_m2 ? parseFloat(plotForm.area_m2) : null,
         planting_date: plotForm.planting_date,
       });
+      const createdPlot = res?.data?.data ?? res?.data;
+      if (createdPlot?.id != null) {
+        setSeasons((prev) =>
+          prev.map((season) => {
+            if (String(season.id) !== String(activeSeasonForPlot.id)) return season;
+
+            const plots = Array.isArray(season.plots) ? season.plots : [];
+            const exists = plots.some((plot) => String(plot.id) === String(createdPlot.id));
+            const nextPlots = exists
+              ? plots.map((plot) =>
+                  String(plot.id) === String(createdPlot.id) ? createdPlot : plot
+                )
+              : [createdPlot, ...plots];
+            const status = createdPlot.status || "Dang_canh_tac";
+            const activeCount = Number.isFinite(Number(season.active_plots_count))
+              ? Number(season.active_plots_count)
+              : plots.filter((plot) => plot.status === "Dang_canh_tac").length;
+            const harvestedCount = Number.isFinite(Number(season.harvested_plots_count))
+              ? Number(season.harvested_plots_count)
+              : plots.filter((plot) => plot.status === "Da_thu_hoach").length;
+            const totalArea = Number.isFinite(Number(season.total_area_m2))
+              ? Number(season.total_area_m2)
+              : plots.reduce((sum, plot) => sum + (Number(plot.area_m2) || 0), 0);
+
+            return {
+              ...season,
+              plots: nextPlots,
+              total_plots:
+                (Number.isFinite(Number(season.total_plots))
+                  ? Number(season.total_plots)
+                  : plots.length) + (exists ? 0 : 1),
+              active_plots_count: activeCount + (!exists && status === "Dang_canh_tac" ? 1 : 0),
+              harvested_plots_count:
+                harvestedCount + (!exists && status === "Da_thu_hoach" ? 1 : 0),
+              total_area_m2: totalArea + (!exists ? Number(createdPlot.area_m2) || 0 : 0),
+            };
+          })
+        );
+      }
       showToast(`Đã thêm lô "${plotForm.plot_name}" vào ${activeSeasonForPlot.name}!`);
       setIsAddPlotOpen(false);
       setPlotForm({ product_id: "", plot_name: "", area_m2: "", planting_date: "" });
-      fetchSeasons();
+      fetchSeasons(true, true);
     } catch (err) {
       if (isApiValidationError(err)) {
         setPlotError(getApiValidationMessage(err));
@@ -492,7 +541,9 @@ export default function SeasonManagePage() {
     try {
       await farmApi.deleteSeason(season.id);
       showToast(`Đã xóa mùa vụ "${season.name}" thành công.`);
-      fetchSeasons();
+      setSeasons((prev) =>
+        prev.filter((item) => String(item.id) !== String(season.id))
+      );
       if (selectedPlot?.season_id === season.id) {
         setSelectedPlot(null);
         setLogs([]);
@@ -518,7 +569,13 @@ export default function SeasonManagePage() {
     try {
       await farmApi.updateSeason(season.id, { status: nextStatus });
       showToast(`Đã ${label} thành công!`);
-      fetchSeasons();
+      setSeasons((prev) =>
+        prev.map((item) =>
+          String(item.id) === String(season.id)
+            ? { ...item, status: nextStatus }
+            : item
+        )
+      );
     } catch (err) {
       showApiErrorToast("Không thể cập nhật trạng thái mùa vụ", err);
     }
@@ -537,7 +594,49 @@ export default function SeasonManagePage() {
     try {
       await farmApi.deletePlot(seasonId, plot.id);
       showToast(`Đã xóa lô "${plot.plot_name}".`);
-      fetchSeasons();
+      setSeasons((prev) =>
+        prev.map((season) => {
+          if (String(season.id) !== String(seasonId)) return season;
+
+          const plots = Array.isArray(season.plots) ? season.plots : [];
+          const removedPlot = plots.find((item) => String(item.id) === String(plot.id));
+          if (!removedPlot) return season;
+
+          const nextPlots = plots.filter((item) => String(item.id) !== String(plot.id));
+          const activeCount = Number.isFinite(Number(season.active_plots_count))
+            ? Number(season.active_plots_count)
+            : plots.filter((item) => item.status === "Dang_canh_tac").length;
+          const harvestedCount = Number.isFinite(Number(season.harvested_plots_count))
+            ? Number(season.harvested_plots_count)
+            : plots.filter((item) => item.status === "Da_thu_hoach").length;
+          const totalArea = Number.isFinite(Number(season.total_area_m2))
+            ? Number(season.total_area_m2)
+            : plots.reduce((sum, item) => sum + (Number(item.area_m2) || 0), 0);
+
+          return {
+            ...season,
+            plots: nextPlots,
+            total_plots: Math.max(
+              0,
+              (Number.isFinite(Number(season.total_plots))
+                ? Number(season.total_plots)
+                : plots.length) - 1
+            ),
+            active_plots_count: Math.max(
+              0,
+              activeCount - (removedPlot.status === "Dang_canh_tac" ? 1 : 0)
+            ),
+            harvested_plots_count: Math.max(
+              0,
+              harvestedCount - (removedPlot.status === "Da_thu_hoach" ? 1 : 0)
+            ),
+            total_area_m2: Math.max(
+              0,
+              totalArea - (Number(removedPlot.area_m2) || 0)
+            ),
+          };
+        })
+      );
       if (selectedPlot?.id === plot.id) {
         setSelectedPlot(null);
         setLogs([]);
@@ -578,16 +677,57 @@ export default function SeasonManagePage() {
     setEditPlotSubmitting(true);
     setEditPlotError("");
     try {
-      await farmApi.updatePlot(activeSeasonForPlot.id, editingPlot.id, {
+      const res = await farmApi.updatePlot(activeSeasonForPlot.id, editingPlot.id, {
         product_id: editPlotForm.product_id ? parseInt(editPlotForm.product_id, 10) : undefined,
         plot_name: editPlotForm.plot_name.trim(),
         area_m2: areaNum,
         planting_date: editPlotForm.planting_date,
         status: editPlotForm.status,
       });
+      const updatedPlot = res?.data?.data ?? res?.data;
+      if (updatedPlot?.id != null) {
+        setSeasons((prev) =>
+          prev.map((season) => {
+            if (String(season.id) !== String(activeSeasonForPlot.id)) return season;
+
+            const plots = Array.isArray(season.plots) ? season.plots : [];
+            const oldPlot = plots.find((plot) => String(plot.id) === String(updatedPlot.id));
+            if (!oldPlot) return season;
+
+            const activeCount = Number.isFinite(Number(season.active_plots_count))
+              ? Number(season.active_plots_count)
+              : plots.filter((plot) => plot.status === "Dang_canh_tac").length;
+            const harvestedCount = Number.isFinite(Number(season.harvested_plots_count))
+              ? Number(season.harvested_plots_count)
+              : plots.filter((plot) => plot.status === "Da_thu_hoach").length;
+            const totalArea = Number.isFinite(Number(season.total_area_m2))
+              ? Number(season.total_area_m2)
+              : plots.reduce((sum, plot) => sum + (Number(plot.area_m2) || 0), 0);
+
+            return {
+              ...season,
+              plots: plots.map((plot) =>
+                String(plot.id) === String(updatedPlot.id) ? updatedPlot : plot
+              ),
+              active_plots_count:
+                activeCount -
+                (oldPlot.status === "Dang_canh_tac" ? 1 : 0) +
+                (updatedPlot.status === "Dang_canh_tac" ? 1 : 0),
+              harvested_plots_count:
+                harvestedCount -
+                (oldPlot.status === "Da_thu_hoach" ? 1 : 0) +
+                (updatedPlot.status === "Da_thu_hoach" ? 1 : 0),
+              total_area_m2:
+                totalArea -
+                (Number(oldPlot.area_m2) || 0) +
+                (Number(updatedPlot.area_m2) || 0),
+            };
+          })
+        );
+      }
       showToast(`Đã điều chỉnh diện tích (${areaNum} m²) cho lô "${editPlotForm.plot_name}"!`);
       setIsEditPlotOpen(false);
-      fetchSeasons();
+      fetchSeasons(true, true);
     } catch (err) {
       if (isApiValidationError(err)) {
         setEditPlotError(getApiValidationMessage(err));
@@ -1104,7 +1244,7 @@ export default function SeasonManagePage() {
         onSuccess={() => {
           showToast("Đã lưu nhật ký canh tác thành công!");
           fetchLogs(selectedPlot?.id || null);
-          fetchSeasons();
+          fetchSeasons(true, true);
         }}
         plots={allPlots}
         defaultPlotId={selectedPlot?.id || null}
@@ -1117,7 +1257,7 @@ export default function SeasonManagePage() {
         onSuccess={(newBatch) => {
           showToast(`Đã tạo lô hàng thu hoạch #${newBatch?.batch_code || newBatch?.id} thành công!`);
           fetchLogs(selectedPlot?.id || null);
-          fetchSeasons();
+          fetchSeasons(true, true);
         }}
         initialPlot={batchInitialPlot}
         initialHarvestDate={batchInitialDate}

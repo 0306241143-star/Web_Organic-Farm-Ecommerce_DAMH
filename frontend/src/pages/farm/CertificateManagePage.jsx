@@ -452,7 +452,7 @@ export default function CertificateManagePage() {
     try {
       const [batchRes, prodRes] = await Promise.all([
         farmApi.getBatches(),
-        farmApi.getProducts(),
+        farmApi.getFarmProducts(),
       ]);
       const batchPayload = batchRes.data?.data ?? batchRes.data ?? batchRes ?? {};
       setBatches(Array.isArray(batchPayload.batches) ? batchPayload.batches : []);
@@ -626,16 +626,76 @@ export default function CertificateManagePage() {
       }
 
       if (editingCert) {
-        await farmApi.updateCertificate(editingCert.id, formData);
+        const res = await farmApi.updateCertificate(editingCert.id, formData);
+        const updatedCert = res.data?.data ?? res.data;
+        if (updatedCert?.id != null) {
+          const previousCert =
+            certificates.find((cert) => String(cert.id) === String(updatedCert.id)) ||
+            editingCert;
+          const wasValid = ["valid", "no_expiry"].includes(previousCert.validity_status);
+          const isValid = ["valid", "no_expiry"].includes(updatedCert.validity_status);
+
+          setCertificates((prev) =>
+            prev.map((cert) =>
+              String(cert.id) === String(updatedCert.id) ? updatedCert : cert
+            )
+          );
+          setStats((prev) => ({
+            ...prev,
+            valid: Math.max(
+              0,
+              (Number(prev.valid) || 0) - Number(wasValid) + Number(isValid)
+            ),
+            expiring_soon: Math.max(
+              0,
+              (Number(prev.expiring_soon) || 0) -
+                Number(previousCert.validity_status === "expiring_soon") +
+                Number(updatedCert.validity_status === "expiring_soon")
+            ),
+            expired: Math.max(
+              0,
+              (Number(prev.expired) || 0) -
+                Number(previousCert.validity_status === "expired") +
+                Number(updatedCert.validity_status === "expired")
+            ),
+            batch_attached: Math.max(
+              0,
+              (Number(prev.batch_attached) || 0) -
+                Number(Boolean(previousCert.batch_id)) +
+                Number(Boolean(updatedCert.batch_id))
+            ),
+          }));
+        }
         showToast("Đã cập nhật hồ sơ chứng nhận thành công.");
       } else {
-        await farmApi.uploadCertificate(formData);
+        const res = await farmApi.uploadCertificate(formData);
+        const createdCert = res.data?.data ?? res.data;
+        if (createdCert?.id != null) {
+          setCertificates((prev) => [
+            createdCert,
+            ...prev.filter((cert) => String(cert.id) !== String(createdCert.id)),
+          ]);
+          setStats((prev) => ({
+            ...prev,
+            total: (Number(prev.total) || 0) + 1,
+            valid:
+              (Number(prev.valid) || 0) +
+              (["valid", "no_expiry"].includes(createdCert.validity_status) ? 1 : 0),
+            expiring_soon:
+              (Number(prev.expiring_soon) || 0) +
+              (createdCert.validity_status === "expiring_soon" ? 1 : 0),
+            expired:
+              (Number(prev.expired) || 0) +
+              (createdCert.validity_status === "expired" ? 1 : 0),
+            batch_attached:
+              (Number(prev.batch_attached) || 0) + (createdCert.batch_id ? 1 : 0),
+          }));
+        }
         showToast("Đã tải lên chứng nhận và gắn vào hồ sơ thành công.");
       }
 
       setIsFormOpen(false);
       resetFileSelection();
-      fetchCertificates(true);
     } catch (err) {
       if (isApiValidationError(err)) {
         const mapped = {};
@@ -657,12 +717,32 @@ export default function CertificateManagePage() {
     setDeleteSubmitting(true);
     try {
       await farmApi.deleteCertificate(deletingCert.id);
+      setCertificates((prev) =>
+        prev.filter((cert) => String(cert.id) !== String(deletingCert.id))
+      );
+      setStats((prev) => ({
+        ...prev,
+        total: Math.max(0, (Number(prev.total) || 0) - 1),
+        valid: ["valid", "no_expiry"].includes(deletingCert.validity_status)
+          ? Math.max(0, (Number(prev.valid) || 0) - 1)
+          : Number(prev.valid) || 0,
+        expiring_soon:
+          deletingCert.validity_status === "expiring_soon"
+            ? Math.max(0, (Number(prev.expiring_soon) || 0) - 1)
+            : Number(prev.expiring_soon) || 0,
+        expired:
+          deletingCert.validity_status === "expired"
+            ? Math.max(0, (Number(prev.expired) || 0) - 1)
+            : Number(prev.expired) || 0,
+        batch_attached: deletingCert.batch_id
+          ? Math.max(0, (Number(prev.batch_attached) || 0) - 1)
+          : Number(prev.batch_attached) || 0,
+      }));
       showToast(`Đã xóa chứng nhận "${deletingCert.name}".`);
       setDeletingCert(null);
-      if (previewCert?.id === deletingCert.id) {
+      if (String(previewCert?.id) === String(deletingCert.id)) {
         setPreviewCert(null);
       }
-      fetchCertificates(true);
     } catch (err) {
       notifyApiErrorToast(err, "Không thể xóa hồ sơ chứng nhận.");
     } finally {

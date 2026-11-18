@@ -405,7 +405,7 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
             <button
               type="button"
               onClick={handlePrint}
-              disabled={loading || !!error}
+              disabled={loading}
               className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
               <Printer className="w-4 h-4" />

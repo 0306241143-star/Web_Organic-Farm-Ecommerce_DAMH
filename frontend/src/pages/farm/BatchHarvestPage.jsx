@@ -287,16 +287,58 @@ export default function BatchHarvestPage() {
 
     const affectedBatch = wastageBatch;
     try {
-      await farmApi.recordBatchWastage(affectedBatch.id, {
+      const res = await farmApi.recordBatchWastage(affectedBatch.id, {
         quantity: qty,
         type: wastageForm.type,
         reason: wastageForm.reason.trim(),
       });
+      const updatedBatch = res.data?.data ?? res.data;
+
+      if (updatedBatch?.id) {
+        setBatches((prev) =>
+          prev.map((batch) =>
+            String(batch.id) === String(updatedBatch.id) ? updatedBatch : batch
+          )
+        );
+        setStats((prev) => {
+          const availableStatuses = ["Con_hang", "Sap_het_han"];
+          const wasAvailable = availableStatuses.includes(affectedBatch.status);
+          const isAvailable = availableStatuses.includes(updatedBatch.status);
+
+          return {
+            ...prev,
+            total_available_qty: Math.max(
+              0,
+              (Number(prev.total_available_qty) || 0) +
+                (isAvailable ? Number(updatedBatch.remaining_quantity) || 0 : 0) -
+                (wasAvailable ? Number(affectedBatch.remaining_quantity) || 0 : 0)
+            ),
+            active_batches: Math.max(
+              0,
+              (Number(prev.active_batches) || 0) -
+                (affectedBatch.status === "Con_hang" ? 1 : 0) +
+                (updatedBatch.status === "Con_hang" ? 1 : 0)
+            ),
+            expiring_soon_batches: Math.max(
+              0,
+              (Number(prev.expiring_soon_batches) || 0) -
+                (affectedBatch.status === "Sap_het_han" ? 1 : 0) +
+                (updatedBatch.status === "Sap_het_han" ? 1 : 0)
+            ),
+            depleted_batches: Math.max(
+              0,
+              (Number(prev.depleted_batches) || 0) -
+                (affectedBatch.status === "Het_hang" ? 1 : 0) +
+                (updatedBatch.status === "Het_hang" ? 1 : 0)
+            ),
+          };
+        });
+      }
+
       showToast(`Đã ghi nhận trừ kho ${qty} ${affectedBatch.product_unit} thành công!`);
       setWastageBatch(null);
-      fetchBatches(true);
-      if (selectedBatch?.id === affectedBatch.id) {
-        handleSelectBatch(affectedBatch, true);
+      if (String(selectedBatch?.id) === String(affectedBatch.id)) {
+        handleSelectBatch(updatedBatch || affectedBatch, true);
       }
       if (activeMainTab === "disposals") {
         fetchDisposals();
@@ -1158,11 +1200,37 @@ export default function BatchHarvestPage() {
         }}
         onSuccess={(newBatch) => {
           showToast(`Đã tạo lô hàng thu hoạch #${newBatch?.batch_code || newBatch?.id} thành công!`);
-          fetchBatches(true);
-          fetchEligiblePlots();
           if (newBatch?.id) {
+            const isAvailable = ["Con_hang", "Sap_het_han"].includes(newBatch.status);
+            setBatches((prev) => [
+              newBatch,
+              ...prev.filter((batch) => String(batch.id) !== String(newBatch.id)),
+            ]);
+            setStats((prev) => ({
+              ...prev,
+              total_batches: (Number(prev.total_batches) || 0) + 1,
+              active_batches:
+                newBatch.status === "Con_hang"
+                  ? (Number(prev.active_batches) || 0) + 1
+                  : Number(prev.active_batches) || 0,
+              expiring_soon_batches:
+                newBatch.status === "Sap_het_han"
+                  ? (Number(prev.expiring_soon_batches) || 0) + 1
+                  : Number(prev.expiring_soon_batches) || 0,
+              depleted_batches:
+                newBatch.status === "Het_hang"
+                  ? (Number(prev.depleted_batches) || 0) + 1
+                  : Number(prev.depleted_batches) || 0,
+              total_initial_qty:
+                (Number(prev.total_initial_qty) || 0) +
+                Number(newBatch.harvest_quantity || 0),
+              total_available_qty:
+                (Number(prev.total_available_qty) || 0) +
+                (isAvailable ? Number(newBatch.remaining_quantity || 0) : 0),
+            }));
             handleSelectBatch(newBatch, true);
           }
+          fetchEligiblePlots();
         }}
         initialPlot={createInitialPlot}
         initialHarvestDate={createInitialDate}
