@@ -412,7 +412,11 @@ class SeasonController extends Controller
                     $log->tepNhatKys()->delete();
                     $log->delete();
                 }
-                $plot->loHangs()->delete();
+                foreach ($plot->loHangs as $batch) {
+                    $batch->maQrTruyXuat()->delete();
+                    $batch->bienDongKhos()->delete();
+                    $batch->delete();
+                }
                 $plot->delete();
             }
             $season->delete();
@@ -449,7 +453,11 @@ class SeasonController extends Controller
                 $log->tepNhatKys()->delete();
                 $log->delete();
             }
-            $plot->loHangs()->delete();
+            foreach ($plot->loHangs as $batch) {
+                $batch->maQrTruyXuat()->delete();
+                $batch->bienDongKhos()->delete();
+                $batch->delete();
+            }
             $plot->delete();
         });
 

@@ -8,6 +8,7 @@ namespace App\Http\Controllers\Api\FarmStaff;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FarmStaff\StoreFarmingLogRequest;
+use App\Models\LoCanhTac;
 use App\Models\NhatKyCanhTac;
 use App\Models\TepNhatKy;
 use App\Traits\ApiResponse;
@@ -55,6 +56,7 @@ class FarmingLogController extends Controller
             'tepNhatKys',
             'loCanhTac.sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien',
             'loCanhTac.muaVu:Ma_mua_vu,Ten_mua_vu',
+            'loCanhTac.loHangs:Ma_lo_hang,Ma_lo_canh_tac,Trang_thai,Ngay_thu_hoach',
         ])->latest('Thoi_gian_thuc_hien');
 
         if ($request->filled('plot_id')) {
@@ -73,12 +75,18 @@ class FarmingLogController extends Controller
         }
 
         return $query->get()->map(function ($log) {
+            $existingBatch = $log->loCanhTac?->loHangs?->first();
+
             return [
                 'id'            => $log->Ma_nhat_ky,
                 'plot_id'       => $log->Ma_lo_canh_tac,
                 'plot_name'     => $log->loCanhTac?->Ten_lo,
+                'product_id'    => $log->loCanhTac?->Ma_san_pham,
                 'product_name'  => $log->loCanhTac?->sanPham?->Ten_san_pham,
+                'product_unit'  => $log->loCanhTac?->sanPham?->Don_vi_tinh ?? 'kg',
                 'season_name'   => $log->loCanhTac?->muaVu?->Ten_mua_vu,
+                'has_batch'     => ! is_null($existingBatch),
+                'batch_id'      => $existingBatch?->Ma_lo_hang,
                 'staff_id'      => $log->Ma_nhan_vien,
                 'staff_name'    => $log->nhanVien?->Ho_ten ?? 'Kỹ thuật viên nông trại',
                 'activity_type' => $log->Loai_hoat_dong,
@@ -113,6 +121,14 @@ class FarmingLogController extends Controller
             'Thoi_gian_thuc_hien' => $validated['Thoi_gian_thuc_hien'],
             'Noi_dung'            => $validated['Noi_dung'],
         ]);
+
+        // Nếu ghi nhận hoạt động Thu hoạch, tự động cập nhật trạng thái Lô canh tác sang 'Da_thu_hoach'
+        if ($validated['Loai_hoat_dong'] === 'Thu_hoach') {
+            $plot = LoCanhTac::find($validated['Ma_lo_canh_tac']);
+            if ($plot && $plot->Trang_thai !== 'Da_thu_hoach') {
+                $plot->update(['Trang_thai' => 'Da_thu_hoach']);
+            }
+        }
 
         // Xử lý tệp đính kèm (ảnh / video)
         if ($request->hasFile('media')) {
