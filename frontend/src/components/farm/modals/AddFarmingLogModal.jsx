@@ -17,6 +17,11 @@ import {
   Film,
 } from "lucide-react";
 import { farmApi } from "../../../services/farmApi";
+import {
+  getApiValidationMessage,
+  isApiValidationError,
+  notifyApiErrorToast,
+} from "../../../services/axiosClient";
 
 function getDistinctCropName(plotName, prodName) {
   const cleanPlot = (plotName || "").trim();
@@ -191,15 +196,11 @@ export default function AddFarmingLogModal({
       onSuccess();
       onClose();
     } catch (err) {
-      const fieldErrs = err?.fieldErrors || {};
-      const respError =
-        fieldErrs.Thoi_gian_thuc_hien ||
-        fieldErrs.Noi_dung ||
-        fieldErrs.Loai_hoat_dong ||
-        fieldErrs.Ma_lo_canh_tac ||
-        err?.message ||
-        err?.response?.data?.message;
-      setErrorMsg(respError || "Không thể lưu nhật ký. Vui lòng thử lại.");
+      if (isApiValidationError(err)) {
+        setErrorMsg(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể lưu nhật ký. Vui lòng thử lại.");
+      }
     } finally {
       setLoading(false);
     }

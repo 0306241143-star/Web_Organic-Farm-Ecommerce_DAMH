@@ -150,8 +150,9 @@ export const farmApi = {
   recordBatchWastage: (id, data) => axiosClient.post(`/farm/batches/${id}/wastage`, data),
   getEligiblePlots: () => axiosClient.get("/farm/batches/eligible-plots"),
   getDisposals: () => axiosClient.get("/farm/batches/disposals"),
-  generateBatchQr: (id) => axiosClient.post(`/farm/batches/${id}/qr`),
-  getBatchQrPrintTemplate: (id) => axiosClient.get(`/farm/batches/${id}/qr-print`),
+  generateBatchQr: (id, config) => axiosClient.post(`/farm/batches/${id}/qr`, null, config),
+  getBatchQrPrintTemplate: (id, config) =>
+    axiosClient.get(`/farm/batches/${id}/qr-print`, config),
   getCertificates: (params) => axiosClient.get("/farm/certificates", { params }),
   uploadCertificate: (formData) =>
     axiosClient.post("/farm/certificates", formData, {

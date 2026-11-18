@@ -11,22 +11,21 @@ import {
   Layers,
 } from "lucide-react";
 import { farmApi } from "../../../services/farmApi";
+import { notifyApiErrorToast } from "../../../services/axiosClient";
 
 const A4_LABEL_COUNT = 24;
 
 export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
   const [loading, setLoading] = useState(false);
   const [labelData, setLabelData] = useState(null);
-  const [error, setError] = useState("");
   const [printSize, setPrintSize] = useState("50x50"); // "50x50" | "70x50" | "a4"
   const labelPrintRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && batch) {
       setLoading(true);
-      setError("");
       farmApi
-        .getBatchQrPrintTemplate(batch.id)
+        .getBatchQrPrintTemplate(batch.id, { skipGlobalToast: true })
         .then((res) => {
           const payload = res.data?.data ?? res.data ?? res ?? null;
           setLabelData(payload);
@@ -40,11 +39,9 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
               setLabelData(payload2);
             })
             .catch((err2) => {
-              setError(
-                err2?.message ||
-                  err2?.response?.data?.message ||
-                  err?.message ||
-                  err?.response?.data?.message ||
+              notifyApiErrorToast(
+                err2,
+                err?.message ||
                   "Không thể tạo mã QR cho lô này. Vui lòng đảm bảo lô đã có mốc thu hoạch."
               );
             });
@@ -52,7 +49,6 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
         .finally(() => setLoading(false));
     } else {
       setLabelData(null);
-      setError("");
     }
   }, [isOpen, batch]);
 
@@ -287,13 +283,6 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-          {error && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-center gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-              <span>{error}</span>
-            </div>
-          )}
-
           {/* Cấu hình khổ in */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70 text-xs">
             <div className="flex items-center gap-1.5 font-bold text-slate-700">

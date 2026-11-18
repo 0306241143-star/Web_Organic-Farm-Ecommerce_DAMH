@@ -20,7 +20,6 @@ import {
   Upload,
   X,
   Loader2,
-  AlertCircle,
   ExternalLink,
   ChevronDown,
   Check,
@@ -30,6 +29,10 @@ import {
 } from "lucide-react";
 import { farmApi } from "../../services/farmApi";
 import { showGlobalToast } from "../../components/GlobalToast";
+import {
+  isApiValidationError,
+  notifyApiErrorToast,
+} from "../../services/axiosClient";
 
 const CERT_PRESETS = [
   {
@@ -414,7 +417,6 @@ export default function CertificateManagePage() {
   const [filePreviewUrl, setFilePreviewUrl] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   // Preview Modal & Delete Confirm Modal
@@ -438,8 +440,8 @@ export default function CertificateManagePage() {
       if (payload.stats) {
         setStats(payload.stats);
       }
-    } catch {
-      showToast("Không thể tải danh sách chứng nhận. Vui lòng thử lại.", "error");
+    } catch (err) {
+      notifyApiErrorToast(err, "Không thể tải danh sách chứng nhận. Vui lòng thử lại.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -457,8 +459,8 @@ export default function CertificateManagePage() {
 
       const prodPayload = prodRes.data?.data ?? prodRes.data ?? prodRes ?? [];
       setProducts(Array.isArray(prodPayload) ? prodPayload : []);
-    } catch {
-      // Giữ danh sách rỗng nếu tải nền thất bại
+    } catch (err) {
+      notifyApiErrorToast(err, "Không thể tải dữ liệu chứng nhận.");
     }
   }, []);
 
@@ -497,7 +499,6 @@ export default function CertificateManagePage() {
         Ngay_het_han: addMonthsLocal(today, 12),
       });
       resetFileSelection();
-      setFormError("");
       setFieldErrors({});
       setIsFormOpen(true);
     },
@@ -517,7 +518,6 @@ export default function CertificateManagePage() {
         Ngay_het_han: cert.expiry_date || "",
       });
       resetFileSelection();
-      setFormError("");
       setFieldErrors({});
       setIsFormOpen(true);
     },
@@ -569,7 +569,6 @@ export default function CertificateManagePage() {
 
   const handleSubmitForm = async (e) => {
     e.preventDefault();
-    setFormError("");
     setFieldErrors({});
 
     const today = getTodayLocal();
@@ -638,19 +637,16 @@ export default function CertificateManagePage() {
       resetFileSelection();
       fetchCertificates(true);
     } catch (err) {
-      const apiErrors = err?.fieldErrors || err?.rawErrors || err?.response?.data?.errors;
-      if (apiErrors && Object.keys(apiErrors).length > 0) {
+      if (isApiValidationError(err)) {
         const mapped = {};
-        Object.keys(apiErrors).forEach((k) => {
-          mapped[k] = Array.isArray(apiErrors[k]) ? apiErrors[k][0] : apiErrors[k];
+        Object.keys(err.fieldErrors).forEach((key) => {
+          const value = err.fieldErrors[key];
+          mapped[key] = Array.isArray(value) ? value[0] : value;
         });
         setFieldErrors(mapped);
+      } else {
+        notifyApiErrorToast(err, "Không thể lưu hồ sơ chứng nhận. Vui lòng thử lại.");
       }
-      setFormError(
-        err?.message ||
-          err?.response?.data?.message ||
-          "Không thể lưu hồ sơ chứng nhận. Vui lòng kiểm tra lại thông tin."
-      );
     } finally {
       setSubmitting(false);
     }
@@ -668,10 +664,7 @@ export default function CertificateManagePage() {
       }
       fetchCertificates(true);
     } catch (err) {
-      const status = err?.status ?? err?.response?.status;
-      if (!(status === 0 || status >= 500 || [401, 403, 404, 405, 429].includes(status))) {
-        showToast(err?.message || err?.response?.data?.message || "Không thể xóa hồ sơ chứng nhận.", "error");
-      }
+      notifyApiErrorToast(err, "Không thể xóa hồ sơ chứng nhận.");
     } finally {
       setDeleteSubmitting(false);
     }
@@ -1200,13 +1193,6 @@ export default function CertificateManagePage() {
               onSubmit={handleSubmitForm}
               className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 sm:p-6 space-y-4"
             >
-              {formError && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-                  <span className="break-words min-w-0">{formError}</span>
-                </div>
-              )}
-
               {/* Phạm vi gắn chứng nhận */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">

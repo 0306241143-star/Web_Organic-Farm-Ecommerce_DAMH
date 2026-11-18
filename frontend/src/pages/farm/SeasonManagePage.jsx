@@ -20,6 +20,11 @@ import {
 } from "lucide-react";
 import { farmApi } from "../../services/farmApi";
 import { showGlobalToast, confirmGlobalDialog } from "../../components/GlobalToast";
+import {
+  getApiValidationMessage,
+  isApiValidationError,
+  notifyApiErrorToast,
+} from "../../services/axiosClient";
 import FarmingLogTimeline from "../../components/farm/FarmingLogTimeline";
 import AddFarmingLogModal from "../../components/farm/modals/AddFarmingLogModal";
 import CreateBatchModal from "../../components/farm/modals/CreateBatchModal";
@@ -250,14 +255,9 @@ export default function SeasonManagePage() {
     showGlobalToast(msg, type);
   };
 
-  // Tránh hiện 2 toast chồng nhau khi axiosClient đã tự thông báo cho lỗi mạng / 5xx / 401-405 / 429
+  // Avoid duplicate API error toasts when the response interceptor already notified.
   const showApiErrorToast = (fallbackPrefix, err) => {
-    const status = err?.status ?? err?.response?.status;
-    if (status === 0 || status >= 500 || [401, 403, 404, 405, 429].includes(status)) {
-      return;
-    }
-    const msg = err?.response?.data?.message || err?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
-    showGlobalToast(msg.startsWith("Không thể") ? msg : `${fallbackPrefix}: ${msg}`, "error");
+    notifyApiErrorToast(err, `${fallbackPrefix}: Đã xảy ra lỗi. Vui lòng thử lại.`);
   };
 
   // Tải thông tin cơ sở nông trại
@@ -272,7 +272,7 @@ export default function SeasonManagePage() {
         });
       }
     } catch (err) {
-      console.warn("Không thể tải thông tin cơ sở nông trại:", err);
+      notifyApiErrorToast(err, "Không thể tải thông tin cơ sở nông trại.");
     }
   }, []);
 
@@ -284,7 +284,7 @@ export default function SeasonManagePage() {
       const seasonData = res.data?.data || res.data || [];
       setSeasons(Array.isArray(seasonData) ? seasonData : []);
     } catch (err) {
-      console.error("Lỗi tải danh sách mùa vụ:", err);
+      notifyApiErrorToast(err, "Không thể tải danh sách mùa vụ.");
     } finally {
       setLoading(false);
     }
@@ -302,7 +302,7 @@ export default function SeasonManagePage() {
       const logData = res.data?.data || res.data || [];
       setLogs(Array.isArray(logData) ? logData : []);
     } catch (err) {
-      console.error("Lỗi tải nhật ký canh tác:", err);
+      notifyApiErrorToast(err, "Không thể tải nhật ký canh tác.");
     } finally {
       setLogsLoading(false);
     }
@@ -315,7 +315,7 @@ export default function SeasonManagePage() {
       const prodData = res.data?.data || res.data || [];
       setProducts(Array.isArray(prodData) ? prodData : []);
     } catch (err) {
-      console.error("Lỗi tải danh sách nông sản:", err);
+      notifyApiErrorToast(err, "Không thể tải danh sách nông sản.");
     }
   }, []);
 
@@ -370,7 +370,11 @@ export default function SeasonManagePage() {
       setSeasonForm({ name: "", start_date: "", end_date: "" });
       fetchSeasons();
     } catch (err) {
-      setSeasonError(err?.message || err?.response?.data?.message || "Không thể tạo mùa vụ. Vui lòng thử lại.");
+      if (isApiValidationError(err)) {
+        setSeasonError(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể tạo mùa vụ. Vui lòng thử lại.");
+      }
     } finally {
       setSeasonSubmitting(false);
     }
@@ -397,7 +401,11 @@ export default function SeasonManagePage() {
       setPlotForm({ product_id: "", plot_name: "", area_m2: "", planting_date: "" });
       fetchSeasons();
     } catch (err) {
-      setPlotError(err?.message || err?.response?.data?.message || "Không thể thêm lô canh tác. Vui lòng kiểm tra lại.");
+      if (isApiValidationError(err)) {
+        setPlotError(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể thêm lô canh tác. Vui lòng kiểm tra lại.");
+      }
     } finally {
       setPlotSubmitting(false);
     }
@@ -435,7 +443,11 @@ export default function SeasonManagePage() {
       setIsEditFarmModalOpen(false);
       window.dispatchEvent(new CustomEvent("farm-info-updated", { detail: updated }));
     } catch (err) {
-      setFarmError(err?.message || err?.response?.data?.message || "Không thể cập nhật địa chỉ cơ sở.");
+      if (isApiValidationError(err)) {
+        setFarmError(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể cập nhật địa chỉ cơ sở.");
+      }
     } finally {
       setFarmSubmitting(false);
     }
@@ -577,7 +589,11 @@ export default function SeasonManagePage() {
       setIsEditPlotOpen(false);
       fetchSeasons();
     } catch (err) {
-      setEditPlotError(err?.message || err?.response?.data?.message || "Không thể cập nhật lô canh tác. Vui lòng thử lại.");
+      if (isApiValidationError(err)) {
+        setEditPlotError(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể cập nhật lô canh tác. Vui lòng thử lại.");
+      }
     } finally {
       setEditPlotSubmitting(false);
     }
