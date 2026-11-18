@@ -279,9 +279,15 @@ class ProductController extends Controller
             ->flatMap(fn ($plot) => $plot->loHangs)
             ->values();
 
-        // Áp dụng quy tắc FEFO: chỉ tính lô còn hàng / sắp hết hạn có số lượng > 0, ưu tiên HSD gần nhất
+        $today = now()->toDateString();
+        
+        // Áp dụng quy tắc FEFO: chỉ tính lô còn hàng / sắp hết hạn, số lượng > 0 và chưa quá hạn
         $fefoBatches = $allBatches
-            ->filter(fn ($batch): bool => in_array($batch->Trang_thai, ['Con_hang', 'Sap_het_han'], true) && (float) $batch->So_luong_con_lai > 0)
+            ->filter(fn ($batch): bool =>
+                in_array($batch->Trang_thai, ['Con_hang', 'Sap_het_han'], true)
+                && (float) $batch->So_luong_con_lai > 0
+                && (string) $batch->Han_su_dung >= $today
+            )
             ->sortBy('Han_su_dung')
             ->values();
 
@@ -394,12 +400,11 @@ class ProductController extends Controller
 
         if ($includeDetail) {
             $data['batches'] = $fefoBatches->map(fn ($batch) => [
-                'id'                 => (int) $batch->Ma_lo_hang,
-                'harvest_date'       => $batch->Ngay_thu_hoach,
-                'expiry_date'        => $batch->Han_su_dung,
-                'remaining_quantity' => (float) $batch->So_luong_con_lai,
-                'status'             => $batch->Trang_thai,
-                'qr_code'            => $batch->maQrTruyXuat?->Chuoi_ma_qr,
+                'id'           => (int) $batch->Ma_lo_hang,
+                'harvest_date' => $batch->Ngay_thu_hoach,
+                'expiry_date'  => $batch->Han_su_dung,
+                'status'       => $batch->Trang_thai,
+                'qr_code'      => $batch->maQrTruyXuat?->Chuoi_ma_qr,
             ])->values()->all();
         }
 
