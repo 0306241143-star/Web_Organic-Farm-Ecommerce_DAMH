@@ -321,13 +321,15 @@ class BatchController extends Controller
             // 2. Trừ trực tiếp số lượng tồn kho của đúng lô hàng đó (UC18 Basic Flow 4)
             $newRemaining = max(0, (float) $batch->So_luong_con_lai - $qty);
             $batch->So_luong_con_lai = $newRemaining;
-
+            
+            $daysLeft = Carbon::today()->diffInDays(Carbon::parse($batch->Han_su_dung), false);
             if ($newRemaining == 0) {
                 $batch->Trang_thai = 'Het_hang';
+            } elseif ($daysLeft <= 2 && $daysLeft >= 0) {
+                $batch->Trang_thai = 'Sap_het_han';
             }
-
+            
             $batch->save();
-        });
 
         $batch->load([
             'loCanhTac.sanPham',
