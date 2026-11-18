@@ -1,4 +1,4 @@
-/* Modular filter sidebar for searching and filtering agricultural products by category, price, certification, and stock. */
+/* Thanh bộ lọc nông sản theo danh mục, khoảng giá, chứng nhận chất lượng và tình trạng hàng. */
 import { useState } from "react";
 import {
   Check,
@@ -20,7 +20,7 @@ const PRICE_PRESETS = [
   { id: "over-100k", label: "Trên 100.000đ", min: "100000", max: "" },
 ];
 
-/* ================= SUB-COMPONENT 1: FILTER GROUP SHELL ================= */
+/* ================= THÀNH PHẦN CON 1: KHUNG NHÓM BỘ LỌC ================= */
 function FilterGroupSection({ icon: Icon, title, children }) {
   return (
     <section className="py-4 border-b border-[#c0c9bb]/30 last:border-b-0">
@@ -35,7 +35,7 @@ function FilterGroupSection({ icon: Icon, title, children }) {
   );
 }
 
-/* ================= SUB-COMPONENT 2: CATEGORY FILTER LIST ================= */
+/* ================= THÀNH PHẦN CON 2: DANH SÁCH LỌC DANH MỤC ================= */
 function CategoryFilterSection({
   categories = [],
   selectedCategory = "",
@@ -100,7 +100,7 @@ function CategoryFilterSection({
   );
 }
 
-/* ================= SUB-COMPONENT 3: PRICE RANGE FILTER ================= */
+/* ================= THÀNH PHẦN CON 3: BỘ LỌC KHOẢNG GIÁ ================= */
 function PriceRangeFilterSection({ minPrice = "", maxPrice = "", onApplyPrice }) {
   const [draftMin, setDraftMin] = useState(minPrice || "");
   const [draftMax, setDraftMax] = useState(maxPrice || "");
@@ -203,7 +203,7 @@ function PriceRangeFilterSection({ minPrice = "", maxPrice = "", onApplyPrice })
   );
 }
 
-/* ================= SUB-COMPONENT 4: CERTIFICATION FILTER ================= */
+/* ================= THÀNH PHẦN CON 4: BỘ LỌC CHỨNG NHẬN CHẤT LƯỢNG ================= */
 function CertificationFilterSection({
   availableCertifications = [],
   selectedCerts = [],
@@ -251,7 +251,7 @@ function CertificationFilterSection({
   );
 }
 
-/* ================= SUB-COMPONENT 5: STOCK & FLASH SALE SWITCHES ================= */
+/* ================= THÀNH PHẦN CON 5: CÔNG TẮC TÌNH TRẠNG HÀNG & FLASH SALE ================= */
 function AvailabilityFilterSection({
   inStockOnly = false,
   flashSaleOnly = false,
@@ -317,7 +317,7 @@ function AvailabilityFilterSection({
   );
 }
 
-/* ================= MAIN COMPONENT: PRODUCT FILTER SIDEBAR ================= */
+/* ================= THÀNH PHẦN CHÍNH: THANH BỘ LỌC SẢN PHẨM ================= */
 export default function ProductFilterSidebar({
   categories = [],
   facets = {},

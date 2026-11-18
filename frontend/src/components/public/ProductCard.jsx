@@ -75,7 +75,7 @@ function ProductMediaBox({ product }) {
         )}
       </Link>
 
-      {/* Top-Left: Flash Sale & Quality Certification */}
+      {/* Góc trên bên trái: Nhãn giảm giá Flash Sale và Chứng nhận chất lượng */}
       <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 max-w-[78%]">
         {product.is_flash_sale && product.discount_percent > 0 && (
           <Badge variant="flash" size="xs" icon={Flame}>
@@ -89,7 +89,7 @@ function ProductMediaBox({ product }) {
         )}
       </div>
 
-      {/* Top-Right: Direct QR Traceability Link */}
+      {/* Góc trên bên phải: Liên kết trực tiếp truy xuất nguồn gốc QR */}
       {product.trace_qr_code && (
         <Link
           to={`/trace/${encodeURIComponent(product.trace_qr_code)}`}
@@ -101,7 +101,7 @@ function ProductMediaBox({ product }) {
         </Link>
       )}
 
-      {/* Bottom-Left: Harvest Freshness Tag */}
+      {/* Góc dưới bên trái: Ngày thu hoạch gần nhất */}
       {product.in_stock && product.latest_harvest_date && (
         <div className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-white/92 backdrop-blur-xs border border-[#c0c9bb]/35 text-[11px] font-semibold text-[#41493e] tabular-nums">
           Thu hoạch {formatShortDate(product.latest_harvest_date)}
@@ -111,7 +111,7 @@ function ProductMediaBox({ product }) {
   );
 }
 
-/* ================= SUB-COMPONENT 2: PRICE & UNIT DISPLAY ================= */
+/* ================= THÀNH PHẦN CON 2: HIỂN THỊ GIÁ BÁN & ĐƠN VỊ TÍNH ================= */
 function ProductPriceDisplay({ product }) {
   const isSale = Boolean(product.is_flash_sale);
   const effectivePrice = product.effective_price ?? product.price;
@@ -137,7 +137,7 @@ function ProductPriceDisplay({ product }) {
   );
 }
 
-/* ================= SUB-COMPONENT 3: FEFO STOCK & QUICK ADD FOOTER ================= */
+/* ================= THÀNH PHẦN CON 3: TÌNH TRẠNG TỒN KHO & NÚT THÊM GIỎ HÀNG ================= */
 function ProductStockFooter({ product, onQuickAdd }) {
   const inStock = Boolean(product.in_stock);
   const stockQty = Number(product.available_stock || 0);
@@ -190,7 +190,7 @@ function ProductStockFooter({ product, onQuickAdd }) {
   );
 }
 
-/* ================= SKELETON LOADER FOR PRODUCT CARD ================= */
+/* ================= KHUNG CHỜ TẢI DỮ LIỆU (SKELETON) CHO THẺ SẢN PHẨM ================= */
 export function ProductCardSkeleton() {
   return (
     <div className="rounded-3xl bg-white border border-[#c0c9bb]/30 p-3.5 animate-pulse">
@@ -209,7 +209,7 @@ export function ProductCardSkeleton() {
   );
 }
 
-/* ================= MAIN COMPONENT: PRODUCT CARD ================= */
+/* ================= THÀNH PHẦN CHÍNH: THẺ SẢN PHẨM ================= */
 export default function ProductCard({ product, onAddToCart = null }) {
   const { setItems } = useCart();
 

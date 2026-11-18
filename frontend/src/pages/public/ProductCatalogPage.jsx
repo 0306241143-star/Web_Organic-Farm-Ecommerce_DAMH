@@ -1,4 +1,4 @@
-/* Searchable and multi-criteria filterable agricultural product catalog page synced with URL query parameters. */
+/* Trang danh sách nông sản hỗ trợ tìm kiếm, lọc đa tiêu chí, sắp xếp và phân trang đồng bộ URL. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -32,7 +32,7 @@ const SORT_OPTIONS = [
 
 const PER_PAGE = 12;
 
-/* ================= SUB-COMPONENT 1: CATALOG HEADER & SEARCH BAR ================= */
+/* ================= THÀNH PHẦN CON 1: TIÊU ĐỀ DANH MỤC & THANH TÌM KIẾM ================= */
 function CatalogHeroHeader({
   activeCategoryObj,
   searchInput,
@@ -45,7 +45,7 @@ function CatalogHeroHeader({
   return (
     <section className="border-b border-[#c0c9bb]/30 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
-        {/* Breadcrumb */}
+        {/* Đường dẫn điều hướng */}
         <nav
           aria-label="Đường dẫn điều hướng"
           className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#5a6357] mb-3"
@@ -94,7 +94,7 @@ function CatalogHeroHeader({
             )}
           </div>
 
-          {/* Search Bar */}
+          {/* Thanh tìm kiếm nông sản */}
           <form
             onSubmit={onSearchSubmit}
             className="w-full lg:w-[420px] flex items-center gap-2 bg-[#f8faf8] p-1.5 rounded-2xl border border-[#c0c9bb]/60 focus-within:border-[#00450d] focus-within:bg-white transition-all"
@@ -133,7 +133,7 @@ function CatalogHeroHeader({
   );
 }
 
-/* ================= SUB-COMPONENT 2: CONTAINER-LOCKED CUSTOM SORT DROPDOWN ================= */
+/* ================= THÀNH PHẦN CON 2: HỘP CHỌN SẮP XẾP TÙY BIẾN ================= */
 function CatalogSortDropdown({ value = "featured", onChange }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -215,7 +215,7 @@ function CatalogSortDropdown({ value = "featured", onChange }) {
   );
 }
 
-/* ================= SUB-COMPONENT 3: ACTIVE FILTER CHIPS BAR ================= */
+/* ================= THÀNH PHẦN CON 3: THANH THẺ BỘ LỌC ĐANG ÁP DỤNG ================= */
 function CatalogActiveFilterPills({
   filters,
   activeCategoryObj,
@@ -306,7 +306,7 @@ function CatalogActiveFilterPills({
   );
 }
 
-/* ================= SUB-COMPONENT 4: MOBILE FILTER DRAWER ================= */
+/* ================= THÀNH PHẦN CON 4: NGĂN KÉO BỘ LỌC TRÊN DI ĐỘNG ================= */
 function CatalogMobileFilterDrawer({ open, onClose, sidebarProps }) {
   useEffect(() => {
     if (!open) return;
@@ -358,7 +358,7 @@ function CatalogMobileFilterDrawer({ open, onClose, sidebarProps }) {
   );
 }
 
-/* ================= SUB-COMPONENT 5: PRODUCT GRID & STATES ================= */
+/* ================= THÀNH PHẦN CON 5: LƯỚI SẢN PHẨM & TRẠNG THÁI HIỂN THỊ ================= */
 function CatalogProductGrid({
   products,
   loading,
@@ -422,7 +422,7 @@ function CatalogProductGrid({
   );
 }
 
-/* ================= MAIN PAGE COMPONENT: PRODUCT CATALOG PAGE ================= */
+/* ================= THÀNH PHẦN CHÍNH: TRANG DANH MỤC NÔNG SẢN ================= */
 export default function ProductCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -664,14 +664,14 @@ export default function ProductCatalogPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-7">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
-          {/* Desktop Filter Sidebar (3 cols) */}
+          {/* Cột bộ lọc bên trái trên máy tính (3 cột) */}
           <div className="hidden lg:block lg:col-span-3">
             <ProductFilterSidebar {...sidebarProps} />
           </div>
 
-          {/* Main Product Catalog Column (9 cols) */}
+          {/* Cột danh sách nông sản chính (9 cột) */}
           <div className="lg:col-span-9 min-w-0">
-            {/* Toolbar: Mobile Filter Trigger + Result Count + Sort Dropdown */}
+            {/* Thanh công cụ: Nút mở bộ lọc di động, tổng số kết quả và hộp chọn sắp xếp */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4">
               <div className="flex items-center justify-between sm:justify-start gap-3">
                 <button
@@ -716,7 +716,7 @@ export default function ProductCatalogPage() {
               </div>
             </div>
 
-            {/* Active Filter Chips */}
+            {/* Danh sách thẻ bộ lọc đang bật */}
             <CatalogActiveFilterPills
               filters={filters}
               activeCategoryObj={activeCategoryObj}
@@ -734,7 +734,7 @@ export default function ProductCatalogPage() {
               onResetAll={handleResetFilters}
             />
 
-            {/* Product Cards Grid & Pagination */}
+            {/* Lưới thẻ sản phẩm và phân trang */}
             <CatalogProductGrid
               products={products}
               loading={loading}
@@ -748,7 +748,7 @@ export default function ProductCatalogPage() {
         </div>
       </div>
 
-      {/* Mobile Slide-Over Filter Drawer */}
+      {/* Ngăn kéo trượt bộ lọc trên màn hình nhỏ */}
       <CatalogMobileFilterDrawer
         open={mobileFilterOpen}
         onClose={() => setMobileFilterOpen(false)}
