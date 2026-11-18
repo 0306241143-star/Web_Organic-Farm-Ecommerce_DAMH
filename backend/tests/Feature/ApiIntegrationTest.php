@@ -352,4 +352,116 @@ class ApiIntegrationTest extends TestCase
 
         $farmStaff->tokens()->delete();
     }
+
+    public function test_public_catalog_categories_products_search_and_filters_flow(): void
+    {
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
+
+        // 1. Lấy danh sách danh mục công khai (không cần đăng nhập)
+        $categoriesRes = $this->getJson('/api/categories')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(4, 'data')
+            ->assertJsonStructure([
+                'success',
+                'message',
+                'data' => [[
+                    'id',
+                    'name',
+                    'description',
+                    'product_count',
+                    'in_stock_product_count',
+                    'min_price',
+                    'max_price',
+                ]],
+            ]);
+
+        $this->assertEquals(2, $categoriesRes->json('data.0.product_count'));
+
+        // 2. Lấy danh sách sản phẩm công khai mặc định 12 sản phẩm/trang kèm facets và phân trang
+        $productsRes = $this->getJson('/api/products')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('meta.per_page', 12)
+            ->assertJsonPath('meta.total', 6)
+            ->assertJsonStructure([
+                'data' => [[
+                    'id',
+                    'name',
+                    'price',
+                    'effective_price',
+                    'is_flash_sale',
+                    'available_stock',
+                    'in_stock',
+                    'certification_standards',
+                ]],
+                'meta' => [
+                    'current_page',
+                    'per_page',
+                    'total',
+                    'last_page',
+                    'facets' => ['available_certifications', 'price_bounds', 'summary'],
+                ],
+            ]);
+
+        $this->assertGreaterThan(0, count($productsRes->json('meta.facets.available_certifications')));
+
+        // 3. Tìm kiếm tiếng Việt không dấu (ca chua -> Cà chua Beef hữu cơ)
+        $this->getJson('/api/products?search=ca%20chua')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', 2);
+
+        // 4. Lọc theo danh mục (category=1 -> Xà lách Romaine & Cải bó xôi Baby)
+        $this->getJson('/api/products?category=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 2);
+
+        // 5. Lọc theo khoảng giá thực tế (effective_price từ 38000 đến 50000 -> Cà rốt 38k, Cải bó xôi 40k, Cà chua 45k)
+        $this->getJson('/api/products?min_price=38000&max_price=50000')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 3);
+
+        // 6. Lọc theo chứng nhận chất lượng (VietGAP -> Cà chua Beef; GlobalGAP -> Dưa lưới Taki)
+        $this->getJson('/api/products?cert=VietGAP')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', 2);
+
+        $this->getJson('/api/products?cert=GlobalGAP')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', 4);
+
+        // 7. Lọc chỉ hiện sản phẩm còn hàng FEFO & đang Flash Sale
+        $this->getJson('/api/products?in_stock=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 4);
+
+        $this->getJson('/api/products?flash_sale=1')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', 1)
+            ->assertJsonPath('data.0.effective_price', 25000);
+
+        // 8. Sắp xếp theo giá tăng dần & giảm dần + phân trang
+        $ascRes = $this->getJson('/api/products?sort=price_asc&per_page=2&page=1')
+            ->assertOk()
+            ->assertJsonPath('meta.last_page', 3);
+        $this->assertEquals(15000, $ascRes->json('data.0.effective_price'));
+
+        $descRes = $this->getJson('/api/products?sort=price_desc&per_page=2&page=1')
+            ->assertOk();
+        $this->assertEquals(120000, $descRes->json('data.0.effective_price'));
+
+        // 9. Xem chi tiết sản phẩm & kiểm tra 404
+        $this->getJson('/api/products/1')
+            ->assertOk()
+            ->assertJsonPath('data.id', 1)
+            ->assertJsonStructure(['data' => ['batches', 'related_products', 'certifications']]);
+
+        $this->getJson('/api/products/999999')
+            ->assertNotFound()
+            ->assertJsonPath('error_code', 'NOT_FOUND');
+    }
 }
