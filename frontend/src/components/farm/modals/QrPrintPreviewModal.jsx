@@ -5,20 +5,20 @@ import {
   QrCode,
   X,
   Loader2,
-  CheckCircle2,
+  AlertCircle,
   Download,
   ExternalLink,
-  Sparkles,
   Layers,
 } from "lucide-react";
 import { farmApi } from "../../../services/farmApi";
 import { notifyApiErrorToast } from "../../../services/axiosClient";
 
+const A4_LABEL_COUNT = 24;
+
 export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
   const [loading, setLoading] = useState(false);
   const [labelData, setLabelData] = useState(null);
   const [printSize, setPrintSize] = useState("50x50"); // "50x50" | "70x50" | "a4"
-  const [copies, setCopies] = useState(1);
   const labelPrintRef = useRef(null);
 
   useEffect(() => {
@@ -52,6 +52,15 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
     }
   }, [isOpen, batch]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !batch) return null;
 
   const handlePrint = () => {
@@ -71,9 +80,125 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
     URL.revokeObjectURL(url);
   };
 
+  const productName = labelData?.product_name || batch.product_name;
   const qrCodeText = labelData?.qr_code || batch.qr?.code || batch.batch_code || `LH-${batch.id}`;
   const traceUrl = labelData?.trace_url || `https://xanhfarm.vn/trace/${qrCodeText}`;
-  const qrImageSrc = labelData?.qr_data_uri || (labelData?.qr_svg ? `data:image/svg+xml;base64,${btoa(labelData.qr_svg)}` : null);
+  const qrImageSrc =
+    labelData?.qr_data_uri ||
+    (labelData?.qr_svg ? `data:image/svg+xml;base64,${btoa(labelData.qr_svg)}` : null);
+  const isA4Mode = printSize === "a4";
+
+  const renderSingleLabel = (compact = false, key = "single") => (
+    <div
+      key={key}
+      className={
+        compact
+          ? "qr-a4-cell border border-dashed border-slate-300 rounded-xl p-2 bg-white text-slate-800 flex flex-col justify-between"
+          : `border-2 border-dashed border-slate-300 rounded-3xl p-5 bg-white shadow-lg text-slate-800 transition-all ${
+              printSize === "70x50" ? "w-[340px]" : "w-[290px]"
+            }`
+      }
+    >
+      {/* Top Bar Thương Hiệu */}
+      <div
+        className={`text-center border-b border-slate-200 ${
+          compact ? "pb-1 mb-1" : "pb-2 mb-3"
+        }`}
+      >
+        <div
+          className={`font-black uppercase tracking-wider text-[#12372A] truncate ${
+            compact ? "text-[8px]" : "text-[10.5px]"
+          }`}
+        >
+          XANH FARM • HỮU CƠ CỦ CHI
+        </div>
+        {!compact && (
+          <div className="text-[9px] text-slate-400 font-medium">
+            Hotline: 1900 8888 • TCVN 11041
+          </div>
+        )}
+      </div>
+
+      {/* Nông Sản & Lô */}
+      <div className={`text-center ${compact ? "mb-1" : "mb-3"}`}>
+        <h4
+          className={`font-black text-slate-900 leading-tight ${
+            compact ? "text-[9.5px] line-clamp-1" : "text-base sm:text-lg"
+          }`}
+        >
+          {productName}
+        </h4>
+        {!compact && (
+          <div className="flex items-center justify-center gap-1.5 mt-1">
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+              {batch.plot_name}
+            </span>
+            <span className="text-[10px] text-slate-500 font-semibold">
+              {batch.season_name}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* QR Code Trung Tâm */}
+      <div
+        className={`mx-auto bg-white border border-slate-200 flex items-center justify-center ${
+          compact
+            ? "w-16 h-16 p-1 rounded-lg mb-1"
+            : "w-36 h-36 p-2 rounded-2xl shadow-2xs mb-3"
+        }`}
+      >
+        {qrImageSrc ? (
+          <img
+            src={qrImageSrc}
+            alt="Mã QR Truy Xuất"
+            className={compact ? "w-14 h-14 object-contain" : "w-32 h-32 object-contain"}
+          />
+        ) : (
+          <QrCode className={compact ? "w-12 h-12 text-slate-800" : "w-28 h-28 text-slate-800"} />
+        )}
+      </div>
+
+      {/* Chuỗi Mã Định Danh */}
+      <div className={`text-center ${compact ? "mb-1" : "mb-3"}`}>
+        <span
+          className={`font-mono font-bold text-slate-700 bg-slate-100 rounded-md tracking-wider inline-block max-w-full truncate ${
+            compact ? "text-[7.5px] px-1.5 py-0.5" : "text-[11px] px-2.5 py-0.5"
+          }`}
+        >
+          {qrCodeText}
+        </span>
+      </div>
+
+      {/* Ngày Thu Hoạch & HSD */}
+      <div
+        className={`grid grid-cols-2 gap-1 border-t border-slate-200 tabular-nums ${
+          compact ? "pt-1 text-[7.5px]" : "pt-2.5 mb-2 text-[10.5px]"
+        }`}
+      >
+        <div className="min-w-0">
+          <span className={`text-slate-400 block ${compact ? "text-[6.5px]" : "text-[9.5px]"}`}>
+            Thu hoạch:
+          </span>
+          <strong className="text-slate-800 block truncate">{batch.harvest_date}</strong>
+        </div>
+        <div className="text-right min-w-0">
+          <span className={`text-slate-400 block ${compact ? "text-[6.5px]" : "text-[9.5px]"}`}>
+            Hạn dùng:
+          </span>
+          <strong className="text-emerald-700 font-extrabold block truncate">
+            {batch.expiry_date}
+          </strong>
+        </div>
+      </div>
+
+      {!compact && (
+        <div className="text-center text-[9px] text-slate-400 border-t border-dotted border-slate-200 pt-1.5">
+          Quét camera để xem trọn vẹn nhật ký canh tác
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -85,6 +210,10 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
     >
       <style>{`
         @media print {
+          @page {
+            size: ${isA4Mode ? "A4 portrait" : "auto"};
+            margin: ${isA4Mode ? "6mm" : "4mm"};
+          }
           body * {
             visibility: hidden !important;
           }
@@ -92,34 +221,52 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
             visibility: visible !important;
           }
           #printable-thermal-label {
-            position: absolute !important;
+            position: fixed !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            overflow: visible !important;
             margin: 0 !important;
-            padding: 4mm !important;
+            padding: ${isA4Mode ? "0" : "4mm"} !important;
             box-shadow: none !important;
             border: none !important;
             background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #printable-thermal-label.print-a4-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 2.5mm !important;
+          }
+          #printable-thermal-label.print-a4-grid .qr-a4-cell {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            padding: 2mm !important;
+            border-radius: 2mm !important;
           }
         }
       `}</style>
 
       <div
-        className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
+        className={`relative w-full bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150 transition-all ${
+          isA4Mode ? "max-w-3xl" : "max-w-xl"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Modal */}
         <div className="px-5 sm:px-6 py-4 bg-gradient-to-r from-purple-50/80 to-white border-b border-slate-100 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-600/20">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-600/20 shrink-0">
               <QrCode className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-                <span>In Tem Mã QR Lô Hàng</span>
+            <div className="min-w-0">
+              <h3 className="text-base sm:text-lg font-bold text-slate-800 truncate">
+                In Tem Mã QR Lô Hàng
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5 truncate">
                 Tem in nhiệt định danh dán bao bì truy xuất nguồn gốc minh chứng
               </p>
             </div>
@@ -127,7 +274,8 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            aria-label="Đóng cửa sổ in tem"
           >
             <X className="w-5 h-5" />
           </button>
@@ -141,7 +289,7 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
               <Layers className="w-4 h-4 text-purple-600" />
               <span>Khổ Tem In:</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {[
                 { id: "50x50", label: "50x50mm (Tem vuông)" },
                 { id: "70x50", label: "70x50mm (Tem chữ nhật)" },
@@ -166,87 +314,47 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
           {loading ? (
             <div className="py-16 text-center flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-3" />
-              <p className="text-xs text-slate-500 font-medium">Đang sinh mã QR định danh và xuất mẫu tem...</p>
+              <p className="text-xs text-slate-500 font-medium">
+                Đang sinh mã QR định danh và xuất mẫu tem...
+              </p>
             </div>
           ) : (
             <>
-              {/* Bản xem trước Tem In Nhiệt (Chuẩn nhiệt 50x50 / 70x50) */}
-              <div className="flex justify-center">
-                <div
-                  id="printable-thermal-label"
-                  ref={labelPrintRef}
-                  className={`border-2 border-dashed border-slate-300 rounded-3xl p-5 bg-white shadow-lg text-slate-800 transition-all ${
-                    printSize === "70x50" ? "w-[340px]" : "w-[290px]"
-                  }`}
-                >
-                  {/* Top Bar Thương Hiệu */}
-                  <div className="text-center border-b border-slate-200 pb-2 mb-3">
-                    <div className="text-[10.5px] font-black uppercase tracking-wider text-[#12372A]">
-                      XANH FARM • HỮU CƠ CỦ CHI
-                    </div>
-                    <div className="text-[9px] text-slate-400 font-medium">
-                      Hotline: 1900 8888 • TCVN 11041
-                    </div>
-                  </div>
-
-                  {/* Nông Sản & Lô */}
-                  <div className="text-center mb-3">
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
-                      {labelData?.product_name || batch.product_name}
-                    </h3>
-                    <div className="flex items-center justify-center gap-1.5 mt-1">
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                        {batch.plot_name}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-semibold">
-                        {batch.season_name}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* QR Code Trung Tâm */}
-                  <div className="w-36 h-36 mx-auto bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex flex-col items-center justify-center mb-3">
-                    {qrImageSrc ? (
-                      <img
-                        src={qrImageSrc}
-                        alt="Mã QR Truy Xuất"
-                        className="w-32 h-32 object-contain"
-                      />
-                    ) : (
-                      <QrCode className="w-28 h-28 text-slate-800" />
-                    )}
-                  </div>
-
-                  {/* Chuỗi Mã Định Danh */}
-                  <div className="text-center mb-3">
-                    <span className="font-mono font-bold text-[11px] text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md tracking-wider">
-                      {qrCodeText}
+              {/* Bản xem trước & Vùng in thực tế (#printable-thermal-label) */}
+              {isA4Mode ? (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs px-1">
+                    <span className="font-bold text-slate-700">
+                      Bản xem trước trang A4 ({A4_LABEL_COUNT} tem · lưới 4 cột × 6 hàng)
+                    </span>
+                    <span className="text-[11px] text-purple-700 font-semibold">
+                      Tự căn vừa 1 trang A4 khi in
                     </span>
                   </div>
-
-                  {/* Ngày Thu Hoạch & HSD (FEFO) */}
-                  <div className="grid grid-cols-2 gap-2 text-[10.5px] border-t border-slate-200 pt-2.5 mb-2">
-                    <div>
-                      <span className="text-slate-400 block text-[9.5px]">Thu hoạch:</span>
-                      <strong className="text-slate-800">{batch.harvest_date}</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-slate-400 block text-[9.5px]">Hạn dùng:</span>
-                      <strong className="text-emerald-700 font-extrabold">{batch.expiry_date}</strong>
-                    </div>
-                  </div>
-
-                  {/* Footer Tem */}
-                  <div className="text-center text-[9px] text-slate-400 border-t border-dotted border-slate-200 pt-1.5">
-                    Quét camera để xem trọn vẹn nhật ký canh tác
+                  <div
+                    id="printable-thermal-label"
+                    ref={labelPrintRef}
+                    className="print-a4-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-2xl max-h-[360px] overflow-y-auto"
+                  >
+                    {Array.from({ length: A4_LABEL_COUNT }, (_, idx) =>
+                      renderSingleLabel(true, `a4-label-${idx}`)
+                    )}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex justify-center">
+                  <div id="printable-thermal-label" ref={labelPrintRef}>
+                    {renderSingleLabel(false, "single-label")}
+                  </div>
+                </div>
+              )}
 
               {/* Đường link tra cứu truy xuất nguồn gốc */}
               <div className="p-3.5 bg-emerald-50/80 rounded-2xl border border-emerald-200/80 text-xs flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="font-bold text-emerald-950 block">Liên kết truy xuất công khai:</span>
+                  <span className="font-bold text-emerald-950 block">
+                    Liên kết truy xuất công khai:
+                  </span>
                   <a
                     href={traceUrl}
                     target="_blank"
@@ -301,7 +409,7 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
               className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
               <Printer className="w-4 h-4" />
-              <span>In Tem Ngay</span>
+              <span>{isA4Mode ? "In 24 Tem (A4)" : "In Tem Ngay"}</span>
             </button>
           </div>
         </div>
