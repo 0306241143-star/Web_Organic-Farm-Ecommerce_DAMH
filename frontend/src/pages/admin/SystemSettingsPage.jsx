@@ -14,6 +14,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
+import { showGlobalToast } from "../../components/GlobalToast";
 
 export default function SystemSettingsPage() {
   const [settings, setSettings] = useState({
@@ -62,10 +63,14 @@ export default function SystemSettingsPage() {
     setSuccess("");
     try {
       await adminApi.updateSettings(settings);
-      setSuccess("Cấu hình hệ thống đã được lưu và cập nhật vào bộ nhớ tạm thành công!");
+      const okMsg = "Cấu hình hệ thống đã được lưu và cập nhật thành công!";
+      setSuccess(okMsg);
+      showGlobalToast(okMsg, "success");
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
-      setError(err?.response?.data?.message || "Không thể lưu cài đặt hệ thống.");
+      const errMsg = err?.response?.data?.message || "Không thể lưu cài đặt hệ thống.";
+      setError(errMsg);
+      showGlobalToast(errMsg, "error");
     } finally {
       setSaving(false);
     }
@@ -218,7 +223,7 @@ export default function SystemSettingsPage() {
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <span className="text-[10.5px] text-slate-500 mt-1 block">
-                Phần trăm giảm giá kích cầu xả hàng trước khi hàng hỏng (theo UC18.1).
+                Phần trăm giảm giá kích cầu xả hàng trước khi nông sản cận hạn.
               </span>
             </div>
           </div>

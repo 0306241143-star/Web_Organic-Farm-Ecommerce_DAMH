@@ -8,9 +8,8 @@ let farmSeasonsCache = null;
 export const farmApi = {
   // Lấy dữ liệu mùa vụ tức thời từ cache bộ nhớ/localStorage/sessionStorage
   getCachedSeasons: () => {
-    if (farmSeasonsCache?.data?.data) {
-      return farmSeasonsCache.data.data;
-    }
+    const raw = farmSeasonsCache?.data?.data ?? farmSeasonsCache?.data ?? farmSeasonsCache;
+    if (Array.isArray(raw)) return raw;
     try {
       const saved = localStorage.getItem("cached_farm_seasons") || sessionStorage.getItem("cached_farm_seasons");
       return saved ? JSON.parse(saved) : null;
@@ -28,9 +27,10 @@ export const farmApi = {
     if (!params) {
       farmSeasonsCache = res;
       try {
-        if (res?.data?.data) {
-          localStorage.setItem("cached_farm_seasons", JSON.stringify(res.data.data));
-          sessionStorage.setItem("cached_farm_seasons", JSON.stringify(res.data.data));
+        const dataToSave = res?.data?.data ?? res?.data ?? res;
+        if (dataToSave) {
+          localStorage.setItem("cached_farm_seasons", JSON.stringify(dataToSave));
+          sessionStorage.setItem("cached_farm_seasons", JSON.stringify(dataToSave));
         }
       } catch {}
     }
@@ -116,17 +116,55 @@ export const farmApi = {
 
   // Quản lý nhật ký canh tác (Farming Logs)
   getFarmingLogs: (params) => axiosClient.get("/farm/farming-logs", { params }),
-  createFarmingLog: (formData) =>
-    axiosClient.post("/farm/farming-logs", formData, {
+  createFarmingLog: async (formData) => {
+    farmSeasonsCache = null;
+    try {
+      localStorage.removeItem("cached_farm_seasons");
+      sessionStorage.removeItem("cached_farm_seasons");
+    } catch {}
+    return axiosClient.post("/farm/farming-logs", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-    }),
-  deleteFarmingLog: (id) => axiosClient.delete(`/farm/farming-logs/${id}`),
+    });
+  },
+  deleteFarmingLog: async (id) => {
+    farmSeasonsCache = null;
+    try {
+      localStorage.removeItem("cached_farm_seasons");
+      sessionStorage.removeItem("cached_farm_seasons");
+    } catch {}
+    return axiosClient.delete(`/farm/farming-logs/${id}`);
+  },
 
   // Các API cho lô thu hoạch & chứng nhận
-  getBatches: () => axiosClient.get("/farm/batches"),
-  createBatch: (data) => axiosClient.post("/farm/batches", data),
-  uploadCertificate: (data) =>
-    axiosClient.post("/farm/certificates", data, {
+  getBatches: (params) => axiosClient.get("/farm/batches", { params }),
+  getBatchDetail: (id) => axiosClient.get(`/farm/batches/${id}`),
+  createBatch: async (data) => {
+    farmSeasonsCache = null;
+    try {
+      localStorage.removeItem("cached_farm_seasons");
+      sessionStorage.removeItem("cached_farm_seasons");
+    } catch {}
+    return axiosClient.post("/farm/batches", data);
+  },
+  updateBatch: (id, data) => axiosClient.put(`/farm/batches/${id}`, data),
+  recordBatchWastage: (id, data) => axiosClient.post(`/farm/batches/${id}/wastage`, data),
+  getEligiblePlots: () => axiosClient.get("/farm/batches/eligible-plots"),
+  getDisposals: () => axiosClient.get("/farm/batches/disposals"),
+  generateBatchQr: (id) => axiosClient.post(`/farm/batches/${id}/qr`),
+  getBatchQrPrintTemplate: (id) => axiosClient.get(`/farm/batches/${id}/qr-print`),
+  getCertificates: (params) => axiosClient.get("/farm/certificates", { params }),
+  uploadCertificate: (formData) =>
+    axiosClient.post("/farm/certificates", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+  updateCertificate: (id, formData) => {
+    if (formData instanceof FormData) {
+      formData.append("_method", "PUT");
+      return axiosClient.post(`/farm/certificates/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    return axiosClient.put(`/farm/certificates/${id}`, formData);
+  },
+  deleteCertificate: (id) => axiosClient.delete(`/farm/certificates/${id}`),
 };

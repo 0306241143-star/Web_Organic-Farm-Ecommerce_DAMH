@@ -154,6 +154,23 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::get('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'index']);
     Route::post('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'store']);
     Route::delete('/farming-logs/{id}', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'destroy']);
+
+    // Quản lý lô hàng thu hoạch & QR (CV04.18, CV04.20, CV04.21)
+    Route::get('/batches/eligible-plots', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'eligiblePlots']);
+    Route::get('/batches/disposals', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'disposalsList']);
+    Route::get('/batches', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'index']);
+    Route::post('/batches', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'store']);
+    Route::get('/batches/{id}', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'show']);
+    Route::put('/batches/{id}', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'update']);
+    Route::post('/batches/{id}/wastage', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'recordWastage']);
+    Route::post('/batches/{id}/qr', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'generate']);
+    Route::get('/batches/{id}/qr-print', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'printTemplate']);
+
+    // Quản lý chứng nhận chất lượng & kết quả kiểm định gắn vào lô hàng
+    Route::get('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'index']);
+    Route::post('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'store']);
+    Route::put('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'update']);
+    Route::delete('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'destroy']);
 });
 
 // Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)

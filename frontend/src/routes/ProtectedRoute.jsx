@@ -1,4 +1,4 @@
-/* Redirects unauthenticated users or locked accounts to the login page (CV04.6). */
+/* Redirects unauthenticated users or locked accounts to the login page. */
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 

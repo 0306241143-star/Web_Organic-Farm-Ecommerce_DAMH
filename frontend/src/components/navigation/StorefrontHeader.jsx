@@ -1,4 +1,4 @@
-/* Shared storefront header for guests, customers, and admin preview (CV04.1). */
+/* Shared storefront header for guests, customers, and admin preview. */
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {

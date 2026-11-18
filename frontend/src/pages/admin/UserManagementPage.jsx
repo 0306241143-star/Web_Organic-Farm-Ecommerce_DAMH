@@ -1,5 +1,5 @@
 /* User account and permission management page with responsive card/table layout and instant pagination. */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Users,
   Search,
@@ -13,11 +13,22 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Check,
   Phone,
   Mail,
   UserCheck,
 } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
+import { showGlobalToast, confirmGlobalDialog } from "../../components/GlobalToast";
+
+const ROLE_FILTER_OPTIONS = [
+  { value: "", label: "Tất cả vai trò" },
+  { value: "admin", label: "Quản trị viên (Admin)" },
+  { value: "farm_staff", label: "Kỹ sư nông trại (Farm Staff)" },
+  { value: "sales", label: "Bán hàng (Sales)" },
+  { value: "customer", label: "Khách hàng (Customer)" },
+];
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
@@ -27,7 +38,27 @@ export default function UserManagementPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
+  const roleMenuRef = useRef(null);
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (!isRoleMenuOpen) return;
+    const handleOutside = (e) => {
+      if (roleMenuRef.current && !roleMenuRef.current.contains(e.target)) {
+        setIsRoleMenuOpen(false);
+      }
+    };
+    const handleEsc = (e) => {
+      if (e.key === "Escape") setIsRoleMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [isRoleMenuOpen]);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -61,12 +92,18 @@ export default function UserManagementPage() {
 
   const handleToggleStatus = async (user) => {
     const newStatus = user.Trang_thai === "Hoat_dong" ? "Khoa" : "Hoat_dong";
-    const confirmText =
-      newStatus === "Khoa"
-        ? `Bạn có chắc chắn muốn khóa tài khoản "${user.Ho_ten}"? Người dùng này sẽ bị thu hồi phiên đăng nhập ngay lập tức.`
-        : `Bạn có muốn mở khóa cho tài khoản "${user.Ho_ten}"?`;
+    const isLocking = newStatus === "Khoa";
+    const confirmText = isLocking
+      ? `Bạn có chắc chắn muốn khóa tài khoản "${user.Ho_ten}"? Người dùng này sẽ bị thu hồi phiên đăng nhập ngay lập tức.`
+      : `Bạn có muốn mở khóa cho tài khoản "${user.Ho_ten}"?`;
 
-    if (!window.confirm(confirmText)) return;
+    const confirmed = await confirmGlobalDialog({
+      title: isLocking ? "Khóa tài khoản người dùng?" : "Mở khóa tài khoản?",
+      message: confirmText,
+      confirmLabel: isLocking ? "Khóa Tài Khoản" : "Mở Khóa",
+      variant: isLocking ? "danger" : "primary",
+    });
+    if (!confirmed) return;
 
     setUpdatingId(user.Ma_nguoi_dung);
     try {
@@ -76,8 +113,16 @@ export default function UserManagementPage() {
           u.Ma_nguoi_dung === user.Ma_nguoi_dung ? { ...u, Trang_thai: newStatus } : u
         )
       );
+      showGlobalToast(
+        isLocking
+          ? `Đã khóa tài khoản "${user.Ho_ten}".`
+          : `Đã mở khóa tài khoản "${user.Ho_ten}".`
+      );
     } catch (err) {
-      alert(err?.response?.data?.message || "Không thể cập nhật trạng thái tài khoản.");
+      showGlobalToast(
+        err?.response?.data?.message || "Không thể cập nhật trạng thái tài khoản.",
+        "error"
+      );
     } finally {
       setUpdatingId(null);
     }
@@ -155,21 +200,59 @@ export default function UserManagementPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all shrink-0"
+        <div ref={roleMenuRef} className="relative w-full sm:w-56 shrink-0">
+          <button
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded={isRoleMenuOpen}
+            onClick={() => setIsRoleMenuOpen((prev) => !prev)}
+            className={`w-full min-w-0 px-3 py-2 bg-slate-50 border rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-between gap-2 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+              isRoleMenuOpen
+                ? "bg-white border-emerald-500 ring-2 ring-emerald-500/20"
+                : "border-slate-200 hover:border-slate-300 hover:bg-white"
+            }`}
           >
-            <option value="">Tất cả vai trò</option>
-            <option value="admin">Quản trị viên (Admin)</option>
-            <option value="farm_staff">Kỹ sư nông trại (Farm Staff)</option>
-            <option value="sales">Bán hàng (Sales)</option>
-            <option value="customer">Khách hàng (Customer)</option>
-          </select>
+            <span className="truncate flex-1 text-left">
+              {ROLE_FILTER_OPTIONS.find((o) => o.value === roleFilter)?.label || "Tất cả vai trò"}
+            </span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-150 ${
+                isRoleMenuOpen ? "rotate-180 text-emerald-600" : ""
+              }`}
+            />
+          </button>
+
+          {isRoleMenuOpen && (
+            <div
+              role="listbox"
+              className="absolute left-0 right-0 top-full mt-1.5 z-30 w-full max-w-full bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-900/10 overflow-hidden p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-150"
+            >
+              {ROLE_FILTER_OPTIONS.map((opt) => {
+                const isSelected = roleFilter === opt.value;
+                return (
+                  <button
+                    key={opt.value || "all"}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      setRoleFilter(opt.value);
+                      setPage(1);
+                      setIsRoleMenuOpen(false);
+                    }}
+                    className={`w-full min-w-0 text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                      isSelected
+                        ? "bg-emerald-50 text-emerald-900 font-bold"
+                        : "text-slate-700 hover:bg-slate-50 font-medium"
+                    }`}
+                  >
+                    <span className="truncate min-w-0 flex-1">{opt.label}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

@@ -148,4 +148,208 @@ class ApiIntegrationTest extends TestCase
         \App\Models\LoCanhTac::destroy($plotId);
         \App\Models\MuaVu::destroy($seasonId);
     }
+
+    public function test_farm_staff_harvest_batch_creation_and_wastage_flow(): void
+    {
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
+
+        $farmStaff = \App\Models\NguoiDung::where('Email', 'farm.kythuat@nongsansach.vn')->first();
+        $this->assertNotNull($farmStaff);
+        $token = $farmStaff->createToken('test_batch_token')->plainTextToken;
+        $headers = ['Authorization' => "Bearer {$token}"];
+
+        // 1. Tạo mùa vụ và lô canh tác kiểm thử
+        $season = \App\Models\MuaVu::create([
+            'Ten_mua_vu'   => 'Vụ Kiểm Thử Thu Hoạch ' . uniqid(),
+            'Ngay_bat_dau' => '2027-04-01',
+            'Trang_thai'   => 'Dang_dien_ra',
+        ]);
+
+        $plot = \App\Models\LoCanhTac::create([
+            'Ma_mua_vu'       => $season->Ma_mua_vu,
+            'Ma_san_pham'     => 1,
+            'Ten_lo'          => 'Lô Cần Thu Hoạch T01',
+            'Dien_tich'       => 450,
+            'Ngay_gieo_trong' => '2027-04-02',
+            'Trang_thai'      => 'Dang_canh_tac',
+        ]);
+
+        // 2. Ghi nhận mốc nhật ký Thu_hoach trước đó (Mô phỏng "Trỏ từ mốc Thu hoạch")
+        $harvestLog = \App\Models\NhatKyCanhTac::create([
+            'Ma_lo_canh_tac'      => $plot->Ma_lo_canh_tac,
+            'Ma_nhan_vien'        => $farmStaff->Ma_nguoi_dung,
+            'Loai_hoat_dong'      => 'Thu_hoach',
+            'Thoi_gian_thuc_hien' => '2027-05-15 08:30:00',
+            'Noi_dung'            => 'Tiến hành thu hoạch đợt 1 toàn bộ diện tích.',
+        ]);
+
+        // 3. Gọi API lấy danh sách lô đủ điều kiện thu hoạch
+        $eligibleRes = $this->getJson('/api/farm/batches/eligible-plots', $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue(collect($eligibleRes->json('data'))->contains('id', $plot->Ma_lo_canh_tac));
+
+        // 4. Tạo lô hàng thu hoạch mới (CV04.18)
+        $batchRes = $this->postJson('/api/farm/batches', [
+            'Ma_lo_canh_tac'     => $plot->Ma_lo_canh_tac,
+            'Ngay_thu_hoach'     => '2026-11-17',
+            'Han_su_dung'        => '2026-11-25',
+            'So_luong_thu_hoach' => 150.5,
+            'Ghi_chu'            => 'Lô thu hoạch thử nghiệm đạt chuẩn VietGAP',
+        ], $headers)
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.harvest_quantity', 150.5)
+            ->assertJsonPath('data.remaining_quantity', 150.5)
+            ->assertJsonPath('data.plot_id', $plot->Ma_lo_canh_tac);
+
+        $batchId = $batchRes->json('data.id');
+        $this->assertNotEmpty($batchRes->json('data.qr.code'));
+
+        // Kiểm tra lô canh tác đã tự động chuyển sang Da_thu_hoach
+        $this->assertEquals('Da_thu_hoach', $plot->fresh()->Trang_thai);
+
+        // 5. Lấy danh sách lô hàng thu hoạch
+        $this->getJson('/api/farm/batches', $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure(['data' => ['batches', 'stats']]);
+
+        // 6. Xem chi tiết lô hàng thu hoạch
+        $this->getJson("/api/farm/batches/{$batchId}", $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.id', $batchId)
+            ->assertJsonStructure(['data' => ['timeline', 'disposals']]);
+
+        // 7. Ghi nhận hao hụt / xuất hủy (CV04.21)
+        $this->postJson("/api/farm/batches/{$batchId}/wastage", [
+            'quantity' => 5.5,
+            'type'     => 'Hao_hut',
+            'reason'   => 'Dập nát trong quá trình sơ chế đóng gói',
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.remaining_quantity', 145);
+
+        // 8. Dọn dẹp bản ghi kiểm thử
+        \App\Models\BienDongKho::where('Ma_lo_hang', $batchId)->delete();
+        \App\Models\MaQrTruyXuat::where('Ma_lo_hang', $batchId)->delete();
+        \App\Models\LoHang::destroy($batchId);
+        $harvestLog->delete();
+        $plot->delete();
+        $season->delete();
+        $farmStaff->tokens()->delete();
+    }
+
+    public function test_farm_staff_certificate_upload_and_batch_attachment_flow(): void
+    {
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $farmStaff = \App\Models\NguoiDung::where('Email', 'farm.kythuat@nongsansach.vn')->first();
+        $this->assertNotNull($farmStaff);
+        $product = \App\Models\SanPham::first();
+        $this->assertNotNull($product);
+
+        $token = $farmStaff->createToken('test-farm-cert')->plainTextToken;
+        $headers = ['Authorization' => 'Bearer ' . $token];
+
+        // 1. Tạo mùa vụ, lô canh tác và lô hàng thu hoạch để gắn chứng nhận
+        $season = \App\Models\MuaVu::create([
+            'Ten_mua_vu'   => 'Vụ Kiểm Định Test ' . now()->timestamp,
+            'Ngay_bat_dau' => now()->subDays(25)->toDateString(),
+            'Trang_thai'   => 'Dang_dien_ra',
+        ]);
+
+        $plot = \App\Models\LoCanhTac::create([
+            'Ma_mua_vu'       => $season->Ma_mua_vu,
+            'Ma_san_pham'     => $product->Ma_san_pham,
+            'Ten_lo'          => 'Lô Kiểm Định K01',
+            'Dien_tich'       => 600,
+            'Ngay_gieo_trong' => now()->subDays(20)->toDateString(),
+            'Trang_thai'      => 'Da_thu_hoach',
+        ]);
+
+        $batch = \App\Models\LoHang::create([
+            'Ma_lo_canh_tac'         => $plot->Ma_lo_canh_tac,
+            'Ma_nhan_vien_phu_trach' => $farmStaff->Ma_nguoi_dung,
+            'Ngay_thu_hoach'         => now()->toDateString(),
+            'Han_su_dung'            => now()->addDays(7)->toDateString(),
+            'So_luong_thu_hoach'     => 90,
+            'So_luong_con_lai'       => 90,
+            'Trang_thai'             => 'Con_hang',
+        ]);
+
+        // 2. Kiểm tra validation lỗi: thiếu lô hàng & sản phẩm, ngày hết hạn < ngày cấp
+        $this->post('/api/farm/certificates', [
+            'Ten_chung_nhan' => 'Chứng nhận VietGAP Test',
+            'To_chuc_cap'    => 'QUACERT',
+            'Ngay_cap'       => now()->toDateString(),
+            'Ngay_het_han'   => now()->subDays(1)->toDateString(),
+            'file'           => UploadedFile::fake()->create('bad.exe', 50, 'application/x-msdownload'),
+        ], array_merge($headers, ['Accept' => 'application/json']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['Ma_lo_hang', 'Ngay_het_han', 'file']);
+
+        // 3. Tải lên tệp PDF chứng nhận hợp lệ và gắn trực tiếp vào Lô hàng
+        $pdfFile = UploadedFile::fake()->create('vietgap_lo_k01.pdf', 180, 'application/pdf');
+        $createRes = $this->post('/api/farm/certificates', [
+            'Ma_lo_hang'     => $batch->Ma_lo_hang,
+            'Ten_chung_nhan' => 'Phiếu kiểm định mẫu đất & nước Quatest 3',
+            'To_chuc_cap'    => 'QUATEST 3',
+            'Ngay_cap'       => now()->subDays(5)->toDateString(),
+            'Ngay_het_han'   => now()->addMonths(12)->toDateString(),
+            'file'           => $pdfFile,
+        ], array_merge($headers, ['Accept' => 'application/json']))
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.batch_id', $batch->Ma_lo_hang)
+            ->assertJsonPath('data.product_id', $product->Ma_san_pham)
+            ->assertJsonPath('data.file_kind', 'pdf')
+            ->assertJsonPath('data.validity_status', 'valid');
+
+        $certId = $createRes->json('data.id');
+        $this->assertNotNull($certId);
+
+        // 4. Kiểm tra xuất hiện trong GET /api/farm/certificates và đồng bộ trong GET /api/farm/batches/{id}
+        $this->getJson('/api/farm/certificates?batch_id=' . $batch->Ma_lo_hang, $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.certificates.0.id', $certId);
+
+        $this->getJson('/api/farm/batches/' . $batch->Ma_lo_hang, $headers)
+            ->assertOk()
+            ->assertJsonPath('data.certificates_count', 1)
+            ->assertJsonPath('data.certificates.0.id', $certId);
+
+        // 5. Cập nhật tên chứng nhận qua _method=PUT
+        $this->post('/api/farm/certificates/' . $certId, [
+            '_method'        => 'PUT',
+            'Ma_lo_hang'     => $batch->Ma_lo_hang,
+            'Ten_chung_nhan' => 'Chứng nhận VietGAP Trồng trọt (Cập nhật)',
+            'To_chuc_cap'    => 'Viện Nghiên cứu Rau quả',
+            'Ngay_cap'       => now()->subDays(5)->toDateString(),
+            'Ngay_het_han'   => now()->addMonths(18)->toDateString(),
+        ], array_merge($headers, ['Accept' => 'application/json']))
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Chứng nhận VietGAP Trồng trọt (Cập nhật)');
+
+        // 6. Xóa chứng nhận và kiểm tra xóa mùa vụ chứa lô hàng thu hoạch không bị lỗi SQL 1054
+        $this->deleteJson('/api/farm/certificates/' . $certId, [], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('chung_nhan', ['Ma_chung_nhan' => $certId]);
+
+        $this->deleteJson('/api/farm/seasons/' . $season->Ma_mua_vu, [], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('mua_vu', ['Ma_mua_vu' => $season->Ma_mua_vu]);
+        $this->assertDatabaseMissing('lo_hang', ['Ma_lo_hang' => $batch->Ma_lo_hang]);
+
+        $farmStaff->tokens()->delete();
+    }
 }

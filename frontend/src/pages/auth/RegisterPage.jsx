@@ -1,4 +1,4 @@
-/* Registration page for new customers (CV04.3). */
+/* Registration page for new customers. */
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {

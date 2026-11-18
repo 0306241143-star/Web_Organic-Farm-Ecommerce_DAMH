@@ -1,4 +1,4 @@
-/* Login page with role-based routing and secure session handling (CV04.4). */
+/* Login page with role-based routing and secure session handling. */
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {

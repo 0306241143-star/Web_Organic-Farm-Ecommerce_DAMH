@@ -20,7 +20,7 @@ class StoreFarmingLogRequest extends FormRequest
         return [
             'Ma_lo_canh_tac'      => ['required', 'integer', 'exists:lo_canh_tac,Ma_lo_canh_tac'],
             'Loai_hoat_dong'      => ['required', 'string', 'in:Gieo_hat,Bon_phan,Tuoi_tieu,Thu_hoach,Khac'],
-            'Thoi_gian_thuc_hien' => ['required', 'date', 'before_or_equal:now'],
+            'Thoi_gian_thuc_hien' => ['required', 'date'],
             'Noi_dung'            => ['required', 'string', 'max:2000'],
             'media'               => ['nullable', 'array'],
             'media.*'             => ['file', 'mimes:jpg,jpeg,png,webp,mp4,mov,avi', 'max:20480'],
@@ -30,6 +30,20 @@ class StoreFarmingLogRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            // UC14.1 Alternative Flow 2a: Chặn mốc thời gian trong tương lai
+            // So sánh theo giờ Việt Nam và cho phép dung sai 30 phút để chống lệch đồng hồ hoặc lệch giây giữa client và server
+            if ($this->filled('Thoi_gian_thuc_hien')) {
+                try {
+                    $logTime = \Carbon\Carbon::parse($this->input('Thoi_gian_thuc_hien'), 'Asia/Ho_Chi_Minh');
+                    $maxAllowed = \Carbon\Carbon::now('Asia/Ho_Chi_Minh')->addMinutes(30);
+                    if ($logTime->greaterThan($maxAllowed)) {
+                        $validator->errors()->add('Thoi_gian_thuc_hien', 'Mốc thời gian thực hiện không được lớn hơn thời điểm hiện tại.');
+                    }
+                } catch (\Throwable $e) {
+                    $validator->errors()->add('Thoi_gian_thuc_hien', 'Thời gian thực hiện không đúng định dạng ngày giờ.');
+                }
+            }
+
             // UC14.1 Alternative Flow 5a: Thiếu thông tin bắt buộc khi bón phân (loại phân bón, liều lượng)
             if ($this->input('Loai_hoat_dong') === 'Bon_phan') {
                 $noiDung = trim($this->input('Noi_dung') ?? '');
