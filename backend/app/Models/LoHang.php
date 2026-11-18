@@ -38,6 +38,11 @@ class LoHang extends Model
         return $this->hasMany(ChungNhan::class, 'Ma_lo_hang', 'Ma_lo_hang');
     }
 
+    public function chiTietFlashSales(): HasMany
+    {
+        return $this->hasMany(ChiTietFlashSale::class, 'Ma_lo_hang', 'Ma_lo_hang');
+    }
+
     public function scopeKhaDungFefo($query)
     {
         return $query->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])
