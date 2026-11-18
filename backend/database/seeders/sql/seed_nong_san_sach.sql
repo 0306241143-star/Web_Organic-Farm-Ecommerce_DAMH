@@ -65,7 +65,17 @@ INSERT INTO San_pham (Ma_san_pham, Ma_danh_muc, Ma_nong_trai, Ten_san_pham, Mo_t
 (3, 1, 1, 'Cải bó xôi Baby', 'Cải bó xôi non mềm, giàu sắt và vitamin', 'kg', 40000.00, '/uploads/products/cai_bo_xoi.jpg', 2.00, 'Dang_ban'),
 (4, 3, 1, 'Dưa lưới Taki nhà màng', 'Dưa lưới ruột cam giòn ngọt, trồng giá thể hữu cơ tại nhà màng', 'quả ~1.5kg', 120000.00, '/uploads/products/dua_luoi_taki.jpg', 3.00, 'Dang_ban'),
 (5, 2, 1, 'Cà rốt Baby hữu cơ', 'Cà rốt củ nhỏ ngọt tự nhiên, không hóa chất', 'kg', 38000.00, '/uploads/products/ca_rot_baby.jpg', 1.00, 'Dang_ban'),
-(6, 4, 1, 'Húng quế hữu cơ', 'Rau thơm tinh dầu đậm, hái sáng sớm', 'bó 200g', 15000.00, '/uploads/products/hung_que.jpg', 1.00, 'Dang_ban');
+(6, 4, 1, 'Húng quế hữu cơ', 'Rau thơm tinh dầu đậm, hái sáng sớm', 'bó 200g', 15000.00, '/uploads/products/hung_que.jpg', 1.00, 'Dang_ban'),
+(7, 1, 1, 'Cải Kale hữu cơ', 'Cải xoăn Kale trồng nhà màng, giàu chất xơ và chất chống oxy hóa', 'kg', 65000.00, '/uploads/products/cai_kale.jpg', 2.00, 'Dang_ban'),
+(8, 1, 1, 'Rau muống nước hữu cơ', 'Rau muống cọng giòn xanh non, canh tác sạch không hóa chất', 'bó 500g', 22000.00, '/uploads/products/rau_muong.jpg', 1.00, 'Dang_ban'),
+(9, 1, 1, 'Cải ngọt hữu cơ', 'Cải ngọt lá xanh mướt, vị thanh mát tự nhiên', 'kg', 28000.00, '/uploads/products/cai_ngot.jpg', 1.00, 'Dang_ban'),
+(10, 2, 1, 'Dưa leo Baby nhà màng', 'Dưa leo trái nhỏ giòn ngọt, ít hạt, ăn sống trực tiếp', 'kg', 42000.00, '/uploads/products/dua_leo_baby.jpg', 1.50, 'Dang_ban'),
+(11, 2, 1, 'Bí đỏ Nhật hữu cơ', 'Bí đỏ thịt dẻo bùi ngọt đậm, giàu beta-carotene', 'kg', 52000.00, '/uploads/products/bi_do_nhat.jpg', 1.50, 'Dang_ban'),
+(12, 2, 1, 'Khoai lang mật Đà Lạt', 'Khoai lang ruột vàng dẻo thơm, nướng lên tươm mật tự nhiên', 'kg', 48000.00, '/uploads/products/khoai_lang_mat.jpg', 1.50, 'Dang_ban'),
+(13, 3, 1, 'Dâu tây giống Nhật nhà màng', 'Dâu tây trồng giá thể công nghệ cao, trái đỏ mọng thơm ngọt', 'hộp 500g', 145000.00, '/uploads/products/dau_tay_nhat.jpg', 3.00, 'Dang_ban'),
+(14, 3, 1, 'Cà chua bi mật nhà màng', 'Cà chua bi chín cây vỏ mỏng, ngọt đậm, giàu vitamin C', 'hộp 500g', 58000.00, '/uploads/products/ca_chua_bi.jpg', 2.00, 'Dang_ban'),
+(15, 4, 1, 'Hành lá hữu cơ', 'Hành lá thơm nồng, trồng đất sạch xử lý vi sinh', 'bó 200g', 16000.00, '/uploads/products/hanh_la.jpg', 1.00, 'Dang_ban'),
+(16, 4, 1, 'Bạc hà hữu cơ', 'Lá bạc hà tươi mát giàu tinh dầu, thích hợp pha trà và nấu ăn', 'bó 150g', 18000.00, '/uploads/products/bac_ha.jpg', 1.00, 'Dang_ban');
 
 -- 4. Mùa vụ, Lô canh tác, Nhật ký, Lô hàng, QR & Chứng nhận
 INSERT INTO Mua_vu (Ma_mua_vu, Ma_nong_trai, Ten_mua_vu, Ngay_bat_dau, Ngay_ket_thuc, Trang_thai) VALUES
@@ -76,7 +86,16 @@ INSERT INTO Lo_canh_tac (Ma_lo_canh_tac, Ma_mua_vu, Ma_san_pham, Ten_lo, Dien_ti
 (1, 1, 1, 'Lô A01 - Xà lách Romaine', 1200.00, '2026-10-01', 'Da_thu_hoach'),
 (2, 1, 2, 'Lô A02 - Cà chua Beef', 1500.00, '2026-09-20', 'Da_thu_hoach'),
 (3, 1, 3, 'Lô A03 - Cải bó xôi Baby', 800.00, '2026-10-12', 'Da_thu_hoach'),
-(4, 1, 5, 'Lô A04 - Cà rốt Baby', 1000.00, '2026-09-25', 'Da_thu_hoach');
+(4, 1, 5, 'Lô A04 - Cà rốt Baby', 1000.00, '2026-09-25', 'Da_thu_hoach'),
+(5, 2, 7, 'Lô B01 - Cải Kale hữu cơ', 900.00, '2026-10-18', 'Da_thu_hoach'),
+(6, 2, 8, 'Lô B02 - Rau muống nước hữu cơ', 700.00, '2026-10-20', 'Da_thu_hoach'),
+(7, 2, 9, 'Lô B03 - Cải ngọt hữu cơ', 850.00, '2026-10-21', 'Da_thu_hoach'),
+(8, 2, 10, 'Lô B04 - Dưa leo Baby nhà màng', 1100.00, '2026-10-10', 'Da_thu_hoach'),
+(9, 2, 11, 'Lô B05 - Bí đỏ Nhật hữu cơ', 1400.00, '2026-09-18', 'Da_thu_hoach'),
+(10, 2, 12, 'Lô B06 - Khoai lang mật Đà Lạt', 1300.00, '2026-09-15', 'Da_thu_hoach'),
+(11, 2, 13, 'Lô B07 - Dâu tây giống Nhật', 950.00, '2026-09-22', 'Da_thu_hoach'),
+(12, 2, 14, 'Lô B08 - Cà chua bi mật', 1000.00, '2026-10-05', 'Da_thu_hoach'),
+(13, 2, 15, 'Lô B09 - Hành lá hữu cơ', 500.00, '2026-10-24', 'Da_thu_hoach');
 
 INSERT INTO Nhat_ky_canh_tac (Ma_nhat_ky, Ma_lo_canh_tac, Ma_nhan_vien, Loai_hoat_dong, Thoi_gian_thuc_hien, Noi_dung) VALUES
 (1, 1, 3, 'Gieo_hat', '2026-10-01 07:30:00', 'Gieo hạt giống xà lách Romaine F1 lên khay xơ dừa đã xử lý vi sinh.'),
@@ -98,20 +117,45 @@ INSERT INTO Lo_hang (Ma_lo_hang, Ma_lo_canh_tac, Ma_nhan_vien_phu_trach, Ngay_th
 (2, 1, 3, '2026-11-13', '2026-11-22', 150.00, 150.00, 'Con_hang'),
 (3, 2, 4, '2026-11-11', '2026-11-18', 120.00, 113.00, 'Con_hang'),
 (4, 3, 3, '2026-11-12', '2026-11-17', 80.00, 77.00, 'Con_hang'),
-(5, 4, 4, '2026-11-12', '2026-11-25', 200.00, 197.00, 'Con_hang');
+(5, 4, 4, '2026-11-12', '2026-11-25', 200.00, 197.00, 'Con_hang'),
+(6, 5, 3, '2026-11-15', '2026-11-23', 90.00, 86.00, 'Con_hang'),
+(7, 6, 3, '2026-11-16', '2026-11-21', 110.00, 104.00, 'Con_hang'),
+(8, 7, 3, '2026-11-16', '2026-11-22', 130.00, 125.00, 'Con_hang'),
+(9, 8, 4, '2026-11-15', '2026-11-24', 140.00, 132.00, 'Con_hang'),
+(10, 9, 4, '2026-11-14', '2026-12-05', 180.00, 175.00, 'Con_hang'),
+(11, 10, 4, '2026-11-14', '2026-12-02', 160.00, 154.00, 'Con_hang'),
+(12, 11, 4, '2026-11-17', '2026-11-22', 65.00, 58.00, 'Con_hang'),
+(13, 12, 4, '2026-11-16', '2026-11-24', 95.00, 89.00, 'Con_hang'),
+(14, 13, 3, '2026-11-17', '2026-11-21', 75.00, 70.00, 'Con_hang');
 
 INSERT INTO Ma_QR_truy_xuat (Ma_qr, Ma_lo_hang, Ma_nhan_vien_tao, Chuoi_ma_qr, Duong_dan_anh_qr, So_luot_quet) VALUES
 (1, 1, 3, 'QR-LH20261110-A01', '/uploads/qr/qr_lh_1.png', 48),
 (2, 2, 3, 'QR-LH20261113-A01B', '/uploads/qr/qr_lh_2.png', 12),
 (3, 3, 4, 'QR-LH20261111-A02', '/uploads/qr/qr_lh_3.png', 35),
 (4, 4, 3, 'QR-LH20261112-A03', '/uploads/qr/qr_lh_4.png', 19),
-(5, 5, 4, 'QR-LH20261112-A04', '/uploads/qr/qr_lh_5.png', 27);
+(5, 5, 4, 'QR-LH20261112-A04', '/uploads/qr/qr_lh_5.png', 27),
+(6, 6, 3, 'QR-LH20261115-B01', '/uploads/qr/qr_lh_6.png', 14),
+(7, 7, 3, 'QR-LH20261116-B02', '/uploads/qr/qr_lh_7.png', 9),
+(8, 8, 3, 'QR-LH20261116-B03', '/uploads/qr/qr_lh_8.png', 11),
+(9, 9, 4, 'QR-LH20261115-B04', '/uploads/qr/qr_lh_9.png', 22),
+(10, 10, 4, 'QR-LH20261114-B05', '/uploads/qr/qr_lh_10.png', 16),
+(11, 11, 4, 'QR-LH20261114-B06', '/uploads/qr/qr_lh_11.png', 18),
+(12, 12, 4, 'QR-LH20261117-B07', '/uploads/qr/qr_lh_12.png', 31),
+(13, 13, 4, 'QR-LH20261116-B08', '/uploads/qr/qr_lh_13.png', 20),
+(14, 14, 3, 'QR-LH20261117-B09', '/uploads/qr/qr_lh_14.png', 7);
 
 INSERT INTO Chung_nhan (Ma_chung_nhan, Ma_lo_hang, Ma_san_pham, Ten_chung_nhan, To_chuc_cap, Ngay_cap, Ngay_het_han, Duong_dan_tep) VALUES
 (1, 1, 1, 'Chứng nhận Hữu cơ Việt Nam (TCVN 11041)', 'Trung tâm Chứng nhận Phù hợp QUACERT', '2026-01-15', '2028-01-15', '/uploads/certs/huu_co_xa_lach.pdf'),
 (2, 3, 2, 'Chứng nhận VietGAP Trồng trọt', 'Viện Nghiên cứu Rau quả', '2026-03-10', '2028-03-10', '/uploads/certs/vietgap_ca_chua.pdf'),
 (3, 4, 3, 'Chứng nhận Hữu cơ Việt Nam (TCVN 11041)', 'Trung tâm Chứng nhận Phù hợp QUACERT', '2026-01-15', '2028-01-15', '/uploads/certs/huu_co_cai_bo_xoi.pdf'),
-(4, NULL, 4, 'Chứng nhận GlobalGAP', 'SGS Việt Nam', '2026-02-20', '2027-02-20', '/uploads/certs/globalgap_dua_luoi.pdf');
+(4, NULL, 4, 'Chứng nhận GlobalGAP', 'SGS Việt Nam', '2026-02-20', '2027-02-20', '/uploads/certs/globalgap_dua_luoi.pdf'),
+(5, 6, 7, 'Chứng nhận Hữu cơ Việt Nam (TCVN 11041)', 'Trung tâm Chứng nhận Phù hợp QUACERT', '2026-01-15', '2028-01-15', '/uploads/certs/huu_co_cai_kale.pdf'),
+(6, 8, 9, 'Chứng nhận VietGAP Trồng trọt', 'Viện Nghiên cứu Rau quả', '2026-03-10', '2028-03-10', '/uploads/certs/vietgap_cai_ngot.pdf'),
+(7, 9, 10, 'Chứng nhận VietGAP Trồng trọt', 'Viện Nghiên cứu Rau quả', '2026-03-10', '2028-03-10', '/uploads/certs/vietgap_dua_leo.pdf'),
+(8, 10, 11, 'Chứng nhận Hữu cơ Việt Nam (TCVN 11041)', 'Trung tâm Chứng nhận Phù hợp QUACERT', '2026-01-15', '2028-01-15', '/uploads/certs/huu_co_bi_do.pdf'),
+(9, 11, 12, 'Chứng nhận VietGAP Trồng trọt', 'Viện Nghiên cứu Rau quả', '2026-03-10', '2028-03-10', '/uploads/certs/vietgap_khoai_lang.pdf'),
+(10, 12, 13, 'Chứng nhận GlobalGAP', 'SGS Việt Nam', '2026-02-20', '2027-02-20', '/uploads/certs/globalgap_dau_tay.pdf'),
+(11, 13, 14, 'Chứng nhận Hữu cơ Việt Nam (TCVN 11041)', 'Trung tâm Chứng nhận Phù hợp QUACERT', '2026-01-15', '2028-01-15', '/uploads/certs/huu_co_ca_chua_bi.pdf');
 
 INSERT INTO Bien_dong_kho (Ma_bien_dong, Ma_lo_hang, Ma_nhan_vien, Loai_bien_dong, So_luong, Ly_do, Ngay_ghi_nhan) VALUES
 (1, 1, 3, 'Hao_hut', 3.00, 'Dập lá ngoài trong quá trình sơ chế phân loại', '2026-11-11 09:00:00'),

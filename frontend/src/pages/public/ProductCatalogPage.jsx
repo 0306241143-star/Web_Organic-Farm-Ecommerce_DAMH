@@ -1,11 +1,10 @@
 /* Trang danh sách nông sản hỗ trợ tìm kiếm, lọc đa tiêu chí, sắp xếp và phân trang đồng bộ URL. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   ArrowUpDown,
   Check,
   ChevronDown,
-  ChevronRight,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -45,35 +44,6 @@ function CatalogHeroHeader({
   return (
     <section className="border-b border-[#c0c9bb]/30 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
-        {/* Đường dẫn điều hướng */}
-        <nav
-          aria-label="Đường dẫn điều hướng"
-          className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#5a6357] mb-3"
-        >
-          <Link to="/" className="hover:text-[#00450d] transition-colors">
-            Trang chủ
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-          <Link
-            to="/products"
-            className={
-              activeCategoryObj
-                ? "hover:text-[#00450d] transition-colors"
-                : "text-[#00450d] font-bold"
-            }
-          >
-            Nông sản
-          </Link>
-          {activeCategoryObj && (
-            <>
-              <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-              <span className="text-[#00450d] font-bold truncate">
-                {activeCategoryObj.name}
-              </span>
-            </>
-          )}
-        </nav>
-
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
           <div className="space-y-1.5 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2.5">
