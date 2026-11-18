@@ -1,79 +1,92 @@
-/* Declares routes for authentication and the five application areas. */
+/* Declares routes for authentication and the five application areas with lazy code-splitting for maximum speed. */
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import ApiTestPage from "../pages/ApiTestPage";
 import DashboardLayout from "../layouts/DashboardLayout";
 import StorefrontLayout from "../layouts/StorefrontLayout";
-import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
-import SystemSettingsPage from "../pages/admin/SystemSettingsPage";
-import UserManagementPage from "../pages/admin/UserManagementPage";
-import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
-import LoginPage from "../pages/auth/LoginPage";
-import RegisterPage from "../pages/auth/RegisterPage";
-import CartPage from "../pages/customer/CartPage";
-import CheckoutPage from "../pages/customer/CheckoutPage";
-import OrderHistoryPage from "../pages/customer/OrderHistoryPage";
-import RewardWalletPage from "../pages/customer/RewardWalletPage";
-import SubscriptionRegisterPage from "../pages/customer/SubscriptionRegisterPage";
-import BatchHarvestPage from "../pages/farm/BatchHarvestPage";
-import CertificateManagePage from "../pages/farm/CertificateManagePage";
-import SeasonManagePage from "../pages/farm/SeasonManagePage";
-import CustomerClaimPage from "../pages/sales/CustomerClaimPage";
-import FlashSalePage from "../pages/sales/FlashSalePage";
-import InventoryFefoPage from "../pages/sales/InventoryFefoPage";
-import SalesOrderPage from "../pages/sales/SalesOrderPage";
-import BrandStoryPage from "../pages/public/BrandStoryPage";
-import HomePage from "../pages/public/HomePage";
-import ProductCatalogPage from "../pages/public/ProductCatalogPage";
-import ProductDetailPage from "../pages/public/ProductDetailPage";
-import QrTraceabilityPage from "../pages/public/QrTraceabilityPage";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
+
+// Lazy-loaded pages for bundle splitting & ultra-fast initial page loads
+const AdminDashboardPage = lazy(() => import("../pages/admin/AdminDashboardPage"));
+const SystemSettingsPage = lazy(() => import("../pages/admin/SystemSettingsPage"));
+const UserManagementPage = lazy(() => import("../pages/admin/UserManagementPage"));
+const SeasonManagePage = lazy(() => import("../pages/farm/SeasonManagePage"));
+const BatchHarvestPage = lazy(() => import("../pages/farm/BatchHarvestPage"));
+const CertificateManagePage = lazy(() => import("../pages/farm/CertificateManagePage"));
+const SalesOrderPage = lazy(() => import("../pages/sales/SalesOrderPage"));
+const InventoryFefoPage = lazy(() => import("../pages/sales/InventoryFefoPage"));
+const FlashSalePage = lazy(() => import("../pages/sales/FlashSalePage"));
+const CustomerClaimPage = lazy(() => import("../pages/sales/CustomerClaimPage"));
+const HomePage = lazy(() => import("../pages/public/HomePage"));
+const ProductCatalogPage = lazy(() => import("../pages/public/ProductCatalogPage"));
+const ProductDetailPage = lazy(() => import("../pages/public/ProductDetailPage"));
+const BrandStoryPage = lazy(() => import("../pages/public/BrandStoryPage"));
+const QrTraceabilityPage = lazy(() => import("../pages/public/QrTraceabilityPage"));
+const CartPage = lazy(() => import("../pages/customer/CartPage"));
+const CheckoutPage = lazy(() => import("../pages/customer/CheckoutPage"));
+const SubscriptionRegisterPage = lazy(() => import("../pages/customer/SubscriptionRegisterPage"));
+const OrderHistoryPage = lazy(() => import("../pages/customer/OrderHistoryPage"));
+const RewardWalletPage = lazy(() => import("../pages/customer/RewardWalletPage"));
+const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("../pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("../pages/auth/ForgotPasswordPage"));
+const ApiTestPage = lazy(() => import("../pages/ApiTestPage"));
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[50vh] p-8">
+    <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<StorefrontLayout />}>
-          <Route index element={<HomePage />} />
-          <Route path="products" element={<ProductCatalogPage />} />
-          <Route path="products/:productId" element={<ProductDetailPage />} />
-          <Route path="brand" element={<BrandStoryPage />} />
-          <Route path="trace/:code" element={<QrTraceabilityPage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
-          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route element={<StorefrontLayout />}>
+            <Route index element={<HomePage />} />
+            <Route path="products" element={<ProductCatalogPage />} />
+            <Route path="products/:productId" element={<ProductDetailPage />} />
+            <Route path="brand" element={<BrandStoryPage />} />
+            <Route path="trace/:code" element={<QrTraceabilityPage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="register" element={<RegisterPage />} />
+            <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<RoleGuard roles={["customer"]} />}>
+                <Route path="cart" element={<CartPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="subscriptions" element={<SubscriptionRegisterPage />} />
+                <Route path="orders" element={<OrderHistoryPage />} />
+                <Route path="rewards" element={<RewardWalletPage />} />
+              </Route>
+            </Route>
+          </Route>
+
           <Route element={<ProtectedRoute />}>
-            <Route element={<RoleGuard roles={["customer"]} />}>
-              <Route path="cart" element={<CartPage />} />
-              <Route path="checkout" element={<CheckoutPage />} />
-              <Route path="subscriptions" element={<SubscriptionRegisterPage />} />
-              <Route path="orders" element={<OrderHistoryPage />} />
-              <Route path="rewards" element={<RewardWalletPage />} />
+            <Route element={<DashboardLayout />}>
+              <Route element={<RoleGuard roles={["farm_staff"]} />}>
+                <Route path="farm/seasons" element={<SeasonManagePage />} />
+                <Route path="farm/batches" element={<BatchHarvestPage />} />
+                <Route path="farm/certificates" element={<CertificateManagePage />} />
+              </Route>
+              <Route element={<RoleGuard roles={["sales"]} />}>
+                <Route path="sales/orders" element={<SalesOrderPage />} />
+                <Route path="sales/inventory" element={<InventoryFefoPage />} />
+                <Route path="sales/flash-sales" element={<FlashSalePage />} />
+                <Route path="sales/claims" element={<CustomerClaimPage />} />
+              </Route>
+              <Route element={<RoleGuard roles={["admin"]} />}>
+                <Route path="admin" element={<AdminDashboardPage />} />
+                <Route path="admin/users" element={<UserManagementPage />} />
+                <Route path="admin/settings" element={<SystemSettingsPage />} />
+              </Route>
             </Route>
           </Route>
-        </Route>
-        <Route element={<ProtectedRoute />}>
-          <Route element={<DashboardLayout />}>
-            <Route element={<RoleGuard roles={["farm_staff"]} />}>
-              <Route path="farm/seasons" element={<SeasonManagePage />} />
-              <Route path="farm/batches" element={<BatchHarvestPage />} />
-              <Route path="farm/certificates" element={<CertificateManagePage />} />
-            </Route>
-            <Route element={<RoleGuard roles={["sales"]} />}>
-              <Route path="sales/orders" element={<SalesOrderPage />} />
-              <Route path="sales/inventory" element={<InventoryFefoPage />} />
-              <Route path="sales/flash-sales" element={<FlashSalePage />} />
-              <Route path="sales/claims" element={<CustomerClaimPage />} />
-            </Route>
-            <Route element={<RoleGuard roles={["admin"]} />}>
-              <Route path="admin" element={<AdminDashboardPage />} />
-              <Route path="admin/users" element={<UserManagementPage />} />
-              <Route path="admin/settings" element={<SystemSettingsPage />} />
-            </Route>
-          </Route>
-        </Route>
-        {import.meta.env.DEV && <Route path="test-api" element={<ApiTestPage />} />}
-      </Routes>
+
+          {import.meta.env.DEV && <Route path="test-api" element={<ApiTestPage />} />}
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

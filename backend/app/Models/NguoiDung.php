@@ -5,23 +5,43 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Notifications\QueuedResetPasswordNotification;
 
 class NguoiDung extends Authenticatable
 {
     use HasApiTokens, Notifiable;
 
-    protected $table = 'Nguoi_dung';
+    protected $table = 'nguoi_dung';
     protected $primaryKey = 'Ma_nguoi_dung';
+    protected $guarded = [];
 
-    protected $fillable = [
-        'Ma_vai_tro', 'Ho_ten', 'Email', 'So_dien_thoai', 'Mat_khau_ma_hoa', 'Trang_thai',
+    protected $hidden = [
+        'Mat_khau_ma_hoa',
     ];
-
-    protected $hidden = ['Mat_khau_ma_hoa'];
 
     public function getAuthPassword(): string
     {
         return $this->Mat_khau_ma_hoa;
+    }
+
+    public function getAuthPasswordName(): string
+    {
+        return 'Mat_khau_ma_hoa';
+    }
+
+    public function getRememberTokenName(): string
+    {
+        return '';
+    }
+
+    public function getEmailForPasswordReset(): string
+    {
+        return $this->Email;
+    }
+
+    public function routeNotificationForMail(): string
+    {
+        return $this->Email;
     }
 
     public function vaiTro()
@@ -32,5 +52,32 @@ class NguoiDung extends Authenticatable
     public function hasPermission(string $tenQuyen): bool
     {
         return $this->vaiTro?->quyens()->where('Ten_quyen', $tenQuyen)->exists() ?? false;
+    }
+
+    public function getRoleSlug(): string
+    {
+        return match ((int) $this->Ma_vai_tro) {
+            1 => 'admin',
+            2 => 'sales',
+            3 => 'farm_staff',
+            default => 'customer',
+        };
+    }
+
+    public function hasRole(string|array $roles): bool
+    {
+        $currentRole = $this->getRoleSlug();
+        if (is_array($roles)) {
+            $normalized = array_map(fn($r) => strtolower(trim($r)), $roles);
+            return in_array($currentRole, $normalized, true);
+        }
+
+        return $currentRole === strtolower(trim($roles));
+    }
+
+    // Thêm vào bên trong class NguoiDung:
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new QueuedResetPasswordNotification($token));
     }
 }

@@ -1,0 +1,221 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('don_hang', function (Blueprint $table) {
+            $table->id('Ma_don_hang');
+            $table->unsignedBigInteger('Ma_nguoi_dung');
+            $table->unsignedBigInteger('Ma_dia_chi');
+            $table->unsignedBigInteger('Ma_nhan_vien_xac_nhan')->nullable();
+            $table->unsignedBigInteger('Ma_dang_ky_goi')->nullable();
+            $table->unsignedBigInteger('Ma_don_goc')->nullable();
+            $table->unsignedBigInteger('Ma_khieu_nai')->nullable();
+            $table->enum('Loai_don', ['Mua_le', 'Dinh_ky', 'Giao_bu'])->default('Mua_le');
+            $table->dateTime('Ngay_dat')->useCurrent();
+            $table->decimal('Tien_hang', 12, 2)->default(0.00);
+            $table->decimal('Khoang_cach_km', 8, 2)->default(0.00);
+            $table->decimal('Phi_giao_hang', 12, 2)->default(0.00);
+            $table->unsignedInteger('So_diem_su_dung')->default(0);
+            $table->decimal('Tien_giam_tu_diem', 12, 2)->default(0.00);
+            $table->decimal('Tong_tien', 12, 2)->default(0.00);
+            $table->enum('Trang_thai', ['Cho_thanh_toan', 'Cho_xac_nhan', 'Da_xac_nhan', 'Dang_giao', 'Hoan_thanh', 'Da_huy'])
+                ->default('Cho_thanh_toan');
+            $table->text('Ghi_chu')->nullable();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->index(['Ngay_dat', 'Trang_thai'], 'idx_dh_ngay_trang_thai');
+            $table->index(['Ma_nguoi_dung', 'Trang_thai', 'Ngay_dat'], 'idx_dh_user_trang_thai');
+            $table->foreign('Ma_nguoi_dung', 'fk_dh_nguoi_dung')
+                ->references('Ma_nguoi_dung')->on('nguoi_dung');
+            $table->foreign('Ma_dia_chi', 'fk_dh_dia_chi')
+                ->references('Ma_dia_chi')->on('dia_chi_giao_hang');
+            $table->foreign('Ma_nhan_vien_xac_nhan', 'fk_dh_nhan_vien')
+                ->references('Ma_nguoi_dung')->on('nguoi_dung');
+            $table->foreign('Ma_dang_ky_goi', 'fk_dh_dang_ky_goi')
+                ->references('Ma_dang_ky')->on('dang_ky_goi');
+            $table->foreign('Ma_don_goc', 'fk_dh_don_goc')
+                ->references('Ma_don_hang')->on('don_hang');
+        });
+
+        Schema::create('chi_tiet_don_hang', function (Blueprint $table) {
+            $table->id('Ma_ct_don_hang');
+            $table->unsignedBigInteger('Ma_don_hang');
+            $table->unsignedBigInteger('Ma_san_pham');
+            $table->unsignedBigInteger('Ma_ct_flash_sale')->nullable();
+            $table->decimal('So_luong', 10, 2);
+            $table->decimal('Don_gia', 12, 2);
+            $table->decimal('Thanh_tien', 12, 2);
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->foreign('Ma_don_hang', 'fk_ctdh_don_hang')
+                ->references('Ma_don_hang')->on('don_hang')->onDelete('cascade');
+            $table->foreign('Ma_san_pham', 'fk_ctdh_san_pham')
+                ->references('Ma_san_pham')->on('san_pham');
+            $table->foreign('Ma_ct_flash_sale', 'fk_ctdh_flash_sale')
+                ->references('Ma_ct_flash_sale')->on('chi_tiet_flash_sale');
+        });
+
+        Schema::create('phan_bo_lo_hang', function (Blueprint $table) {
+            $table->id('Ma_phan_bo');
+            $table->unsignedBigInteger('Ma_ct_don_hang');
+            $table->unsignedBigInteger('Ma_lo_hang');
+            $table->decimal('So_luong_xuat', 10, 2);
+            $table->dateTime('Ngay_xuat_kho')->useCurrent();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->foreign('Ma_ct_don_hang', 'fk_pblh_ct_don_hang')
+                ->references('Ma_ct_don_hang')->on('chi_tiet_don_hang')->onDelete('cascade');
+            $table->foreign('Ma_lo_hang', 'fk_pblh_lo_hang')
+                ->references('Ma_lo_hang')->on('lo_hang');
+        });
+
+        Schema::create('thanh_toan', function (Blueprint $table) {
+            $table->id('Ma_thanh_toan');
+            $table->unsignedBigInteger('Ma_don_hang')->nullable();
+            $table->unsignedBigInteger('Ma_dang_ky_goi')->nullable();
+            $table->enum('Phuong_thuc', ['ApiPay', 'Mien_phi_goi', 'Giao_bu'])->default('ApiPay');
+            $table->decimal('So_tien', 12, 2);
+            $table->enum('Trang_thai', ['Khoi_tao', 'Thanh_cong', 'That_bai', 'Da_hoan_tien'])->default('Khoi_tao');
+            $table->dateTime('Thoi_gian_thanh_toan')->nullable();
+            $table->string('Ma_giao_dich_apipay', 100)->nullable()->unique();
+            $table->string('Ma_yeu_cau_apipay', 100)->nullable()->unique();
+            $table->string('Noi_dung_thanh_toan', 100)->nullable()->unique();
+            $table->string('Ma_tham_chieu_ngan_hang', 100)->nullable();
+            $table->string('Duong_dan_thanh_toan', 500)->nullable();
+            $table->string('Ma_giao_dich_tham_chieu_cu', 100)->nullable();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->index(['Phuong_thuc', 'Trang_thai'], 'idx_tt_phuong_thuc_trang_thai');
+            $table->foreign('Ma_don_hang', 'fk_tt_don_hang')
+                ->references('Ma_don_hang')->on('don_hang');
+            $table->foreign('Ma_dang_ky_goi', 'fk_tt_dang_ky_goi')
+                ->references('Ma_dang_ky')->on('dang_ky_goi');
+        });
+
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE thanh_toan ADD CONSTRAINT chk_tt_doi_tuong CHECK (Ma_don_hang IS NOT NULL OR Ma_dang_ky_goi IS NOT NULL)');
+        }
+
+        Schema::create('giao_hang', function (Blueprint $table) {
+            $table->id('Ma_giao_hang');
+            $table->unsignedBigInteger('Ma_don_hang')->unique();
+            $table->unsignedBigInteger('Ma_nhan_vien_dieu_phoi');
+            $table->string('Don_vi_van_chuyen', 100)->nullable();
+            $table->string('Ma_van_don', 100)->nullable();
+            $table->enum('Trang_thai', ['Chuan_bi', 'Dang_giao', 'Giao_thanh_cong', 'Giao_that_bai'])->default('Chuan_bi');
+            $table->dateTime('Ngay_xuat_giao')->nullable();
+            $table->dateTime('Ngay_giao_thanh_cong')->nullable();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->foreign('Ma_don_hang', 'fk_ghang_don_hang')
+                ->references('Ma_don_hang')->on('don_hang')->onDelete('cascade');
+            $table->foreign('Ma_nhan_vien_dieu_phoi', 'fk_ghang_nhan_vien')
+                ->references('Ma_nguoi_dung')->on('nguoi_dung');
+        });
+
+        Schema::create('khieu_nai', function (Blueprint $table) {
+            $table->id('Ma_khieu_nai');
+            $table->unsignedBigInteger('Ma_don_hang');
+            $table->unsignedBigInteger('Ma_nguoi_dung');
+            $table->unsignedBigInteger('Ma_nhan_vien_xu_ly')->nullable();
+            $table->string('Ly_do', 255);
+            $table->text('Mo_ta_chi_tiet');
+            $table->enum('Hinh_thuc_xu_ly', ['Chua_xac_dinh', 'Hoan_tien', 'Giao_bu', 'Tu_choi'])->default('Chua_xac_dinh');
+            $table->enum('Trang_thai', ['Cho_xu_ly', 'Dang_xu_ly', 'Da_giai_quyet', 'Tu_choi'])->default('Cho_xu_ly');
+            $table->dateTime('Ngay_xu_ly')->nullable();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->index(['Trang_thai', 'created_at'], 'idx_kn_trang_thai_ngay');
+            $table->foreign('Ma_don_hang', 'fk_kn_don_hang')
+                ->references('Ma_don_hang')->on('don_hang');
+            $table->foreign('Ma_nguoi_dung', 'fk_kn_nguoi_dung')
+                ->references('Ma_nguoi_dung')->on('nguoi_dung');
+            $table->foreign('Ma_nhan_vien_xu_ly', 'fk_kn_nhan_vien')
+                ->references('Ma_nguoi_dung')->on('nguoi_dung');
+        });
+
+        Schema::table('don_hang', function (Blueprint $table) {
+            $table->foreign('Ma_khieu_nai', 'fk_dh_khieu_nai')
+                ->references('Ma_khieu_nai')->on('khieu_nai');
+        });
+
+        Schema::create('tep_bang_chung', function (Blueprint $table) {
+            $table->id('Ma_tep');
+            $table->unsignedBigInteger('Ma_khieu_nai');
+            $table->enum('Loai_tep', ['Hinh_anh', 'Video']);
+            $table->string('Duong_dan', 500);
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->foreign('Ma_khieu_nai', 'fk_tbc_khieu_nai')
+                ->references('Ma_khieu_nai')->on('khieu_nai')->onDelete('cascade');
+        });
+
+        Schema::create('hoan_tien', function (Blueprint $table) {
+            $table->id('Ma_hoan_tien');
+            $table->unsignedBigInteger('Ma_khieu_nai')->unique();
+            $table->unsignedBigInteger('Ma_thanh_toan');
+            $table->decimal('So_tien', 12, 2);
+            $table->enum('Trang_thai', ['Cho_xu_ly', 'Thanh_cong', 'That_bai'])->default('Cho_xu_ly');
+            $table->dateTime('Ngay_hoan')->nullable();
+            $table->string('Ma_giao_dich_hoan_tham_chieu_cu', 100)->nullable();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->foreign('Ma_khieu_nai', 'fk_ht_khieu_nai')
+                ->references('Ma_khieu_nai')->on('khieu_nai');
+            $table->foreign('Ma_thanh_toan', 'fk_ht_thanh_toan')
+                ->references('Ma_thanh_toan')->on('thanh_toan');
+        });
+
+        Schema::create('diem_tich_luy', function (Blueprint $table) {
+            $table->id('Ma_gd_diem');
+            $table->unsignedBigInteger('Ma_nguoi_dung');
+            $table->unsignedBigInteger('Ma_don_hang')->nullable();
+            $table->enum('Loai_giao_dich', ['Tich_diem', 'Su_dung', 'Hoan_diem']);
+            $table->integer('So_diem');
+            $table->string('Mo_ta', 255)->nullable();
+            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrent()->useCurrentOnUpdate();
+
+            $table->index('Ma_nguoi_dung', 'idx_dtl_nguoi_dung');
+            $table->foreign('Ma_nguoi_dung', 'fk_dtl_nguoi_dung')
+                ->references('Ma_nguoi_dung')->on('nguoi_dung');
+            $table->foreign('Ma_don_hang', 'fk_dtl_don_hang')
+                ->references('Ma_don_hang')->on('don_hang');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('diem_tich_luy');
+        Schema::dropIfExists('hoan_tien');
+        Schema::dropIfExists('tep_bang_chung');
+
+        if (Schema::hasTable('don_hang')) {
+            Schema::table('don_hang', function (Blueprint $table) {
+                $table->dropForeign('fk_dh_khieu_nai');
+            });
+        }
+
+        Schema::dropIfExists('khieu_nai');
+        Schema::dropIfExists('giao_hang');
+        Schema::dropIfExists('thanh_toan');
+        Schema::dropIfExists('phan_bo_lo_hang');
+        Schema::dropIfExists('chi_tiet_don_hang');
+        Schema::dropIfExists('don_hang');
+    }
+};

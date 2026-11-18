@@ -66,26 +66,38 @@ class ApiPayWebhookController extends Controller
             return response()->json(['message' => 'Invalid incoming transaction data.'], 400);
         }
 
-        $result = DB::transaction(function () use ($data): string {
+        // Trích xuất mã nội dung thanh toán DH<id>X<8 ký tự> từ nội dung chuyển khoản ngân hàng
+        if (! preg_match('/DH\d+X[A-Z0-9]{8}/i', $data['content'], $matches)) {
+            Log::warning('ApiPay webhook content did not contain a valid order reference.', [
+                'transaction_id' => $data['transactionId'],
+            ]);
+
+            return response()->json([
+                'received' => true,
+                'matched'  => false,
+            ]);
+        }
+
+        $referenceCode = strtoupper($matches[0]);
+
+        $result = DB::transaction(function () use ($data, $referenceCode): string {
             if (ThanhToan::query()->where('Ma_giao_dich_apipay', $data['transactionId'])->exists()) {
                 return 'duplicate';
             }
 
+            // Truy vấn trực tiếp theo mã tham chiếu để chỉ khóa đúng 1 bản ghi cần cập nhật
             $payment = ThanhToan::query()
                 ->where('Phuong_thuc', 'ApiPay')
                 ->where('Trang_thai', 'Khoi_tao')
                 ->whereNotNull('Ma_don_hang')
-                ->whereNotNull('Noi_dung_thanh_toan')
+                ->where('Noi_dung_thanh_toan', $referenceCode)
                 ->lockForUpdate()
-                ->get()
-                ->first(fn (ThanhToan $candidate): bool => stripos(
-                    $data['content'],
-                    $candidate->Noi_dung_thanh_toan
-                ) !== false);
+                ->first();
 
             if (! $payment) {
                 Log::warning('ApiPay webhook transaction did not match a pending order payment.', [
                     'transaction_id' => $data['transactionId'],
+                    'reference_code' => $referenceCode,
                 ]);
 
                 return 'unmatched';
@@ -94,19 +106,19 @@ class ApiPayWebhookController extends Controller
             if ((int) $data['amount'] !== (int) $payment->So_tien) {
                 Log::error('ApiPay webhook amount did not match the pending order payment.', [
                     'transaction_id' => $data['transactionId'],
-                    'payment_id' => $payment->Ma_thanh_toan,
+                    'payment_id'     => $payment->Ma_thanh_toan,
                 ]);
 
                 return 'amount_mismatch';
             }
 
             $payment->update([
-                'Ma_giao_dich_apipay' => $data['transactionId'],
+                'Ma_giao_dich_apipay'     => $data['transactionId'],
                 'Ma_tham_chieu_ngan_hang' => is_string($data['referenceCode'] ?? null)
                     ? $data['referenceCode']
                     : null,
-                'Trang_thai' => 'Thanh_cong',
-                'Thoi_gian_thanh_toan' => is_string($data['transactionDate'] ?? null)
+                'Trang_thai'              => 'Thanh_cong',
+                'Thoi_gian_thanh_toan'    => is_string($data['transactionDate'] ?? null)
                     && strtotime($data['transactionDate']) !== false
                     ? $data['transactionDate']
                     : now(),
@@ -124,7 +136,7 @@ class ApiPayWebhookController extends Controller
 
         return response()->json([
             'received' => true,
-            'matched' => in_array($result, ['processed', 'duplicate'], true),
+            'matched'  => in_array($result, ['processed', 'duplicate'], true),
         ]);
     }
 }

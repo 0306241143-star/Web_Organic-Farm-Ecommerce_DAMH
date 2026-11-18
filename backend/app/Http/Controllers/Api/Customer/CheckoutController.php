@@ -9,6 +9,7 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
 use App\Models\ThanhToan;
+use App\Traits\ApiResponse;
 use App\Services\ApiPayPaymentService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -66,15 +67,18 @@ class CheckoutController extends Controller
 
             $remotePayment = $apiPay->getPaymentRequest($existingPayment->Ma_yeu_cau_apipay);
 
-            if (($remotePayment['status'] ?? null) === 'ACTIVE' && ! empty($remotePayment['payUrl'])) {
-                return response()->json([
-                    'data' => [
+if (($remotePayment['status'] ?? null) === 'ACTIVE' && ! empty($remotePayment['payUrl'])) {
+                return $this->successResponse(
+                    message: 'Lấy liên kết thanh toán ApiPay hiện có thành công.',
+                    data: [
                         'payment_request_id' => $existingPayment->Ma_yeu_cau_apipay,
-                        'pay_url' => $remotePayment['payUrl'],
-                        'qr_url' => $remotePayment['qrUrl'] ?? null,
-                        'status' => $remotePayment['status'],
+                        'pay_url'            => $remotePayment['payUrl'],
+                        'qr_url'             => $remotePayment['qrUrl'] ?? null,
+                        'status'             => $remotePayment['status'],
+                        'expires_at'         => $remotePayment['expiresAt'] ?? null,
                     ],
-                ]);
+                    status: 200
+                );
             }
 
             if (in_array($remotePayment['status'] ?? null, ['EXPIRED', 'CANCELLED'], true)) {
@@ -145,14 +149,16 @@ class CheckoutController extends Controller
             'Duong_dan_thanh_toan' => $paymentRequest['pay_url'],
         ]);
 
-        return response()->json([
-            'data' => [
-                'payment_request_id' => $paymentRequest['public_id'],
-                'pay_url' => $paymentRequest['pay_url'],
-                'qr_url' => $paymentRequest['qr_url'],
-                'status' => $paymentRequest['status'],
-                'expires_at' => $paymentRequest['expires_at'],
-            ],
-        ], 201);
+            return $this->successResponse(
+                message: 'Khởi tạo yêu cầu thanh toán ApiPay thành công.',
+                data: [
+                    'payment_request_id' => $paymentRequest['public_id'],
+                    'pay_url'            => $paymentRequest['pay_url'],
+                    'qr_url'             => $paymentRequest['qr_url'],
+                    'status'             => $paymentRequest['status'],
+                    'expires_at'         => $paymentRequest['expires_at'],
+                ],
+                 status: 201
+        );
     }
 }
