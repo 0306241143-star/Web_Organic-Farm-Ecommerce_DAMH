@@ -144,6 +144,11 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::post('/cart/items', [\App\Http\Controllers\Api\Customer\CartController::class, 'store']);
     Route::put('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'update'])->whereNumber('productId');
     Route::delete('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'destroy'])->whereNumber('productId');
+    Route::get('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'addresses']);
+    Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
+    Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
+    Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
+    Route::get('/checkout/options', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'options']);
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
 });
 
