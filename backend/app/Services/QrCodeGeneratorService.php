@@ -39,8 +39,8 @@ class QrCodeGeneratorService
      */
     public function buildTraceUrl(string $qrCode): string
     {
-        $baseUrl = config('app.url', 'http://localhost:5173');
-
+        $baseUrl = env('FRONTEND_URL', 'http://localhost:5173');
+    
         return rtrim($baseUrl, '/') . '/trace/' . urlencode($qrCode);
     }
 
