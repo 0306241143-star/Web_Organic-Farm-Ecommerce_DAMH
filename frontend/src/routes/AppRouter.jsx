@@ -5,6 +5,7 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import StorefrontLayout from "../layouts/StorefrontLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
+import CatalogManagePage from "../pages/admin/CatalogManagePage";
 
 // Lazy-loaded pages for bundle splitting & ultra-fast initial page loads
 const AdminDashboardPage = lazy(() => import("../pages/admin/AdminDashboardPage"));
@@ -78,8 +79,10 @@ export default function AppRouter() {
               </Route>
               <Route element={<RoleGuard roles={["admin"]} />}>
                 <Route path="admin" element={<AdminDashboardPage />} />
+                <Route path="admin/catalog" element={<CatalogManagePage />} />
                 <Route path="admin/users" element={<UserManagementPage />} />
                 <Route path="admin/settings" element={<SystemSettingsPage />} />
+
               </Route>
             </Route>
           </Route>

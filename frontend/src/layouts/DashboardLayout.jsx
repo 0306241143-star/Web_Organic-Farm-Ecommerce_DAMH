@@ -1,6 +1,7 @@
 /* Shared dashboard frame for farm staff, sales, and administrators. */
 import { useEffect, useRef, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
+import { Store } from "lucide-react";
 import {
   ChevronDown,
   LogOut,
@@ -137,16 +138,23 @@ export default function DashboardLayout() {
                     </div>
                   )}
 
-                  <div className="pt-1 border-t border-[#c0c9bb]/20">
+                  <div className="py-1.5 border-t border-slate-100 space-y-1">
+                    <Link
+                      to="/"
+                      onClick={() => setIsProfileOpen(false)} // đổi theo tên state đóng dropdown của bạn nếu có
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] font-bold text-[#00450d] hover:bg-emerald-50 transition-colors"
+                    >
+                      <Store className="w-4 h-4 shrink-0 text-[#006e1c]" />
+                      <span>Về trang cửa hàng</span>
+                    </Link>
+
+                    {/* Nút Đăng xuất hiện có của bạn ở ngay bên dưới */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        logout();
-                      }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-[12.5px] font-bold text-red-600 hover:bg-red-50 text-left cursor-pointer"
+                      onClick={logout}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                     >
-                      <LogOut className="w-4 h-4 text-red-600" />
+                      <LogOut className="w-4 h-4 shrink-0" />
                       <span>Đăng xuất</span>
                     </button>
                   </div>

@@ -9,6 +9,7 @@ import {
   Headphones,
   LogOut,
   MapPin,
+  PackageSearch,
   Receipt,
   Settings,
   Sprout,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { farmApi } from "../../services/farmApi";
+import { adminApi } from "../../services/adminApi";
 
 export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
   const { user, logout } = useAuth();
@@ -124,6 +126,11 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
               icon: BarChart3,
             },
             {
+              to: "/admin/catalog",
+              label: "Danh mục & Sản phẩm",
+              icon: PackageSearch,
+            },
+            {
               to: "/admin/users",
               label: "Quản lý tài khoản",
               icon: Users,
@@ -182,6 +189,11 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
         break;
       case "/admin":
         import("../../pages/admin/AdminDashboardPage").catch(() => {});
+        break;
+      case "/admin/catalog":
+        import("../../pages/admin/CatalogManagePage").catch(() => {});
+        adminApi.getCategories?.().catch(() => {});
+        adminApi.getProducts?.().catch(() => {});
         break;
       case "/admin/users":
         import("../../pages/admin/UserManagementPage").catch(() => {});
