@@ -23,6 +23,43 @@ import {
   notifyApiErrorToast,
 } from "../../../services/axiosClient";
 
+async function compressImageClient(file) {
+  if (!file || !file.type.startsWith("image/") || file.size <= 300 * 1024) {
+    return file;
+  }
+
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+    const maxW = 1200;
+    let { width, height } = bitmap;
+
+    if (width > maxW) {
+      height = Math.round((height * maxW) / width);
+      width = maxW;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/webp", 0.8)
+    );
+
+    if (!blob || blob.size >= file.size) return file;
+
+    const webpName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+    return new File([blob], webpName, { type: "image/webp" });
+  } catch {
+    return file;
+  } finally {
+    bitmap?.close();
+  }
+}
+
 function getDistinctCropName(plotName, prodName) {
   const cleanPlot = (plotName || "").trim();
   const cleanProd = (prodName || "").trim();
@@ -188,7 +225,8 @@ export default function AddFarmingLogModal({
       formData.append("Thoi_gian_thuc_hien", actionTime);
       formData.append("Noi_dung", content.trim());
 
-      selectedFiles.forEach((file) => {
+      const uploadFiles = await Promise.all(selectedFiles.map(compressImageClient));
+      uploadFiles.forEach((file) => {
         formData.append("media[]", file);
       });
 

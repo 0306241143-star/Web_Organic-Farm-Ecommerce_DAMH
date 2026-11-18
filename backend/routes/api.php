@@ -190,4 +190,18 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::put('/users/{id}/status', [\App\Http\Controllers\Api\Admin\UserRoleController::class, 'updateStatus']);
     Route::get('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'index']);
     Route::put('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'update']);
+
+    // Quản lý danh mục nông sản (Admin)
+    Route::get('/categories', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'index']);
+    Route::post('/categories', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'store']);
+    Route::put('/categories/{id}', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'update']);
+    Route::patch('/categories/{id}/status', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'updateStatus']);
+    Route::delete('/categories/{id}', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'destroy']);
+
+    // Quản lý danh sách sản phẩm nông sản (Admin)
+    Route::get('/products', [\App\Http\Controllers\Api\Admin\ProductController::class, 'index']);
+    Route::post('/products', [\App\Http\Controllers\Api\Admin\ProductController::class, 'store']);
+    Route::put('/products/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'update']);
+    Route::patch('/products/{id}/status', [\App\Http\Controllers\Api\Admin\ProductController::class, 'updateStatus']);
+    Route::delete('/products/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'destroy']);
 });

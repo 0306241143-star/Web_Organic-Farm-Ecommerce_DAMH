@@ -7,6 +7,12 @@ use Tests\TestCase;
 
 class ApiIntegrationTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_api_response_contract_and_http_error_statuses(): void
     {
         $this->getJson('/api/ping')
@@ -355,6 +361,7 @@ class ApiIntegrationTest extends TestCase
 
     public function test_public_catalog_categories_products_search_and_filters_flow(): void
     {
+        $this->travelTo('2026-11-14 12:00:00');
         \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
 
         // 1. Lấy danh sách danh mục công khai (không cần đăng nhập)

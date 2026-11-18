@@ -13,6 +13,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -25,9 +26,11 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $allProducts = $this->loadActiveProducts()
-            ->map(fn (SanPham $product) => $this->formatProduct($product))
-            ->values();
+        $allProducts = Cache::remember('public_catalog_products_v1', 120, function (): Collection {
+            return $this->loadActiveProducts()
+                ->map(fn (SanPham $product) => $this->formatProduct($product))
+                ->values();
+        });
 
         $facets = $this->buildCatalogFacets($allProducts);
         $filtered = $this->applyFilters($allProducts, $request);
