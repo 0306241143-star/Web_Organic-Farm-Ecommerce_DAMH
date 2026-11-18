@@ -36,6 +36,7 @@ class BatchController extends Controller
             'nhanVienPhuTrach:Ma_nguoi_dung,Ho_ten',
             'maQrTruyXuat',
             'bienDongKhos',
+            'chungNhans',
         ])->latest('created_at');
 
         // Tìm kiếm theo từ khóa: mã lô, tên lô, tên nông sản, mã QR
@@ -232,6 +233,13 @@ class BatchController extends Controller
             ];
         });
 
+        // Bổ sung chứng nhận & kết quả kiểm định gắn vào lô hàng
+        $certController = app(CertificateController::class);
+        $formatted['certificates'] = $batch->chungNhans
+            ->sortByDesc('Ma_chung_nhan')
+            ->values()
+            ->map(fn ($cert) => $certController->formatCertificateResource($cert));
+
         return $this->successResponse(
             message: 'Lấy thông tin chi tiết lô hàng thu hoạch thành công.',
             data: $formatted
@@ -427,6 +435,7 @@ class BatchController extends Controller
             'status'               => $batch->Trang_thai,
             'status_label'         => $statusLabel,
             'qr'                   => $qr,
+            'certificates_count'   => $batch->relationLoaded('chungNhans') ? $batch->chungNhans->count() : $batch->chungNhans()->count(),
             'wastage_total'        => (float) $batch->bienDongKhos->sum('So_luong'),
             'created_at'           => $batch->created_at?->toISOString(),
         ];

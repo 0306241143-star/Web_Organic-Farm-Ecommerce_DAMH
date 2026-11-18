@@ -1,4 +1,4 @@
-/* Shared footer for storefront pages (CV04.1). */
+/* Shared footer for storefront pages. */
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {

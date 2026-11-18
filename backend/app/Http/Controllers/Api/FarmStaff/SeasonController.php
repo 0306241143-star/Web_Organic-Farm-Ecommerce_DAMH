@@ -371,29 +371,9 @@ class SeasonController extends Controller
             ], 404);
         }
 
-        // Kiểm tra xem các lô hàng thuộc mùa vụ này đã có dữ liệu phân bổ, kho hoặc Flash Sale chưa
-        $linkedReason = null;
-        foreach ($season->loCanhTacs as $plot) {
-            foreach ($plot->loHangs as $batch) {
-                $batchId = $batch->Ma_lo_hang;
-                if (\Illuminate\Support\Facades\DB::table('chi_tiet_don_hang')->where('Ma_lo_hang', $batchId)->exists()) {
-                    $linkedReason = 'đã phát sinh chi tiết đơn bán cho khách hàng';
-                    break 2;
-                }
-                if (\Illuminate\Support\Facades\DB::table('phan_bo_lo_hang')->where('Ma_lo_hang', $batchId)->exists()) {
-                    $linkedReason = 'đã được hệ thống phân bổ kho (FEFO) cho các đơn hàng';
-                    break 2;
-                }
-                if (\Illuminate\Support\Facades\DB::table('chi_tiet_flash_sale')->where('Ma_lo_hang', $batchId)->exists()) {
-                    $linkedReason = 'đang được gán trong chương trình khuyến mãi Flash Sale';
-                    break 2;
-                }
-                if (\Illuminate\Support\Facades\DB::table('bien_dong_kho')->where('Ma_lo_hang', $batchId)->exists()) {
-                    $linkedReason = 'đã có phiếu biến động xuất nhập kho ghi nhận';
-                    break 2;
-                }
-            }
-        }
+        // Kiểm tra xem các lô hàng thuộc mùa vụ này đã phát sinh đơn hàng, Flash Sale hoặc biến động kho chưa
+        $allBatches = $season->loCanhTacs->flatMap(fn ($plot) => $plot->loHangs);
+        $linkedReason = $this->findLinkedBatchReason($allBatches);
 
         if ($linkedReason) {
             return response()->json([
@@ -408,16 +388,7 @@ class SeasonController extends Controller
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($season) {
             foreach ($season->loCanhTacs as $plot) {
-                foreach ($plot->nhatKyCanhTacs as $log) {
-                    $log->tepNhatKys()->delete();
-                    $log->delete();
-                }
-                foreach ($plot->loHangs as $batch) {
-                    $batch->maQrTruyXuat()->delete();
-                    $batch->bienDongKhos()->delete();
-                    $batch->delete();
-                }
-                $plot->delete();
+                $this->deletePlotCascade($plot);
             }
             $season->delete();
         });
@@ -448,22 +419,66 @@ class SeasonController extends Controller
             ], 404);
         }
 
+        $linkedReason = $this->findLinkedBatchReason($plot->loHangs);
+        if ($linkedReason) {
+            return response()->json([
+                'success'    => false,
+                'message'    => "Không thể xóa lô canh tác này vì {$linkedReason}.",
+                'error_code' => self::ERR_CONFLICT,
+                'data'       => null,
+                'meta'       => null,
+                'errors'     => null,
+            ], 409);
+        }
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($plot) {
-            foreach ($plot->nhatKyCanhTacs as $log) {
-                $log->tepNhatKys()->delete();
-                $log->delete();
-            }
-            foreach ($plot->loHangs as $batch) {
-                $batch->maQrTruyXuat()->delete();
-                $batch->bienDongKhos()->delete();
-                $batch->delete();
-            }
-            $plot->delete();
+            $this->deletePlotCascade($plot);
         });
 
         Cache::forget('farm_seasons_all');
 
         return $this->successResponse(message: 'Xóa lô canh tác thành công.');
+    }
+
+    /**
+     * Kiểm tra các ràng buộc dữ liệu bán hàng / Flash Sale / kho trên danh sách lô hàng thu hoạch.
+     */
+    private function findLinkedBatchReason($batches): ?string
+    {
+        foreach ($batches as $batch) {
+            $batchId = $batch->Ma_lo_hang;
+            if (\Illuminate\Support\Facades\DB::table('phan_bo_lo_hang')->where('Ma_lo_hang', $batchId)->exists()) {
+                return 'lô hàng thu hoạch đã được phân bổ xuất kho (FEFO) cho đơn hàng của khách';
+            }
+            if (\Illuminate\Support\Facades\DB::table('chi_tiet_flash_sale')->where('Ma_lo_hang', $batchId)->exists()) {
+                return 'lô hàng thu hoạch đang được áp dụng trong chương trình Flash Sale';
+            }
+            if (\Illuminate\Support\Facades\DB::table('bien_dong_kho')->where('Ma_lo_hang', $batchId)->exists()) {
+                return 'lô hàng thu hoạch đã có phiếu ghi nhận hao hụt / biến động kho';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Dọn dẹp an toàn dữ liệu con (nhật ký, tệp đính kèm, QR, chứng nhận, lô hàng) trước khi xóa lô canh tác.
+     */
+    private function deletePlotCascade(LoCanhTac $plot): void
+    {
+        foreach ($plot->nhatKyCanhTacs as $log) {
+            $log->tepNhatKys()->delete();
+            $log->delete();
+        }
+        foreach ($plot->loHangs as $batch) {
+            $batch->maQrTruyXuat()->delete();
+            $batch->bienDongKhos()->delete();
+            // Gỡ liên kết lô hàng trên chứng nhận (hoặc xóa nếu chỉ gắn riêng lô) để không vướng khóa ngoại fk_cn_lo_hang
+            $batch->chungNhans()->whereNotNull('Ma_san_pham')->update(['Ma_lo_hang' => null]);
+            $batch->chungNhans()->whereNull('Ma_san_pham')->delete();
+            $batch->delete();
+        }
+        $plot->delete();
     }
 
     /**

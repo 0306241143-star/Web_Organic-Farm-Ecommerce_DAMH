@@ -1,4 +1,4 @@
-/* Shared dashboard frame for farm staff, sales, and administrators (CV04.2). */
+/* Shared dashboard frame for farm staff, sales, and administrators. */
 import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import {

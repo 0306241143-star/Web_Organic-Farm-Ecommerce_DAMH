@@ -158,6 +158,12 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::post('/batches/{id}/wastage', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'recordWastage']);
     Route::post('/batches/{id}/qr', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'generate']);
     Route::get('/batches/{id}/qr-print', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'printTemplate']);
+
+    // Quản lý chứng nhận chất lượng & kết quả kiểm định gắn vào lô hàng
+    Route::get('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'index']);
+    Route::post('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'store']);
+    Route::put('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'update']);
+    Route::delete('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'destroy']);
 });
 
 // Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)

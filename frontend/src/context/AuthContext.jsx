@@ -1,4 +1,4 @@
-/* Provides authentication session state and actions to the application (RBAC - CV04.6). */
+/* Provides authentication session state and actions to the application (RBAC - ). */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import AuthContext from "./authStateContext";
 import { authApi } from "../services/authApi";

@@ -1,4 +1,4 @@
-/* Password recovery and reset page using Mailpit email delivery (CV04.5). */
+/* Password recovery and reset page using Mailpit email delivery. */
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {

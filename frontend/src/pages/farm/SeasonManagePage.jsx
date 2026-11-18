@@ -1,5 +1,5 @@
 /* Farm season and cultivation-log management page. */
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Calendar,
   Sprout,
@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
+  Check,
   X,
   Loader2,
   FileText,
@@ -17,8 +19,145 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { farmApi } from "../../services/farmApi";
+import { showGlobalToast, confirmGlobalDialog } from "../../components/GlobalToast";
 import FarmingLogTimeline from "../../components/farm/FarmingLogTimeline";
 import AddFarmingLogModal from "../../components/farm/modals/AddFarmingLogModal";
+import CreateBatchModal from "../../components/farm/modals/CreateBatchModal";
+
+function ProductSelectDropdown({
+  products = [],
+  value,
+  onChange,
+  placeholder = "Chọn loại rau / củ / quả",
+  labelId,
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    const handleEsc = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [isOpen]);
+
+  const selectedProduct = products.find((p) => String(p.id) === String(value));
+  const filtered = query.trim()
+    ? products.filter((p) =>
+        (p.name || "").toLowerCase().includes(query.trim().toLowerCase())
+      )
+    : products;
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        aria-labelledby={labelId}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => {
+          setIsOpen((prev) => !prev);
+          setQuery("");
+        }}
+        className={`w-full min-w-0 px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs sm:text-sm text-left flex items-center justify-between gap-2 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+          isOpen
+            ? "bg-white border-emerald-500 ring-2 ring-emerald-500/20"
+            : "border-slate-300 hover:border-slate-400 hover:bg-white"
+        }`}
+      >
+        <span
+          className={`truncate flex-1 min-w-0 ${
+            selectedProduct ? "font-semibold text-slate-800" : "text-slate-500"
+          }`}
+        >
+          {selectedProduct ? `${selectedProduct.name} (${selectedProduct.unit})` : placeholder}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-150 ${
+            isOpen ? "rotate-180 text-emerald-600" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          role="listbox"
+          aria-labelledby={labelId}
+          className="absolute left-0 right-0 top-full mt-1.5 z-30 w-full max-w-full bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-900/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        >
+          {products.length > 6 && (
+            <div className="p-2 border-b border-slate-100">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Tìm nhanh nông sản..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="max-h-52 overflow-y-auto overflow-x-hidden p-1.5 space-y-0.5">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-slate-500">
+                Không tìm thấy nông sản phù hợp.
+              </div>
+            ) : (
+              filtered.map((p) => {
+                const isSelected = String(value) === String(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(String(p.id));
+                      setIsOpen(false);
+                    }}
+                    className={`w-full min-w-0 text-left px-3 py-2 rounded-xl flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                      isSelected
+                        ? "bg-emerald-50 text-emerald-950 font-semibold"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="text-xs sm:text-[13px] break-words min-w-0 flex-1 leading-snug">
+                      {p.name}
+                    </span>
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10.5px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                        {p.unit}
+                      </span>
+                      {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SeasonManagePage() {
   const [seasons, setSeasons] = useState(() => {
@@ -40,6 +179,26 @@ export default function SeasonManagePage() {
   const [isAddSeasonOpen, setIsAddSeasonOpen] = useState(false);
   const [isAddPlotOpen, setIsAddPlotOpen] = useState(false);
   const [activeSeasonForPlot, setActiveSeasonForPlot] = useState(null);
+
+  // Batch Harvest Modal state
+  const [isCreateBatchOpen, setIsCreateBatchOpen] = useState(false);
+  const [batchInitialPlot, setBatchInitialPlot] = useState(null);
+  const [batchInitialDate, setBatchInitialDate] = useState(null);
+  const [batchInitialLog, setBatchInitialLog] = useState(null);
+
+  const handleOpenCreateBatchFromLog = (log) => {
+    const plotObj = allPlots.find((p) => String(p.id) === String(log.plot_id)) || {
+      id: log.plot_id,
+      plot_name: log.plot_name,
+      product_name: log.product_name,
+      product_unit: log.product_unit,
+      season_name: log.season_name,
+    };
+    setBatchInitialPlot(plotObj);
+    setBatchInitialDate(log.action_time ? log.action_time.slice(0, 10) : null);
+    setBatchInitialLog(log);
+    setIsCreateBatchOpen(true);
+  };
 
   // Form state thêm mùa vụ mới
   const [seasonForm, setSeasonForm] = useState({
@@ -86,12 +245,19 @@ export default function SeasonManagePage() {
   const [farmSubmitting, setFarmSubmitting] = useState(false);
   const [farmError, setFarmError] = useState("");
 
-  // Notification Toast
-  const [toastMsg, setToastMsg] = useState("");
+  // Thông báo nổi dùng chung toàn hệ thống (top-center)
+  const showToast = (msg, type = "success") => {
+    showGlobalToast(msg, type);
+  };
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 4000);
+  // Tránh hiện 2 toast chồng nhau khi axiosClient đã tự thông báo cho lỗi mạng / 5xx / 401-405 / 429
+  const showApiErrorToast = (fallbackPrefix, err) => {
+    const status = err?.status ?? err?.response?.status;
+    if (status === 0 || status >= 500 || [401, 403, 404, 405, 429].includes(status)) {
+      return;
+    }
+    const msg = err?.response?.data?.message || err?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
+    showGlobalToast(msg.startsWith("Không thể") ? msg : `${fallbackPrefix}: ${msg}`, "error");
   };
 
   // Tải thông tin cơ sở nông trại
@@ -111,10 +277,10 @@ export default function SeasonManagePage() {
   }, []);
 
   // Tải danh sách mùa vụ
-  const fetchSeasons = useCallback(async () => {
+  const fetchSeasons = useCallback(async (force = true) => {
     try {
       setLoading(true);
-      const res = await farmApi.getSeasons();
+      const res = await farmApi.getSeasons(null, force);
       const seasonData = res.data?.data || res.data || [];
       setSeasons(Array.isArray(seasonData) ? seasonData : []);
     } catch (err) {
@@ -173,6 +339,16 @@ export default function SeasonManagePage() {
     }))
   );
 
+  // Tự động đồng bộ selectedPlot khi allPlots cập nhật (ví dụ sau khi tạo lô thu hoạch, trạng thái đổi sang Da_thu_hoach)
+  useEffect(() => {
+    if (selectedPlot) {
+      const freshPlot = allPlots.find((p) => String(p.id) === String(selectedPlot.id));
+      if (freshPlot && freshPlot.status !== selectedPlot.status) {
+        setSelectedPlot(freshPlot);
+      }
+    }
+  }, [allPlots, selectedPlot]);
+
   // Xử lý tạo Mùa vụ mới
   const handleCreateSeason = async (e) => {
     e.preventDefault();
@@ -194,7 +370,7 @@ export default function SeasonManagePage() {
       setSeasonForm({ name: "", start_date: "", end_date: "" });
       fetchSeasons();
     } catch (err) {
-      setSeasonError(err?.response?.data?.message || "Không thể tạo mùa vụ. Vui lòng thử lại.");
+      setSeasonError(err?.message || err?.response?.data?.message || "Không thể tạo mùa vụ. Vui lòng thử lại.");
     } finally {
       setSeasonSubmitting(false);
     }
@@ -221,7 +397,7 @@ export default function SeasonManagePage() {
       setPlotForm({ product_id: "", plot_name: "", area_m2: "", planting_date: "" });
       fetchSeasons();
     } catch (err) {
-      setPlotError(err?.response?.data?.message || "Không thể thêm lô canh tác. Vui lòng kiểm tra lại.");
+      setPlotError(err?.message || err?.response?.data?.message || "Không thể thêm lô canh tác. Vui lòng kiểm tra lại.");
     } finally {
       setPlotSubmitting(false);
     }
@@ -259,7 +435,7 @@ export default function SeasonManagePage() {
       setIsEditFarmModalOpen(false);
       window.dispatchEvent(new CustomEvent("farm-info-updated", { detail: updated }));
     } catch (err) {
-      setFarmError(err?.response?.data?.message || "Không thể cập nhật địa chỉ cơ sở.");
+      setFarmError(err?.message || err?.response?.data?.message || "Không thể cập nhật địa chỉ cơ sở.");
     } finally {
       setFarmSubmitting(false);
     }
@@ -267,7 +443,14 @@ export default function SeasonManagePage() {
 
   // Xóa nhật ký canh tác
   const handleDeleteLog = async (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bản ghi nhật ký này?")) return;
+    const confirmed = await confirmGlobalDialog({
+      title: "Xóa bản ghi nhật ký?",
+      message: "Bạn có chắc chắn muốn xóa bản ghi nhật ký canh tác này? Thao tác này không thể hoàn tác.",
+      confirmLabel: "Xóa Nhật Ký",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
     try {
       await farmApi.deleteFarmingLog(id);
       showToast("Đã xóa nhật ký canh tác.");
@@ -275,17 +458,24 @@ export default function SeasonManagePage() {
         fetchLogs(selectedPlot.id);
       }
     } catch (err) {
-      alert("Không thể xóa nhật ký: " + (err?.response?.data?.message || "Lỗi hệ thống"));
+      showApiErrorToast("Không thể xóa nhật ký", err);
     }
   };
 
   // Xóa mùa vụ
   const handleDeleteSeason = async (season) => {
-    const confirmText = season.plots && season.plots.length > 0
-      ? `Mùa vụ "${season.name}" hiện đang có ${season.plots.length} lô canh tác. Bạn có chắc chắn muốn xóa không?`
-      : `Bạn có chắc chắn muốn xóa mùa vụ "${season.name}" không?`;
+    const confirmText =
+      season.plots && season.plots.length > 0
+        ? `Mùa vụ "${season.name}" hiện đang có ${season.plots.length} lô canh tác. Bạn có chắc chắn muốn xóa toàn bộ không?`
+        : `Bạn có chắc chắn muốn xóa mùa vụ "${season.name}" không?`;
 
-    if (!window.confirm(confirmText)) return;
+    const confirmed = await confirmGlobalDialog({
+      title: "Xóa mùa vụ canh tác?",
+      message: confirmText,
+      confirmLabel: "Xóa Mùa Vụ",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       await farmApi.deleteSeason(season.id);
@@ -296,7 +486,7 @@ export default function SeasonManagePage() {
         setLogs([]);
       }
     } catch (err) {
-      alert("Không thể xóa mùa vụ: " + (err?.response?.data?.message || "Lỗi hệ thống"));
+      showApiErrorToast("Không thể xóa mùa vụ", err);
     }
   };
 
@@ -305,20 +495,32 @@ export default function SeasonManagePage() {
     const nextStatus = season.status === "Dang_dien_ra" ? "Da_ket_thuc" : "Dang_dien_ra";
     const label = nextStatus === "Da_ket_thuc" ? "kết thúc mùa vụ" : "kích hoạt lại mùa vụ";
 
-    if (!window.confirm(`Bạn có chắc chắn muốn ${label} "${season.name}"?`)) return;
+    const confirmed = await confirmGlobalDialog({
+      title: nextStatus === "Da_ket_thuc" ? "Kết thúc mùa vụ?" : "Kích hoạt lại mùa vụ?",
+      message: `Bạn có chắc chắn muốn ${label} "${season.name}"?`,
+      confirmLabel: nextStatus === "Da_ket_thuc" ? "Kết Thúc Vụ" : "Kích Hoạt Lại",
+      variant: nextStatus === "Da_ket_thuc" ? "warning" : "primary",
+    });
+    if (!confirmed) return;
 
     try {
       await farmApi.updateSeason(season.id, { status: nextStatus });
       showToast(`Đã ${label} thành công!`);
       fetchSeasons();
     } catch (err) {
-      alert("Không thể cập nhật trạng thái mùa vụ: " + (err?.response?.data?.message || "Lỗi hệ thống"));
+      showApiErrorToast("Không thể cập nhật trạng thái mùa vụ", err);
     }
   };
 
   // Xóa lô canh tác trong mùa vụ
   const handleDeletePlot = async (seasonId, plot) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa lô "${plot.plot_name}" không?`)) return;
+    const confirmed = await confirmGlobalDialog({
+      title: "Xóa lô canh tác?",
+      message: `Bạn có chắc chắn muốn xóa lô "${plot.plot_name}"? Dữ liệu nhật ký và lô liên quan sẽ bị gỡ bỏ.`,
+      confirmLabel: "Xóa Lô Đất",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       await farmApi.deletePlot(seasonId, plot.id);
@@ -329,7 +531,7 @@ export default function SeasonManagePage() {
         setLogs([]);
       }
     } catch (err) {
-      alert("Không thể xóa lô canh tác: " + (err?.response?.data?.message || "Lỗi hệ thống"));
+      showApiErrorToast("Không thể xóa lô canh tác", err);
     }
   };
 
@@ -375,7 +577,7 @@ export default function SeasonManagePage() {
       setIsEditPlotOpen(false);
       fetchSeasons();
     } catch (err) {
-      setEditPlotError(err?.response?.data?.message || "Không thể cập nhật lô canh tác. Vui lòng thử lại.");
+      setEditPlotError(err?.message || err?.response?.data?.message || "Không thể cập nhật lô canh tác. Vui lòng thử lại.");
     } finally {
       setEditPlotSubmitting(false);
     }
@@ -387,14 +589,6 @@ export default function SeasonManagePage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Toast Notification */}
-      {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-bottom duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
       {/* Top Banner & Quick Stats */}
       <div className="bg-[#064e2e] rounded-3xl p-6 sm:p-7 text-white shadow-sm border border-[#0a5c37] relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -880,6 +1074,7 @@ export default function SeasonManagePage() {
                 loading={logsLoading}
                 onDeleteLog={handleDeleteLog}
                 selectedPlot={selectedPlot}
+                onCreateBatch={handleOpenCreateBatchFromLog}
               />
             </div>
           )}
@@ -897,6 +1092,21 @@ export default function SeasonManagePage() {
         }}
         plots={allPlots}
         defaultPlotId={selectedPlot?.id || null}
+      />
+
+      {/* Modal: Tạo Lô Hàng Thu Hoạch (CreateBatchModal - Trỏ từ mốc Thu hoạch ) */}
+      <CreateBatchModal
+        isOpen={isCreateBatchOpen}
+        onClose={() => setIsCreateBatchOpen(false)}
+        onSuccess={(newBatch) => {
+          showToast(`Đã tạo lô hàng thu hoạch #${newBatch?.batch_code || newBatch?.id} thành công!`);
+          fetchLogs(selectedPlot?.id || null);
+          fetchSeasons();
+        }}
+        initialPlot={batchInitialPlot}
+        initialHarvestDate={batchInitialDate}
+        initialHarvestLog={batchInitialLog}
+        plots={allPlots}
       />
 
       {/* Modal: Thêm Mùa Vụ Mới */}
@@ -1027,22 +1237,19 @@ export default function SeasonManagePage() {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label
+                  id="add-plot-product-label"
+                  className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
+                >
                   Chọn Loại Nông Sản Gieo Trồng <span className="text-red-500">*</span>
                 </label>
-                <select
+                <ProductSelectDropdown
+                  products={products}
                   value={plotForm.product_id}
-                  onChange={(e) => setPlotForm({ ...plotForm, product_id: e.target.value })}
-                  className="w-full max-w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
-                  required
-                >
-                  <option value="">-- Chọn loại rau / củ / quả --</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id} title={`${p.name} (${p.unit})`}>
-                      {p.name?.length > 36 ? p.name.slice(0, 33) + "..." : p.name} ({p.unit})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setPlotForm({ ...plotForm, product_id: val })}
+                  placeholder="Chọn loại rau / củ / quả"
+                  labelId="add-plot-product-label"
+                />
               </div>
 
               <div>
@@ -1165,7 +1372,7 @@ export default function SeasonManagePage() {
                   </span>
                 </div>
                 <p className="text-[10.5px] sm:text-[11px] text-emerald-800 mt-1.5">
-                  💡 Thay đổi diện tích lô sẽ tự động đồng bộ lại tổng diện tích toàn mùa vụ.
+                  Thay đổi diện tích lô sẽ tự động đồng bộ lại tổng diện tích toàn mùa vụ.
                 </p>
               </div>
 
@@ -1183,47 +1390,59 @@ export default function SeasonManagePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label
+                  id="edit-plot-product-label"
+                  className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
+                >
                   Loại Nông Sản Giống Trồng
                 </label>
-                <select
+                <ProductSelectDropdown
+                  products={products}
                   value={editPlotForm.product_id}
-                  onChange={(e) => setEditPlotForm({ ...editPlotForm, product_id: e.target.value })}
-                  className="w-full max-w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all truncate"
-                >
-                  <option value="">-- Giữ nguyên hoặc chọn loại khác --</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id} title={`${p.name} (${p.unit})`}>
-                      {p.name?.length > 36 ? p.name.slice(0, 33) + "..." : p.name} ({p.unit})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setEditPlotForm({ ...editPlotForm, product_id: val })}
+                  placeholder="Giữ nguyên hoặc chọn loại khác"
+                  labelId="edit-plot-product-label"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Ngày Gieo Trồng
                   </label>
                   <input
                     type="date"
                     value={editPlotForm.planting_date}
                     onChange={(e) => setEditPlotForm({ ...editPlotForm, planting_date: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 tabular-nums focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Trạng Thái Lô
                   </label>
-                  <select
-                    value={editPlotForm.status}
-                    onChange={(e) => setEditPlotForm({ ...editPlotForm, status: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
-                  >
-                    <option value="Dang_canh_tac">Đang canh tác</option>
-                    <option value="Da_thu_hoach">Đã thu hoạch</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
+                    {[
+                      { value: "Dang_canh_tac", label: "Đang canh tác" },
+                      { value: "Da_thu_hoach", label: "Đã thu hoạch" },
+                    ].map((opt) => {
+                      const active = editPlotForm.status === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setEditPlotForm({ ...editPlotForm, status: opt.value })}
+                          className={`px-2.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer truncate ${
+                            active
+                              ? "bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-200"
+                              : "text-slate-600 hover:text-slate-800"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </form>

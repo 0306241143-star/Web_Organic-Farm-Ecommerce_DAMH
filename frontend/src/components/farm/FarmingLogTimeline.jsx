@@ -1,5 +1,6 @@
 /* Timeline of sowing, fertilizing, watering, and harvest events. */
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Sprout,
   Droplets,
@@ -15,6 +16,8 @@ import {
   Filter,
   Check,
   ChevronDown,
+  PackageCheck,
+  ExternalLink,
 } from "lucide-react";
 
 export default function FarmingLogTimeline({
@@ -22,6 +25,7 @@ export default function FarmingLogTimeline({
   loading = false,
   onDeleteLog,
   selectedPlot = null,
+  onCreateBatch = null,
 }) {
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -273,6 +277,45 @@ export default function FarmingLogTimeline({
                     <p className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line bg-white/90 p-3 sm:p-3.5 rounded-xl border border-slate-200/50">
                       {log.content}
                     </p>
+
+                    {/* Mốc thu hoạch: Trỏ tạo lô hàng thu hoạch */}
+                    {log.activity_type === "Thu_hoach" && (
+                      <div className="mt-3 p-3 rounded-xl bg-purple-50/70 border border-purple-200/80 flex flex-wrap items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2 text-xs text-purple-900 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                            <Scissors className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-bold block truncate">Mốc Thu Hoạch Nông Sản</span>
+                            <span className="text-[11px] text-purple-600 block truncate">
+                              Sẵn sàng tạo lô hàng và nhập kho thành phẩm
+                            </span>
+                          </div>
+                        </div>
+
+                        {log.has_batch ? (
+                          <Link
+                            to={`/farm/batches?search=${log.batch_id}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-200 shadow-2xs transition-colors cursor-pointer"
+                            title="Xem lô hàng này trong kho thành phẩm"
+                          >
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>Đã có Lô hàng #{log.batch_id}</span>
+                            <ExternalLink className="w-3 h-3 ml-0.5 text-emerald-700" />
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onCreateBatch && onCreateBatch(log)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-xs hover:shadow-md transition-all cursor-pointer"
+                            title="Tạo lô hàng thu hoạch thành phẩm từ mốc thu hoạch này"
+                          >
+                            <PackageCheck className="w-3.5 h-3.5" />
+                            <span>Tạo Lô Hàng Thu Hoạch</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     {/* Media Attachments */}
                     {log.media && log.media.length > 0 && (
