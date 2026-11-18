@@ -25,6 +25,11 @@ import {
 } from "lucide-react";
 import { farmApi } from "../../services/farmApi";
 import { showGlobalToast } from "../../components/GlobalToast";
+import {
+  getApiValidationMessage,
+  isApiValidationError,
+  notifyApiErrorToast,
+} from "../../services/axiosClient";
 import CreateBatchModal from "../../components/farm/modals/CreateBatchModal";
 import QrPrintPreviewModal from "../../components/farm/modals/QrPrintPreviewModal";
 
@@ -97,7 +102,7 @@ export default function BatchHarvestPage() {
         setStats(payload.stats);
       }
     } catch (err) {
-      showToast("Không thể tải danh sách lô thu hoạch.", "error");
+      notifyApiErrorToast(err, "Không thể tải danh sách lô thu hoạch.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -110,7 +115,9 @@ export default function BatchHarvestPage() {
       const res = await farmApi.getEligiblePlots();
       const payload = res.data?.data ?? res.data ?? res ?? [];
       setEligiblePlots(Array.isArray(payload) ? payload : []);
-    } catch (err) {}
+    } catch (err) {
+      notifyApiErrorToast(err, "Không thể tải danh sách lô canh tác đủ điều kiện.");
+    }
   }, []);
 
   // Tải sổ kho lịch sử biến động / hao hụt
@@ -121,7 +128,7 @@ export default function BatchHarvestPage() {
       const payload = res.data?.data ?? res.data ?? res ?? [];
       setDisposals(Array.isArray(payload) ? payload : []);
     } catch (err) {
-      showToast("Không thể tải lịch sử kiểm kho.", "error");
+      notifyApiErrorToast(err, "Không thể tải lịch sử kiểm kho.");
     } finally {
       setLoadingDisposals(false);
     }
@@ -221,8 +228,8 @@ export default function BatchHarvestPage() {
         setDetailBatch(payload);
         setSelectedBatch(payload);
       }
-    } catch {
-      showToast("Không thể tải chi tiết truy xuất nguồn gốc lô hàng.", "error");
+    } catch (err) {
+      notifyApiErrorToast(err, "Không thể tải chi tiết truy xuất nguồn gốc lô hàng.");
     } finally {
       setLoadingDetail(false);
     }
@@ -295,9 +302,11 @@ export default function BatchHarvestPage() {
         fetchDisposals();
       }
     } catch (err) {
-      setWastageError(
-        err?.message || err?.response?.data?.message || "Không thể ghi nhận hao hụt. Vui lòng thử lại."
-      );
+      if (isApiValidationError(err)) {
+        setWastageError(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể ghi nhận hao hụt. Vui lòng thử lại.");
+      }
     } finally {
       setWastageSubmitting(false);
     }

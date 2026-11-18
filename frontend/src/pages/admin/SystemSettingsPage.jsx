@@ -4,7 +4,6 @@ import {
   Settings,
   Save,
   RefreshCw,
-  AlertCircle,
   CheckCircle2,
   Sliders,
   Truck,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
 import { showGlobalToast } from "../../components/GlobalToast";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 export default function SystemSettingsPage() {
   const [settings, setSettings] = useState({
@@ -30,19 +30,17 @@ export default function SystemSettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const fetchSettings = async () => {
     setLoading(true);
-    setError("");
     try {
       const res = await adminApi.getSettings();
       if (res.data?.data) {
         setSettings((prev) => ({ ...prev, ...res.data.data }));
       }
     } catch (err) {
-      setError("Không thể tải cấu hình hệ thống. Vui lòng thử lại.");
+      notifyApiErrorToast(err, "Không thể tải cấu hình hệ thống. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -59,7 +57,6 @@ export default function SystemSettingsPage() {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setError("");
     setSuccess("");
     try {
       await adminApi.updateSettings(settings);
@@ -69,8 +66,7 @@ export default function SystemSettingsPage() {
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       const errMsg = err?.response?.data?.message || "Không thể lưu cài đặt hệ thống.";
-      setError(errMsg);
-      showGlobalToast(errMsg, "error");
+      notifyApiErrorToast(err, errMsg);
     } finally {
       setSaving(false);
     }
@@ -104,13 +100,6 @@ export default function SystemSettingsPage() {
           <span>Làm mới</span>
         </button>
       </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-xs text-red-700">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
 
       {success && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-xs text-emerald-800 font-semibold">

@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { authApi } from "../../services/authApi";
-import { notifyApiToast } from "../../services/axiosClient";
+import {
+  isApiValidationError,
+  notifyApiErrorToast,
+  notifyApiToast,
+} from "../../services/axiosClient";
 
 export default function LoginPage() {
   const { user, login } = useAuth();
@@ -81,12 +85,15 @@ export default function LoginPage() {
         navigate(from, { replace: true });
       }
     } catch (err) {
-      const rawEmailErr = err?.fieldErrors?.email;
-      const msg =
-        (Array.isArray(rawEmailErr) ? rawEmailErr[0] : rawEmailErr) ||
-        err?.message ||
-        "Email hoặc mật khẩu không chính xác. Vui lòng thử lại.";
-      setErrorMessage(msg);
+      if (isApiValidationError(err)) {
+        const rawEmailErr = err.fieldErrors.email;
+        const validationMessage = Array.isArray(rawEmailErr)
+          ? rawEmailErr[0]
+          : rawEmailErr || err.message;
+        setErrorMessage(validationMessage);
+      } else {
+        notifyApiErrorToast(err, "Email hoặc mật khẩu không chính xác. Vui lòng thử lại.");
+      }
     } finally {
       setIsLoading(false);
     }

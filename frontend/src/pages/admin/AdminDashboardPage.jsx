@@ -8,7 +8,6 @@ import {
   Users,
   ShieldCheck,
   RefreshCw,
-  AlertCircle,
   Clock,
   CheckCircle2,
   Activity,
@@ -17,20 +16,19 @@ import {
   Cpu,
 } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const fetchMetrics = async (force = false) => {
     setLoading(true);
-    setError("");
     try {
       const res = await adminApi.getDashboardMetrics(force);
       setData(res.data?.data || null);
     } catch (err) {
-      setError("Không thể tải dữ liệu báo cáo hệ thống. Vui lòng thử lại.");
+      notifyApiErrorToast(err, "Không thể tải dữ liệu báo cáo hệ thống. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -81,13 +79,6 @@ export default function AdminDashboardPage() {
           </button>
         </div>
       </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-xs text-red-700">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">

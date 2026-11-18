@@ -5,7 +5,6 @@ import {
   Sprout,
   Clock,
   Sparkles,
-  AlertCircle,
   X,
   QrCode,
   Loader2,
@@ -14,6 +13,10 @@ import {
   Scissors,
 } from "lucide-react";
 import { farmApi } from "../../../services/farmApi";
+import {
+  isApiValidationError,
+  notifyApiErrorToast,
+} from "../../../services/axiosClient";
 
 // Helper tách tên nông sản riêng nếu chưa nằm trùng trong tên lô
 function getDistinctCropSubtitle(plotName, cropName) {
@@ -53,7 +56,6 @@ export default function CreateBatchModal({
 
   // Validation & Submitting
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   const getTodayDateLocal = () => {
@@ -109,7 +111,6 @@ export default function CreateBatchModal({
       setHarvestQuantity("");
       setNotes(initialHarvestLog?.content || initialHarvestLog?.Noi_dung || "");
       setAutoQr(true);
-      setFormError("");
       setFieldErrors({});
       setIsPlotMenuOpen(false);
       setHighlightedIndex(-1);
@@ -201,7 +202,6 @@ export default function CreateBatchModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError("");
     setFieldErrors({});
 
     const errors = {};
@@ -246,19 +246,16 @@ export default function CreateBatchModal({
       }
       onClose();
     } catch (err) {
-      const apiErrors = err?.fieldErrors || err?.rawErrors || err?.response?.data?.errors;
-      if (apiErrors && Object.keys(apiErrors).length > 0) {
+      if (isApiValidationError(err)) {
         const mapped = {};
-        Object.keys(apiErrors).forEach((k) => {
-          mapped[k] = Array.isArray(apiErrors[k]) ? apiErrors[k][0] : apiErrors[k];
+        Object.keys(err.fieldErrors).forEach((key) => {
+          const value = err.fieldErrors[key];
+          mapped[key] = Array.isArray(value) ? value[0] : value;
         });
         setFieldErrors(mapped);
+      } else {
+        notifyApiErrorToast(err, "Không thể tạo lô hàng thu hoạch. Vui lòng thử lại.");
       }
-      setFormError(
-        err?.message ||
-          err?.response?.data?.message ||
-          "Không thể tạo lô hàng thu hoạch. Vui lòng kiểm tra lại thông tin."
-      );
     } finally {
       setSubmitting(false);
     }
@@ -313,13 +310,6 @@ export default function CreateBatchModal({
           onSubmit={handleSubmit}
           className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-5 sm:p-6 space-y-4"
         >
-          {formError && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-xs flex items-center gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-              <span className="break-words min-w-0">{formError}</span>
-            </div>
-          )}
-
           {/* Callout: Nguồn mốc thu hoạch (Trỏ từ mốc Thu hoạch) */}
           {initialHarvestLog && (
             <div className="p-3.5 bg-purple-50/90 border border-purple-200/80 rounded-2xl text-xs text-purple-900 flex items-start gap-2.5">

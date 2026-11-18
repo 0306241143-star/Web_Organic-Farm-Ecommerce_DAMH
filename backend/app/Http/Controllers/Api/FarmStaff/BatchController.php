@@ -212,7 +212,7 @@ class BatchController extends Controller
                     'action_time'   => $log->Thoi_gian_thuc_hien?->format('Y-m-d H:i:s'),
                     'content'       => $log->Noi_dung,
                     'staff_name'    => $log->nhanVien?->Ho_ten ?? 'Kỹ thuật viên',
-                    'media'         => $log->tepNhatKys->map(fn ($m) => [
+                    'media'         => $log->tepNhatKys->map(fn($m) => [
                         'id'   => $m->Ma_tep,
                         'type' => $m->Loai_tep,
                         'url'  => $m->Duong_dan,
@@ -238,7 +238,7 @@ class BatchController extends Controller
         $formatted['certificates'] = $batch->chungNhans
             ->sortByDesc('Ma_chung_nhan')
             ->values()
-            ->map(fn ($cert) => $certController->formatCertificateResource($cert));
+            ->map(fn($cert) => $certController->formatCertificateResource($cert));
 
         return $this->successResponse(
             message: 'Lấy thông tin chi tiết lô hàng thu hoạch thành công.',
@@ -318,18 +318,19 @@ class BatchController extends Controller
                 'Ngay_ghi_nhan'  => now(),
             ]);
 
-            // 2. Trừ trực tiếp số lượng tồn kho của đúng lô hàng đó (UC18 Basic Flow 4)
+            // 2. Trừ trực tiếp số lượng tồn kho của đúng lô hàng đó & kiểm tra ngưỡng cận hạn
             $newRemaining = max(0, (float) $batch->So_luong_con_lai - $qty);
             $batch->So_luong_con_lai = $newRemaining;
-            
+
             $daysLeft = Carbon::today()->diffInDays(Carbon::parse($batch->Han_su_dung), false);
             if ($newRemaining == 0) {
                 $batch->Trang_thai = 'Het_hang';
             } elseif ($daysLeft <= 2 && $daysLeft >= 0) {
                 $batch->Trang_thai = 'Sap_het_han';
             }
-            
+
             $batch->save();
+        });
 
         $batch->load([
             'loCanhTac.sanPham',
@@ -467,7 +468,7 @@ class BatchController extends Controller
                     'type_label'    => match ($bd->Loai_bien_dong) {
                         'Hao_hut'   => 'Hao hụt tự nhiên',
                         'Xuat_huy'  => 'Xuất hủy hư hỏng',
-                        'Dieu_chinh'=> 'Điều chỉnh kiểm kê',
+                        'Dieu_chinh' => 'Điều chỉnh kiểm kê',
                         default     => $bd->Loai_bien_dong,
                     },
                     'quantity'      => (float) $bd->So_luong,
