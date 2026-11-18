@@ -202,7 +202,7 @@ export default function StorefrontFooter() {
 
         {/* ================= BOTTOM BAR ================= */}
         <div className="mt-12 pt-6 border-t border-[#c0c9bb]/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-[#5a6357]">
-          <p>© 2026 XanhFarm. Hệ thống TMĐT Nông sản sạch - Đồ án tốt nghiệp.</p>
+          <p>© 2026 XanhFarm. Hệ thống Thương mại điện tử Nông sản sạch.</p>
           <div className="flex items-center gap-4">
             <Link to="/brand" className="hover:text-[#00450d] transition-colors">
               Tiêu chuẩn chất lượng
