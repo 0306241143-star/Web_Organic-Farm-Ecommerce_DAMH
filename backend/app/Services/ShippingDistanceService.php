@@ -10,7 +10,9 @@ use App\Models\DiaChiGiaoHang;
 use App\Models\NongTrai;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class ShippingDistanceService
 {
@@ -19,60 +21,105 @@ class ShippingDistanceService
      */
     public function estimate(DiaChiGiaoHang $address): array
     {
-        $apiKey = config('services.goong.api_key');
-        $endpoint = config('services.goong.distance_matrix_url');
         $configuredPrice = DB::table('cau_hinh_he_thong')
             ->where('Khoa', 'don_gia_ship_km')
             ->value('Gia_tri');
         $pricePerKm = $configuredPrice === null
-            ? (float) config('services.shipping.price_per_km')
+            ? (float) config('services.shipping.price_per_km', 2000)
             : (float) $configuredPrice;
         $farm = NongTrai::query()->orderBy('Ma_nong_trai')->first();
-
-        if (! is_string($apiKey) || $apiKey === '' || ! is_string($endpoint) || $endpoint === '') {
-            throw new RuntimeException('Dịch vụ tính khoảng cách chưa được cấu hình.');
-        }
 
         if ($pricePerKm <= 0 || ! is_finite($pricePerKm)) {
             throw new RuntimeException('Đơn giá giao hàng theo km chưa được cấu hình hợp lệ.');
         }
 
-        if (! $farm || ! is_numeric($farm->Vi_do) || ! is_numeric($farm->Kinh_do)) {
-            throw new RuntimeException('Chưa cấu hình tọa độ nông trại giao hàng.');
-        }
-
-        $response = Http::acceptJson()
-            ->timeout(15)
-            ->get($endpoint, [
-                'origins' => $farm->Vi_do.','.$farm->Kinh_do,
-                'destinations' => $address->Vi_do.','.$address->Kinh_do,
-                'vehicle' => 'car',
-                'api_key' => $apiKey,
-            ]);
-
-        if ($response->failed()) {
-            throw new RuntimeException('Dịch vụ tính khoảng cách phản hồi lỗi.');
-        }
-
-        $element = $response->json('rows.0.elements.0');
-        $meters = is_array($element) ? ($element['distance']['value'] ?? null) : null;
+        $originName = $farm?->Ten_nong_trai ?? 'Nông trại trung tâm XanhFarm';
+        $apiKey = (string) config('services.goong.api_key', '');
+        $endpoint = (string) config('services.goong.distance_matrix_url', '');
 
         if (
-            ! is_array($element)
-            || ($element['status'] ?? null) !== 'OK'
-            || ! is_numeric($meters)
-            || (float) $meters <= 0
+            $apiKey !== ''
+            && $endpoint !== ''
+            && $farm
+            && is_numeric($farm->Vi_do)
+            && is_numeric($farm->Kinh_do)
+            && is_numeric($address->Vi_do)
+            && is_numeric($address->Kinh_do)
         ) {
-            throw new RuntimeException('Không tìm được lộ trình giao hàng hợp lệ tới địa chỉ đã chọn.');
+            try {
+                $response = Http::acceptJson()
+                    ->timeout(10)
+                    ->get($endpoint, [
+                        'origins' => $farm->Vi_do.','.$farm->Kinh_do,
+                        'destinations' => $address->Vi_do.','.$address->Kinh_do,
+                        'vehicle' => 'car',
+                        'api_key' => $apiKey,
+                    ]);
+
+                $element = $response->successful() ? $response->json('rows.0.elements.0') : null;
+                $meters = is_array($element) ? ($element['distance']['value'] ?? null) : null;
+
+                if (
+                    is_array($element)
+                    && ($element['status'] ?? null) === 'OK'
+                    && is_numeric($meters)
+                    && (float) $meters > 0
+                ) {
+                    $distanceKm = round(((float) $meters) / 1000, 2);
+
+                    return [
+                        'distance_km' => $distanceKm,
+                        'shipping_fee' => (int) round($distanceKm * $pricePerKm),
+                        'price_per_km' => $pricePerKm,
+                        'origin_name' => $originName,
+                    ];
+                }
+
+                Log::warning('Goong Maps returned no usable route; using fallback distance.', [
+                    'http_status' => $response->status(),
+                    'address_id' => $address->Ma_dia_chi,
+                ]);
+            } catch (Throwable $exception) {
+                // Do not log the exception message; HTTP exceptions may include the API key in the URL.
+                Log::warning('Goong Maps unavailable; using fallback distance.', [
+                    'exception' => $exception::class,
+                    'address_id' => $address->Ma_dia_chi,
+                ]);
+            }
         }
 
-        $distanceKm = round(((float) $meters) / 1000, 2);
+        $distanceKm = $this->estimateFallbackDistanceKm($farm, $address);
 
         return [
             'distance_km' => $distanceKm,
             'shipping_fee' => (int) round($distanceKm * $pricePerKm),
             'price_per_km' => $pricePerKm,
-            'origin_name' => $farm->Ten_nong_trai,
+            'origin_name' => $originName,
         ];
+    }
+
+    private function estimateFallbackDistanceKm(?NongTrai $farm, DiaChiGiaoHang $address): float
+    {
+        if (
+            ! $farm
+            || ! is_numeric($farm->Vi_do)
+            || ! is_numeric($farm->Kinh_do)
+            || ! is_numeric($address->Vi_do)
+            || ! is_numeric($address->Kinh_do)
+        ) {
+            return 12.5;
+        }
+
+        $latitude1 = deg2rad((float) $farm->Vi_do);
+        $longitude1 = deg2rad((float) $farm->Kinh_do);
+        $latitude2 = deg2rad((float) $address->Vi_do);
+        $longitude2 = deg2rad((float) $address->Kinh_do);
+        $latitudeDelta = $latitude2 - $latitude1;
+        $longitudeDelta = $longitude2 - $longitude1;
+        $haversine = sin($latitudeDelta / 2) ** 2
+            + cos($latitude1) * cos($latitude2) * sin($longitudeDelta / 2) ** 2;
+        $straightDistanceKm = 6371 * 2 * asin(min(1.0, sqrt($haversine)));
+
+        return max(1.0, round($straightDistanceKm * 1.3, 2));
     }
 }

@@ -7,6 +7,7 @@
 namespace App\Http\Requests\Customer;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreOrderRequest extends FormRequest
 {
@@ -20,6 +21,7 @@ class StoreOrderRequest extends FormRequest
         return [
             'address_id' => ['required', 'integer', 'min:1'],
             'note' => ['nullable', 'string', 'max:2000'],
+            'payment_method' => ['sometimes', 'string', Rule::in(['ApiPay', 'COD'])],
         ];
     }
 }

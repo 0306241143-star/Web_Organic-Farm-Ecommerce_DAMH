@@ -117,8 +117,17 @@ class RetailOrderController extends Controller
         $cart = $this->cartForCustomer($request);
         $delivery = $this->estimateShipping($address, $shipping);
         $userId = (int) $request->user()->getAuthIdentifier();
+        $paymentMethod = $request->validated('payment_method', 'ApiPay');
 
-        $order = DB::transaction(function () use ($cart, $address, $delivery, $pricing, $request, $userId): DonHang {
+        $order = DB::transaction(function () use (
+            $cart,
+            $address,
+            $delivery,
+            $pricing,
+            $request,
+            $userId,
+            $paymentMethod
+        ): DonHang {
             $lockedCart = GioHang::query()
                 ->whereKey($cart->Ma_gio_hang)
                 ->where('Ma_nguoi_dung', $userId)
@@ -147,7 +156,7 @@ class RetailOrderController extends Controller
                 'Khoang_cach_km' => $delivery['distance_km'],
                 'Phi_giao_hang' => $delivery['shipping_fee'],
                 'Tong_tien' => $total,
-                'Trang_thai' => 'Cho_thanh_toan',
+                'Trang_thai' => $paymentMethod === 'COD' ? 'Cho_xac_nhan' : 'Cho_thanh_toan',
                 'Ghi_chu' => $request->validated('note'),
             ]);
 
@@ -169,7 +178,9 @@ class RetailOrderController extends Controller
         });
 
         return $this->successResponse(
-            message: 'Tạo đơn hàng thành công. Vui lòng tiếp tục thanh toán.',
+            message: $paymentMethod === 'COD'
+                ? 'Đặt hàng COD thành công. Đơn hàng đang chờ nhân viên xác nhận.'
+                : 'Tạo đơn hàng thành công. Vui lòng tiếp tục thanh toán.',
             data: [
                 'order_id' => (int) $order->Ma_don_hang,
                 'status' => $order->Trang_thai,

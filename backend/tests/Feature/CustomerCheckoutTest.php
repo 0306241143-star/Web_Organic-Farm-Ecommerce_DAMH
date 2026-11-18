@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\DiaChiGiaoHang;
 use App\Models\GioHang;
 use App\Models\NguoiDung;
+use App\Models\NongTrai;
 use App\Services\ShippingDistanceService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,8 @@ use Tests\TestCase;
 
 class CustomerCheckoutTest extends TestCase
 {
+    private bool $goongUnavailable = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -25,25 +28,36 @@ class CustomerCheckoutTest extends TestCase
             'services.apipay.secret_key' => 'test-secret-key',
             'services.apipay.bank_public_id' => 'test-bank',
         ]);
-        Http::fake([
-            'rsapi.goong.io/*' => Http::response([
-                'rows' => [[
-                    'elements' => [[
-                        'status' => 'OK',
-                        'distance' => ['value' => 12500],
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'rsapi.goong.io')) {
+                if ($this->goongUnavailable) {
+                    return Http::response([], 503);
+                }
+
+                return Http::response([
+                    'rows' => [[
+                        'elements' => [[
+                            'status' => 'OK',
+                            'distance' => ['value' => 12500],
+                        ]],
                     ]],
-                ]],
-            ]),
-            'app.apipay.vn/v1/client/*' => Http::response([
-                'data' => [
-                    'publicId' => 'payment-request-test-1',
-                    'payUrl' => 'https://pay.apipay.vn/test',
-                    'qrUrl' => 'https://app.apipay.vn/qr/test',
-                    'status' => 'ACTIVE',
-                    'expiresAt' => '2026-11-18T22:00:00+07:00',
-                ],
-            ]),
-        ]);
+                ]);
+            }
+
+            if (str_contains($request->url(), 'app.apipay.vn/v1/client')) {
+                return Http::response([
+                    'data' => [
+                        'publicId' => 'payment-request-test-1',
+                        'payUrl' => 'https://pay.apipay.vn/test',
+                        'qrUrl' => 'https://app.apipay.vn/qr/test',
+                        'status' => 'ACTIVE',
+                        'expiresAt' => '2026-11-18T22:00:00+07:00',
+                    ],
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
     }
 
     public function test_customer_can_quote_create_order_and_start_apipay_from_cart(): void
@@ -186,5 +200,69 @@ class CustomerCheckoutTest extends TestCase
 
         $this->assertSame(2500.0, $estimate['price_per_km']);
         $this->assertSame(31250, $estimate['shipping_fee']);
+    }
+
+    public function test_customer_can_place_a_cod_order_without_creating_an_apipay_payment(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+        GioHang::query()
+            ->where('Ma_nguoi_dung', 5)
+            ->firstOrFail()
+            ->chiTiets()
+            ->delete();
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/cart/items', [
+                'product_id' => 1,
+                'quantity' => 1,
+            ])
+            ->assertOk();
+
+        $response = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/checkout/orders', [
+                'address_id' => 1,
+                'payment_method' => 'COD',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'Cho_xac_nhan');
+
+        $orderId = $response->json('data.order_id');
+        $this->assertDatabaseMissing('thanh_toan', ['Ma_don_hang' => $orderId]);
+        $this->assertDatabaseMissing('chi_tiet_gio_hang', ['Ma_gio_hang' => 1]);
+    }
+
+    public function test_shipping_distance_falls_back_when_goong_is_unconfigured_or_unavailable(): void
+    {
+        $address = DiaChiGiaoHang::query()->findOrFail(1);
+        config(['services.goong.api_key' => '']);
+
+        $fallback = app(ShippingDistanceService::class)->estimate($address);
+        $this->assertGreaterThan(1, $fallback['distance_km']);
+        $this->assertSame(
+            (int) round($fallback['distance_km'] * $fallback['price_per_km']),
+            $fallback['shipping_fee']
+        );
+
+        config([
+            'services.goong.api_key' => 'test-goong-key',
+            'services.goong.distance_matrix_url' => 'https://rsapi.goong.io/DistanceMatrix',
+        ]);
+        $this->goongUnavailable = true;
+        $address->refresh();
+        $farm = NongTrai::query()->firstOrFail();
+        $this->assertIsNumeric($farm->Vi_do);
+        $this->assertIsNumeric($farm->Kinh_do);
+        $this->assertIsNumeric($address->Vi_do);
+        $this->assertIsNumeric($address->Kinh_do);
+        $this->assertIsNumeric(DiaChiGiaoHang::query()->findOrFail(1)->Vi_do);
+        $failedRequestFallback = app(ShippingDistanceService::class)->estimate($address);
+        $this->assertSame($fallback['distance_km'], $failedRequestFallback['distance_km']);
+        $this->assertSame($fallback['shipping_fee'], $failedRequestFallback['shipping_fee']);
+
+        $address->Vi_do = null;
+        $address->Kinh_do = null;
+        config(['services.goong.api_key' => '']);
+        $missingCoordinatesFallback = app(ShippingDistanceService::class)->estimate($address);
+        $this->assertSame(12.5, $missingCoordinatesFallback['distance_km']);
     }
 }

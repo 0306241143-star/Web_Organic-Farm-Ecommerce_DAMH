@@ -15,9 +15,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/useCart";
+import { publicApi } from "../../services/publicApi";
 
 export default function StorefrontHeader() {
   const { user, logout } = useAuth();
+  const isInternalStaff = Boolean(
+    user && ["admin", "farm_staff", "sales"].includes(user.role)
+  );
   const { items } = useCart();
   const location = useLocation();
 
@@ -63,6 +67,12 @@ export default function StorefrontHeader() {
   const isCurrentActive = (path) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
+  };
+
+  const prefetchCatalog = () => {
+    import("../../pages/public/ProductCatalogPage").catch(() => {});
+    publicApi.getCategories().catch(() => {});
+    publicApi.getProducts({ per_page: 48 }).catch(() => {});
   };
 
   return (
@@ -122,6 +132,7 @@ export default function StorefrontHeader() {
 
             <Link
               to="/products"
+              onMouseEnter={prefetchCatalog}
               className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap ${
                 isCurrentActive("/products")
                   ? "text-[#00450d] font-bold"
@@ -149,22 +160,24 @@ export default function StorefrontHeader() {
               )}
             </Link>
 
-            <Link
-              to="/subscriptions"
-              className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${
-                isCurrentActive("/subscriptions")
-                  ? "text-[#00450d] font-bold"
-                  : "text-[#006e1c] hover:text-[#00450d]"
-              }`}
-            >
-              <span>Gói Định Kỳ</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-[#86efac]/35 text-[#00450d] border border-[#86efac]/60 leading-none">
-                -20%
-              </span>
-              {isCurrentActive("/subscriptions") && (
-                <span className="absolute -bottom-2 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
-              )}
-            </Link>
+            {!isInternalStaff && (
+              <Link
+                to="/subscriptions"
+                className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${
+                  isCurrentActive("/subscriptions")
+                    ? "text-[#00450d] font-bold"
+                    : "text-[#006e1c] hover:text-[#00450d]"
+                }`}
+              >
+                <span>Gói Định Kỳ</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-[#86efac]/35 text-[#00450d] border border-[#86efac]/60 leading-none">
+                  -20%
+                </span>
+                {isCurrentActive("/subscriptions") && (
+                  <span className="absolute -bottom-2 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
+                )}
+              </Link>
+            )}
 
             <Link
               to="/brand"
@@ -190,16 +203,18 @@ export default function StorefrontHeader() {
 
           {/* ================= ZONE 3: ACTIONS & AUTH (RIGHT) ================= */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <Link
-              to="/cart"
-              className="relative p-2 rounded-full text-[#191c1b] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
-              aria-label={`Giỏ hàng nông sản, hiện có ${cartCount} sản phẩm`}
-            >
-              <ShoppingBag className="w-5 h-5 text-[#191c1b]" />
-              <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-[#f2f4f2] text-[#41493e] border border-[#c0c9bb]/40 font-bold text-[10.5px] flex items-center justify-center leading-none">
-                {cartCount > 99 ? "99+" : cartCount}
-              </span>
-            </Link>
+            {!isInternalStaff && (
+              <Link
+                to="/cart"
+                className="relative p-2 rounded-full text-[#191c1b] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors focus:outline-none flex items-center justify-center cursor-pointer"
+                aria-label={`Giỏ hàng nông sản, hiện có ${cartCount} sản phẩm`}
+              >
+                <ShoppingBag className="w-5 h-5 text-[#191c1b]" />
+                <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-[#f2f4f2] text-[#41493e] border border-[#c0c9bb]/40 font-bold text-[10.5px] flex items-center justify-center leading-none">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              </Link>
+            )}
 
             {!user ? (
               <div className="flex items-center gap-2">
@@ -251,31 +266,35 @@ export default function StorefrontHeader() {
                     </div>
 
                     <div className="py-1">
-                      <Link
-                        to="/orders"
-                        onClick={closeMenus}
-                        className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                      >
-                        <Receipt className="w-4 h-4 text-[#5a6357]" />
-                        <span>Đơn hàng của tôi</span>
-                      </Link>
-                      <Link
-                        to="/subscriptions"
-                        onClick={closeMenus}
-                        className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                      >
-                        <Calendar className="w-4 h-4 text-[#5a6357]" />
-                        <span>Gói rau định kỳ</span>
-                      </Link>
-                      <Link
-                        to="/rewards"
-                        onClick={closeMenus}
-                        className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                      >
-                        <Award className="w-4 h-4 text-[#5a6357]" />
-                        <span>Ví điểm thưởng</span>
-                      </Link>
-                      {["farm_staff", "sales", "admin"].includes(user.role) && (
+                      {!isInternalStaff && (
+                        <>
+                          <Link
+                            to="/orders"
+                            onClick={closeMenus}
+                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
+                          >
+                            <Receipt className="w-4 h-4 text-[#5a6357]" />
+                            <span>Đơn hàng của tôi</span>
+                          </Link>
+                          <Link
+                            to="/subscriptions"
+                            onClick={closeMenus}
+                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
+                          >
+                            <Calendar className="w-4 h-4 text-[#5a6357]" />
+                            <span>Gói rau định kỳ</span>
+                          </Link>
+                          <Link
+                            to="/rewards"
+                            onClick={closeMenus}
+                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
+                          >
+                            <Award className="w-4 h-4 text-[#5a6357]" />
+                            <span>Ví điểm thưởng</span>
+                          </Link>
+                        </>
+                      )}
+                      {isInternalStaff && (
                         <Link
                           to={getDashboardRedirect()}
                           onClick={closeMenus}
@@ -341,6 +360,7 @@ export default function StorefrontHeader() {
             <Link
               to="/products"
               onClick={closeMenus}
+              onMouseEnter={prefetchCatalog}
               className={`block px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${
                 isCurrentActive("/products")
                   ? "bg-[#00450d] text-white"
@@ -363,20 +383,22 @@ export default function StorefrontHeader() {
               <span>Câu Chuyện & Chứng Nhận</span>
             </Link>
 
-            <Link
-              to="/subscriptions"
-              onClick={closeMenus}
-              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${
-                isCurrentActive("/subscriptions")
-                  ? "bg-[#00450d] text-white"
-                  : "text-[#191c1b] hover:bg-[#f2f4f2]"
-              }`}
-            >
-              <span>Gói Định Kỳ</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-[#86efac]/35 text-[#00450d] border border-[#86efac]/60">
-                -20%
-              </span>
-            </Link>
+            {!isInternalStaff && (
+              <Link
+                to="/subscriptions"
+                onClick={closeMenus}
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${
+                  isCurrentActive("/subscriptions")
+                    ? "bg-[#00450d] text-white"
+                    : "text-[#191c1b] hover:bg-[#f2f4f2]"
+                }`}
+              >
+                <span>Gói Định Kỳ</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-[#86efac]/35 text-[#00450d] border border-[#86efac]/60">
+                  -20%
+                </span>
+              </Link>
+            )}
 
             <Link
               to="/brand"
@@ -432,24 +454,35 @@ export default function StorefrontHeader() {
                     <p className="text-[11px] text-[#5a6357] truncate">{user.email}</p>
                   </div>
                 </div>
-                <div className="space-y-1">
+                {!isInternalStaff ? (
+                  <div className="space-y-1">
+                    <Link
+                      to="/orders"
+                      onClick={closeMenus}
+                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
+                    >
+                      <Receipt className="w-4 h-4 text-[#5a6357]" />
+                      Đơn hàng của tôi
+                    </Link>
+                    <Link
+                      to="/subscriptions"
+                      onClick={closeMenus}
+                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
+                    >
+                      <Calendar className="w-4 h-4 text-[#5a6357]" />
+                      Gói rau định kỳ
+                    </Link>
+                  </div>
+                ) : (
                   <Link
-                    to="/orders"
+                    to={getDashboardRedirect()}
                     onClick={closeMenus}
-                    className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
+                    className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-bold text-[#00450d] hover:bg-[#f2f4f2] rounded-lg"
                   >
-                    <Receipt className="w-4 h-4 text-[#5a6357]" />
-                    Đơn hàng của tôi
+                    <LayoutDashboard className="w-4 h-4 text-[#006e1c]" />
+                    Vào trang làm việc nội bộ
                   </Link>
-                  <Link
-                    to="/subscriptions"
-                    onClick={closeMenus}
-                    className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
-                  >
-                    <Calendar className="w-4 h-4 text-[#5a6357]" />
-                    Gói rau định kỳ
-                  </Link>
-                </div>
+                )}
                 <button
                   type="button"
                   onClick={() => {

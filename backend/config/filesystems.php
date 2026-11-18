@@ -70,6 +70,7 @@ return [
             'use_path_style_endpoint' => env('R2_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => true,
             'report' => false,
+            'http' => ['connect_timeout' => 3, 'timeout' => 10],
         ],
         //'throw' => true giúp Laravel ném ngoại lệ ngay khi lỗi kết nối hoặc sai khóa API R2 để bộ xử 
         //lý JSON trong bootstrap/app.php bắt lỗi và phản hồi rõ ràng về Frontend, đồng 

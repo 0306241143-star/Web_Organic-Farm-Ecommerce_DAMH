@@ -43,8 +43,41 @@ class R2StorageService
         $datePrefix = now()->format('Y/m');
         $cleanFolder = trim($folder, '/');
 
-        // 1. Tự động nén & resize nếu là Hình ảnh
+        // 1. Tự động nén & resize nếu là Hình ảnh (bỏ qua nếu Client đã nén sẵn WebP <= 500KB)
         if ($mediaType === 'Hinh_anh') {
+            $alreadyOptimized = $file->getClientMimeType() === 'image/webp'
+                && $file->getSize() <= 512 * 1024;
+
+            if ($alreadyOptimized) {
+                $path = "{$cleanFolder}/{$datePrefix}/" . Str::uuid()->toString() . '.webp';
+                $stream = fopen($file->getRealPath(), 'rb');
+                if ($stream === false) {
+                    throw new RuntimeException('Không thể đọc ảnh WebP đã nén.');
+                }
+
+                try {
+                    $stored = Storage::disk($this->disk)->put($path, $stream, [
+                        'visibility'  => 'public',
+                        'ContentType' => 'image/webp',
+                    ]);
+                } finally {
+                    fclose($stream);
+                }
+
+                if (! $stored) {
+                    throw new RuntimeException('Không thể tải ảnh lên Cloudflare R2.');
+                }
+
+                return [
+                    'path'          => $path,
+                    'url'           => $this->url($path),
+                    'media_type'    => 'Hinh_anh',
+                    'mime_type'     => 'image/webp',
+                    'original_name' => $file->getClientOriginalName(),
+                    'size_bytes'    => $file->getSize(),
+                ];
+            }
+
             $optimized = $this->optimizeImage($file);
             if ($optimized !== null) {
                 $path = "{$cleanFolder}/{$datePrefix}/" . Str::uuid()->toString() . '.webp';
@@ -273,13 +306,16 @@ class R2StorageService
         }
 
         $diskConfig = config('filesystems.disks.r2', []);
+        $key = (string) ($diskConfig['key'] ?? '');
+        $secret = (string) ($diskConfig['secret'] ?? '');
+        $bucket = (string) ($diskConfig['bucket'] ?? '');
+        $endpoint = (string) ($diskConfig['endpoint'] ?? '');
+
         if (
-            empty($diskConfig['key'])
-            || empty($diskConfig['secret'])
-            || empty($diskConfig['bucket'])
-            || empty($diskConfig['endpoint'])
+            $key === '' || $secret === '' || $bucket === '' || $endpoint === ''
+            || str_contains($key, 'your_') || str_contains($endpoint, 'your_')
         ) {
-            throw new RuntimeException('Chưa cấu hình đầy đủ thông số kết nối Cloudflare R2 trong tệp .env.');
+            throw new RuntimeException('R2 chưa cấu hình key thực tế, chuyển sang lưu trữ cục bộ.');
         }
     }
 }

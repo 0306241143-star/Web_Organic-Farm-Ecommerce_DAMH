@@ -140,7 +140,7 @@ function ProductPriceDisplay({ product }) {
 }
 
 /* ================= THÀNH PHẦN CON 3: TÌNH TRẠNG TỒN KHO & NÚT THÊM GIỎ HÀNG ================= */
-function ProductStockFooter({ product, onQuickAdd, isAdding }) {
+function ProductStockFooter({ product, onQuickAdd, isInternalStaff }) {
   const inStock = Boolean(product.in_stock);
   const stockQty = Number(product.available_stock || 0);
   const formattedQty = Number.isInteger(stockQty)
@@ -170,26 +170,30 @@ function ProductStockFooter({ product, onQuickAdd, isAdding }) {
         )}
       </div>
 
-      <button
-        type="button"
-        disabled={!inStock || isAdding}
-        onClick={() => onQuickAdd(product)}
-        aria-label={
-          inStock
-            ? `Thêm ${product.name} vào giỏ hàng`
-            : `${product.name} hiện tạm hết hàng`
-        }
-        className={`shrink-0 min-w-[38px] min-h-[38px] px-3 rounded-xl text-[12.5px] font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
-          inStock && !isAdding
-            ? "bg-[#00450d] hover:bg-[#006e1c] text-white shadow-2xs cursor-pointer"
-            : "bg-[#eceeec] text-[#5a6357] cursor-not-allowed"
-        }`}
-      >
-        <Plus className="w-4 h-4 shrink-0" />
-        <span className="hidden sm:inline">
-          {isAdding ? "Đang thêm" : inStock ? "Thêm" : "Hết hàng"}
+      {isInternalStaff ? (
+        <span className="shrink-0 px-3 py-2 rounded-xl bg-amber-50 text-amber-800 text-[11px] font-bold">
+          Chế độ xem nội bộ
         </span>
-      </button>
+      ) : (
+        <button
+          type="button"
+          disabled={!inStock}
+          onClick={() => onQuickAdd(product)}
+          aria-label={
+            inStock
+              ? `Thêm ${product.name} vào giỏ hàng`
+              : `${product.name} hiện tạm hết hàng`
+          }
+          className={`shrink-0 min-w-[38px] min-h-[38px] px-3 rounded-xl text-[12.5px] font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
+            inStock
+              ? "bg-[#00450d] hover:bg-[#006e1c] text-white shadow-2xs cursor-pointer"
+              : "bg-[#eceeec] text-[#5a6357] cursor-not-allowed"
+          }`}
+        >
+          <Plus className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">{inStock ? "Thêm" : "Hết hàng"}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -219,11 +223,21 @@ export default function ProductCard({ product, onAddToCart = null }) {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAdding, setIsAdding] = useState(false);
+  const isInternalStaff = Boolean(
+    user && ["admin", "farm_staff", "sales"].includes(user.role)
+  );
 
   if (!product) return null;
 
   const handleQuickAdd = async (item) => {
+    if (isInternalStaff) {
+      showGlobalToast(
+        "Tài khoản nội bộ chỉ có quyền xem danh mục, không thể thực hiện mua hàng.",
+        "warning"
+      );
+      return;
+    }
+
     if (!item.in_stock) return;
 
     // Callback tùy biến của trang cha được ưu tiên; luồng mặc định dùng API giỏ của khách.
@@ -243,14 +257,11 @@ export default function ProductCard({ product, onAddToCart = null }) {
       return;
     }
 
-    setIsAdding(true);
     try {
       await addItem(item);
       showGlobalToast(`Đã thêm "${item.name}" vào giỏ hàng.`, "success");
     } catch (error) {
       notifyApiErrorToast(error, "Không thể thêm sản phẩm vào giỏ hàng.");
-    } finally {
-      setIsAdding(false);
     }
   };
 
@@ -286,7 +297,7 @@ export default function ProductCard({ product, onAddToCart = null }) {
           <ProductStockFooter
             product={product}
             onQuickAdd={handleQuickAdd}
-            isAdding={isAdding}
+            isInternalStaff={isInternalStaff}
           />
         </div>
       </div>

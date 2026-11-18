@@ -1,6 +1,6 @@
 /* Retail checkout: server quote, address selection, order creation, and ApiPay. */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AddressDistancePicker from "../../components/customer/AddressDistancePicker";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/useCart";
@@ -9,6 +9,7 @@ import { formatCurrencyVnd } from "../../services/publicApi";
 import { notifyApiErrorToast } from "../../services/axiosClient";
 
 export default function CheckoutPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { items: cartItems, refreshCart } = useCart();
   const [addresses, setAddresses] = useState([]);
@@ -19,6 +20,7 @@ export default function CheckoutPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("ApiPay");
   const [quoteError, setQuoteError] = useState("");
   const [pendingOrderId, setPendingOrderId] = useState(() => {
     const key = user?.id ? `xanhfarm:pendingRetailOrder:${user.id}` : null;
@@ -133,16 +135,22 @@ export default function CheckoutPage() {
       if (!orderId) {
         const orderResponse = await customerApi.createRetailOrder({
           address_id: Number(addressId),
+          payment_method: paymentMethod,
           note: note.trim() || undefined,
         });
         const createdOrder = orderResponse.data;
         orderId = String(createdOrder.order_id);
-        setOrder(createdOrder);
-        setPendingOrderId(orderId);
-        if (pendingOrderKey) localStorage.setItem(pendingOrderKey, orderId);
         refreshCart().catch((refreshError) =>
           notifyApiErrorToast(refreshError, "Không thể làm mới giỏ hàng.")
         );
+        if (paymentMethod === "COD") {
+          navigate("/orders", { replace: true });
+          return;
+        }
+
+        setOrder(createdOrder);
+        setPendingOrderId(orderId);
+        if (pendingOrderKey) localStorage.setItem(pendingOrderKey, orderId);
       }
 
       const paymentResponse = await customerApi.checkout({ order_id: Number(orderId) });
@@ -154,7 +162,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const canSubmit = options?.bank_configured && !submitting && (
+  const canSubmit = (paymentMethod === "COD" || options?.bank_configured) && !submitting && (
     pendingOrderId || (addressId && quote && !quoteLoading)
   );
   const displaySubtotal = quote?.subtotal ?? order?.subtotal;
@@ -188,7 +196,7 @@ export default function CheckoutPage() {
             type="button"
             onClick={checkOrderStatus}
             disabled={checkingStatus}
-            className="rounded-lg border border-amber-300 px-3 py-2 font-semibold disabled:opacity-50"
+            className="min-h-[44px] rounded-lg border border-amber-300 px-3.5 py-2 font-semibold disabled:opacity-50"
           >
             {checkingStatus ? "Đang kiểm tra..." : "Kiểm tra trạng thái"}
           </button>
@@ -216,6 +224,43 @@ export default function CheckoutPage() {
                   Quay lại giỏ hàng
                 </Link>
               )}
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <fieldset>
+                  <legend className="text-lg font-extrabold text-slate-900">
+                    Phương thức thanh toán
+                  </legend>
+                  <div className="mt-3 space-y-2">
+                    <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-2">
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="ApiPay"
+                        checked={paymentMethod === "ApiPay"}
+                        onChange={(event) => setPaymentMethod(event.target.value)}
+                        disabled={submitting}
+                        className="h-4 w-4 accent-emerald-800"
+                      />
+                      <span className="text-sm font-semibold text-slate-800">
+                        Chuyển khoản trực tuyến ApiPay
+                      </span>
+                    </label>
+                    <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-2">
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="COD"
+                        checked={paymentMethod === "COD"}
+                        onChange={(event) => setPaymentMethod(event.target.value)}
+                        disabled={submitting}
+                        className="h-4 w-4 accent-emerald-800"
+                      />
+                      <span className="text-sm font-semibold text-slate-800">
+                        Thanh toán khi nhận hàng (COD)
+                      </span>
+                    </label>
+                  </div>
+                </fieldset>
+              </section>
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
                 <label htmlFor="order-note" className="block text-lg font-extrabold text-slate-900">
                   Ghi chú giao hàng
@@ -256,7 +301,7 @@ export default function CheckoutPage() {
             </section>
           )}
 
-          {!options?.bank_configured && (
+          {paymentMethod === "ApiPay" && !options?.bank_configured && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
               Thanh toán ApiPay chưa được cấu hình ngân hàng nhận. Vui lòng liên hệ quản trị viên.
             </p>
@@ -340,7 +385,9 @@ export default function CheckoutPage() {
               ? "Đang xử lý..."
               : pendingOrderId
                 ? "Lấy lại liên kết thanh toán"
-                : `Đặt hàng & thanh toán qua ${options?.bank_name || "ApiPay"}`}
+                : paymentMethod === "COD"
+                  ? "Đặt hàng — thanh toán khi nhận hàng"
+                  : `Đặt hàng & thanh toán qua ${options?.bank_name || "ApiPay"}`}
           </button>
           <Link to="/cart" className="mt-4 block text-center text-sm font-semibold text-emerald-800 hover:underline">
             Quay lại giỏ hàng

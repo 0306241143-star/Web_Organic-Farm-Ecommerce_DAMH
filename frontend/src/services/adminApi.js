@@ -22,4 +22,32 @@ export const adminApi = {
   // Cấu hình hệ thống
   getSettings: () => axiosClient.get("/admin/settings"),
   updateSettings: (data) => axiosClient.put("/admin/settings", data),
+
+
+  // 1. Quản lý Danh mục nông sản
+  getCategories: () => axiosClient.get("/admin/categories"),
+  createCategory: (data) => axiosClient.post("/admin/categories", data),
+  updateCategory: (id, data) => axiosClient.put(`/admin/categories/${id}`, data),
+  updateCategoryStatus: (id, status) =>
+    axiosClient.patch(`/admin/categories/${id}/status`, { Trang_thai: status }),
+  deleteCategory: (id) => axiosClient.delete(`/admin/categories/${id}`),
+
+  // 2. Quản lý Sản phẩm nông sản
+  getProducts: (params) => axiosClient.get("/admin/products", { params }),
+  createProduct: (formData) =>
+    axiosClient.post("/admin/products", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  updateProduct: (id, formData) => {
+    if (formData instanceof FormData) {
+      formData.append("_method", "PUT");
+      return axiosClient.post(`/admin/products/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    return axiosClient.put(`/admin/products/${id}`, formData);
+  },
+  updateProductStatus: (id, status) =>
+    axiosClient.patch(`/admin/products/${id}/status`, { Trang_thai: status }),
+  deleteProduct: (id) => axiosClient.delete(`/admin/products/${id}`),
 };
