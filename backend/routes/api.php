@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Api\Public\StorefrontController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -83,6 +84,12 @@ Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
 Route::post('/reset-password', [NewPasswordController::class, 'store']);
+//Home Page danh mucj + sản phẩm bán chạy và flash sale
+Route::get('/categories', [StorefrontController::class, 'categories']);
+Route::get('/products', [StorefrontController::class, 'products']);
+Route::get('/flash-sales/active', [StorefrontController::class, 'flashSales']);
+Route::get('/subscriptions', [StorefrontController::class, 'subscriptions']);
+
 
 // Các API yêu cầu đăng nhập qua Sanctum Token (CV04.4 & CV04.6)
 Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
