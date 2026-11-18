@@ -29,8 +29,9 @@ class CategoryController extends Controller
                             'loCanhTacs:Ma_lo_canh_tac,Ma_san_pham',
                             'loCanhTacs.loHangs' => function ($batchQuery) {
                                 $batchQuery->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])
-                                    ->where('So_luong_con_lai', '>', 0)
-                                    ->select(['Ma_lo_hang', 'Ma_lo_canh_tac', 'So_luong_con_lai', 'Trang_thai']);
+                                            ->where('So_luong_con_lai', '>', 0)
+                                            ->whereDate('Han_su_dung', '>=', now()->toDateString())
+                                            ->select(['Ma_lo_hang', 'Ma_lo_canh_tac', 'So_luong_con_lai', 'Trang_thai']);
                             },
                         ]);
                 },
