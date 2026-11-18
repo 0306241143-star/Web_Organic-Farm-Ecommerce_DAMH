@@ -330,6 +330,7 @@ class BatchController extends Controller
             }
             
             $batch->save();
+        });
 
         $batch->load([
             'loCanhTac.sanPham',
