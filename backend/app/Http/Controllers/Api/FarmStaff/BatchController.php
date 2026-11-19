@@ -167,6 +167,7 @@ class BatchController extends Controller
         // Xóa cache mùa vụ và nhật ký để đồng bộ dữ liệu tức thời
         Cache::forget('farm_seasons_all');
         Cache::forget("farm_logs_plot_{$plot->Ma_lo_canh_tac}");
+        $this->clearPublicCatalogCache();
 
         $batch->load([
             'loCanhTac.sanPham',
@@ -271,6 +272,7 @@ class BatchController extends Controller
         }
 
         $batch->save();
+        $this->clearPublicCatalogCache();
 
         $batch->load([
             'loCanhTac.sanPham',
@@ -331,6 +333,7 @@ class BatchController extends Controller
 
             $batch->save();
         });
+        $this->clearPublicCatalogCache();
 
         $batch->load([
             'loCanhTac.sanPham',
@@ -482,5 +485,11 @@ class BatchController extends Controller
             message: 'Lấy lịch sử biến động kho thành công.',
             data: $disposals
         );
+    }
+
+    private function clearPublicCatalogCache(): void
+    {
+        Cache::forget('public_catalog_products_v1');
+        Cache::forget('public_categories_list');
     }
 }

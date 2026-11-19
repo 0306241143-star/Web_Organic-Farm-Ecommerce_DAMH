@@ -5,12 +5,11 @@ import Button from "../../common/Button";
 import { showGlobalToast } from "../../GlobalToast";
 import { useAuth } from "../../../context/useAuth";
 import { useCart } from "../../../context/useCart";
-import { customerApi } from "../../../services/customerApi";
 import { notifyApiErrorToast } from "../../../services/axiosClient";
 import { formatCurrencyVnd } from "../../../services/publicApi";
 
 export default function ProductPurchasePanel({ product }) {
-  const { items, setItems, setServerCartCount } = useCart();
+  const { items, addItem } = useCart();
   const { user, isLoading, hasRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,50 +56,14 @@ export default function ProductPurchasePanel({ product }) {
     ) {
       return;
     }
+    if (user && !isCustomer) {
+      showGlobalToast("Chỉ tài khoản khách hàng mới có thể mua sản phẩm.", "warning");
+      return;
+    }
 
     setIsAdding(true);
     try {
-      let serverCartCount;
-      if (user && isCustomer) {
-        const response = await customerApi.addCartItem({
-          product_id: product.id,
-          quantity,
-        });
-        if (!response?.success) {
-          throw new Error(response?.message || "Không thể thêm sản phẩm vào giỏ hàng.");
-        }
-        serverCartCount = response.data?.cart_count;
-      }
-
-      setItems((currentItems) => {
-        const current = Array.isArray(currentItems) ? currentItems : [];
-        const existing = current.some(
-          (item) => String(item.id) === String(product.id)
-        );
-        const cartProduct = {
-          id: product.id,
-          name: product.name,
-          unit: product.unit,
-          price: effectivePrice,
-          image_url: product.image_url,
-        };
-
-        return existing
-          ? current.map((item) =>
-              String(item.id) === String(product.id)
-                ? {
-                    ...item,
-                    ...cartProduct,
-                    quantity: (Number(item.quantity) || 0) + quantity,
-                  }
-                : item
-            )
-          : [...current, { ...cartProduct, quantity }];
-      });
-      if (Number.isFinite(Number(serverCartCount))) {
-        setServerCartCount(Number(serverCartCount));
-      }
-
+      await addItem(product, quantity);
       setQuantity(1);
       showGlobalToast(`Đã thêm "${product.name}" vào giỏ hàng.`, "success");
     } catch (error) {

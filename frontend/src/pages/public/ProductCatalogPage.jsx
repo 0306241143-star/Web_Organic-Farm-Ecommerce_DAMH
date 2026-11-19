@@ -31,6 +31,15 @@ const SORT_OPTIONS = [
 
 const PER_PAGE = 12;
 
+const normalizeVi = (value = "") =>
+  String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim();
+
 /* ================= THÀNH PHẦN CON 1: TIÊU ĐỀ DANH MỤC & THANH TÌM KIẾM ================= */
 function CatalogHeroHeader({
   activeCategoryObj,
@@ -397,24 +406,16 @@ export default function ProductCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [facets, setFacets] = useState({
     available_certifications: [],
     price_bounds: { min: 0, max: 0 },
     summary: { total_products: 0, in_stock_count: 0, flash_sale_count: 0 },
   });
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    per_page: PER_PAGE,
-    total: 0,
-    last_page: 1,
-  });
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-
-  const requestSeqRef = useRef(0);
 
   // Đọc trạng thái lọc đồng bộ trực tiếp từ URL Query String
   const filters = useMemo(() => {
@@ -459,7 +460,6 @@ export default function ProductCatalogPage() {
         next.delete("page");
       }
 
-      setLoading(true);
       setErrorMessage("");
       setSearchParams(next, { replace: false });
     },
@@ -499,51 +499,147 @@ export default function ProductCatalogPage() {
     };
   }, []);
 
-  // Tải sản phẩm theo bộ lọc hiện tại
+  // Tải danh sách sản phẩm một lần; các bộ lọc được xử lý ngay trên client.
   useEffect(() => {
-    const seq = ++requestSeqRef.current;
-
+    let active = true;
     publicApi
-      .getProducts({
-        search: filters.search,
-        category: filters.category,
-        min_price: filters.minPrice,
-        max_price: filters.maxPrice,
-        cert: filters.certifications.join(","),
-        in_stock: filters.inStock,
-        flash_sale: filters.flashSale,
-        sort: filters.sort,
-        page: filters.page,
-        per_page: PER_PAGE,
-      })
+      .getProducts({ per_page: 48 })
       .then((res) => {
-        if (seq !== requestSeqRef.current) return;
-        setProducts(Array.isArray(res?.data) ? res.data : []);
-        if (res?.meta) {
-          setPagination({
-            current_page: res.meta.current_page ?? 1,
-            per_page: res.meta.per_page ?? PER_PAGE,
-            total: res.meta.total ?? 0,
-            last_page: res.meta.last_page ?? 1,
-          });
-          if (res.meta.facets) {
-            setFacets(res.meta.facets);
-          }
+        if (!active) return;
+        setAllProducts(Array.isArray(res?.data) ? res.data : []);
+        if (res?.meta?.facets) {
+          setFacets(res.meta.facets);
         }
         setErrorMessage("");
       })
       .catch((err) => {
-        if (seq !== requestSeqRef.current) return;
-        setErrorMessage(
-          err?.message || "Không thể tải danh sách nông sản. Vui lòng thử lại."
-        );
+        if (active) {
+          setErrorMessage(
+            err?.message || "Không thể tải danh sách nông sản. Vui lòng thử lại."
+          );
+        }
       })
       .finally(() => {
-        if (seq === requestSeqRef.current) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       });
-  }, [filters, reloadTick]);
+    return () => {
+      active = false;
+    };
+  }, [reloadTick]);
+
+  const { products, pagination } = useMemo(() => {
+    let list = [...allProducts];
+
+    if (filters.category) {
+      list = list.filter(
+        (item) => String(item.category?.id) === String(filters.category)
+      );
+    }
+
+    if (filters.search) {
+      const keyword = normalizeVi(filters.search);
+      list = list.filter((item) => {
+        const certificationDetails = (item.certifications || [])
+          .map((certification) => `${certification.name || ""} ${certification.issuer || ""}`)
+          .join(" ");
+        const searchableText = [
+          item.name,
+          item.description,
+          item.category?.name,
+          item.farm?.name,
+          item.unit,
+          (item.certification_standards || []).join(" "),
+          certificationDetails,
+        ].join(" ");
+
+        return normalizeVi(searchableText).includes(keyword);
+      });
+    }
+
+    if (filters.minPrice !== "") {
+      const minPrice = Number(filters.minPrice);
+      if (Number.isFinite(minPrice)) {
+        list = list.filter(
+          (item) => Number(item.effective_price) >= Math.max(0, minPrice)
+        );
+      }
+    }
+
+    if (filters.maxPrice !== "") {
+      const maxPrice = Number(filters.maxPrice);
+      if (Number.isFinite(maxPrice)) {
+        list = list.filter(
+          (item) => Number(item.effective_price) <= Math.max(0, maxPrice)
+        );
+      }
+    }
+
+    if (filters.certifications.length > 0) {
+      const wantedCertifications = filters.certifications.map(normalizeVi);
+      list = list.filter((item) => {
+        const certifications = [
+          ...(item.certification_standards || []),
+          ...(item.certifications || []).map(
+            (certification) => `${certification.name || ""} ${certification.issuer || ""}`
+          ),
+        ].map(normalizeVi);
+
+        return wantedCertifications.some((wanted) =>
+          certifications.some((certification) => certification.includes(wanted))
+        );
+      });
+    }
+
+    if (filters.inStock) {
+      list = list.filter((item) => item.in_stock === true);
+    }
+    if (filters.flashSale) {
+      list = list.filter((item) => item.is_flash_sale === true);
+    }
+
+    if (filters.sort === "price_asc") {
+      list.sort(
+        (a, b) =>
+          Number(a.effective_price) - Number(b.effective_price) ||
+          Number(b.id) - Number(a.id)
+      );
+    } else if (filters.sort === "price_desc") {
+      list.sort(
+        (a, b) =>
+          Number(b.effective_price) - Number(a.effective_price) ||
+          Number(b.id) - Number(a.id)
+      );
+    } else if (filters.sort === "name_asc") {
+      list.sort((a, b) =>
+        normalizeVi(a.name).localeCompare(normalizeVi(b.name))
+      );
+    } else if (filters.sort === "newest") {
+      list.sort((a, b) => Number(b.id) - Number(a.id));
+    } else if (filters.sort === "stock_desc") {
+      list.sort(
+        (a, b) =>
+          Number(b.available_stock) - Number(a.available_stock) ||
+          Number(b.id) - Number(a.id)
+      );
+    }
+
+    const total = list.length;
+    const lastPage = Math.max(1, Math.ceil(total / PER_PAGE));
+    const currentPage = Math.min(
+      Math.max(1, Math.floor(filters.page)),
+      lastPage
+    );
+
+    return {
+      products: list.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE),
+      pagination: {
+        current_page: currentPage,
+        per_page: PER_PAGE,
+        total,
+        last_page: lastPage,
+      },
+    };
+  }, [allProducts, filters]);
 
   const handleRetry = useCallback(() => {
     setLoading(true);
@@ -581,7 +677,6 @@ export default function ProductCatalogPage() {
 
   const handleResetFilters = useCallback(() => {
     setSearchDraft(null);
-    setLoading(true);
     setErrorMessage("");
     setSearchParams(new URLSearchParams(), { replace: false });
   }, [setSearchParams]);

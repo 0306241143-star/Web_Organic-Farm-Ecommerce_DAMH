@@ -7,135 +7,214 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\GioHang;
 use App\Models\SanPham;
+use App\Services\CartPricingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
     use ApiResponse;
 
-    public function storeItem(Request $request): JsonResponse
+    /**
+     * Lấy giỏ gắn với tài khoản đang đăng nhập; giỏ được tạo lần đầu nếu chưa tồn tại.
+     */
+    public function index(Request $request, CartPricingService $pricing): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $cart = $this->getOrCreateCart((int) $request->user()->getAuthIdentifier());
+
+        return $this->successResponse(
+            message: 'Lấy giỏ hàng thành công.',
+            data: $this->formatCart($cart, $pricing)
+        );
+    }
+
+    /**
+     * Thêm mặt hàng mới hoặc cộng số lượng vào dòng sản phẩm đã có trong giỏ.
+     */
+    public function store(Request $request, CartPricingService $pricing): JsonResponse
+    {
+        $validated = $request->validate([
             'product_id' => ['required', 'integer', 'min:1'],
-            'quantity'   => ['required', 'integer', 'min:1'],
+            'quantity' => ['sometimes', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999.99'],
         ]);
 
-        if ($validator->fails()) {
-            return $this->errorResponse(
-                message: 'Thông tin sản phẩm hoặc số lượng không hợp lệ.',
-                status: 422,
-                errorCode: self::ERR_VALIDATION,
-                errors: $validator->errors()
-            );
+        $userId = (int) $request->user()->getAuthIdentifier();
+        $quantity = (float) ($validated['quantity'] ?? 1);
+
+        DB::transaction(function () use ($validated, $userId, $quantity, $pricing): void {
+            $cart = $this->getOrCreateCart($userId, lock: true);
+            $product = SanPham::query()
+                ->whereKey($validated['product_id'])
+                ->lockForUpdate()
+                ->first();
+
+            if (! $product || $product->Trang_thai !== 'Dang_ban') {
+                throw ValidationException::withMessages([
+                    'product_id' => 'Sản phẩm không tồn tại hoặc hiện không mở bán.',
+                ]);
+            }
+
+            $item = $cart->chiTiets()
+                ->where('Ma_san_pham', $product->Ma_san_pham)
+                ->lockForUpdate()
+                ->first();
+            $newQuantity = $quantity + (float) ($item?->So_luong ?? 0);
+            $availableStock = $pricing->availableStockFor([(int) $product->Ma_san_pham])
+                ->get((int) $product->Ma_san_pham, 0.0);
+
+            // Giỏ hàng không giữ chỗ tồn kho; luôn kiểm tra lại số khả dụng khi thêm và cập nhật.
+            if ($newQuantity > $availableStock) {
+                throw ValidationException::withMessages([
+                    'quantity' => "Số lượng vượt quá tồn kho khả dụng ({$availableStock}).",
+                ]);
+            }
+
+            if ($item) {
+                $item->update(['So_luong' => $newQuantity]);
+            } else {
+                $cart->chiTiets()->create([
+                    'Ma_san_pham' => $product->Ma_san_pham,
+                    'So_luong' => $newQuantity,
+                ]);
+            }
+        });
+
+        return $this->cartMutationResponse($userId, 'Đã thêm sản phẩm vào giỏ hàng.', $pricing);
+    }
+
+    /**
+     * Ghi đè số lượng của một mặt hàng; productId luôn được tìm trong giỏ của chính user.
+     */
+    public function update(Request $request, int $productId, CartPricingService $pricing): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999.99'],
+        ]);
+
+        $userId = (int) $request->user()->getAuthIdentifier();
+        $quantity = (float) $validated['quantity'];
+
+        DB::transaction(function () use ($productId, $userId, $quantity, $pricing): void {
+            $cart = $this->getOrCreateCart($userId, lock: true);
+            $item = $cart->chiTiets()
+                ->where('Ma_san_pham', $productId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $item) {
+                abort(404, 'Sản phẩm không có trong giỏ hàng.');
+            }
+
+            $product = $item->sanPham()->lockForUpdate()->first();
+            if (! $product || $product->Trang_thai !== 'Dang_ban') {
+                throw ValidationException::withMessages([
+                    'product_id' => 'Sản phẩm không còn mở bán. Vui lòng xóa sản phẩm khỏi giỏ hàng.',
+                ]);
+            }
+
+            $availableStock = $pricing->availableStockFor([$productId])->get($productId, 0.0);
+            if ($quantity > $availableStock) {
+                throw ValidationException::withMessages([
+                    'quantity' => "Số lượng vượt quá tồn kho khả dụng ({$availableStock}).",
+                ]);
+            }
+
+            $item->update(['So_luong' => $quantity]);
+        });
+
+        return $this->cartMutationResponse($userId, 'Đã cập nhật số lượng sản phẩm.', $pricing);
+    }
+
+    /**
+     * Xóa một mặt hàng khỏi giỏ riêng của user hiện tại.
+     */
+    public function destroy(Request $request, int $productId, CartPricingService $pricing): JsonResponse
+    {
+        $userId = (int) $request->user()->getAuthIdentifier();
+        $cart = $this->getOrCreateCart($userId);
+        $deleted = $cart->chiTiets()->where('Ma_san_pham', $productId)->delete();
+
+        if ($deleted === 0) {
+            abort(404, 'Sản phẩm không có trong giỏ hàng.');
         }
 
-        $productId = (int) $validator->validated()['product_id'];
-        $quantity = (int) $validator->validated()['quantity'];
-        $userId = (int) $request->user()->getAuthIdentifier();
+        return $this->cartMutationResponse($userId, 'Đã xóa sản phẩm khỏi giỏ hàng.', $pricing);
+    }
 
-        return DB::transaction(function () use ($productId, $quantity, $userId): JsonResponse {
-            DB::table('nguoi_dung')
-                ->where('Ma_nguoi_dung', $userId)
-                ->lockForUpdate()
-                ->first();
+    private function cartMutationResponse(
+        int $userId,
+        string $message,
+        CartPricingService $pricing
+    ): JsonResponse {
+        return $this->successResponse(
+            message: $message,
+            data: $this->formatCart($this->getOrCreateCart($userId), $pricing)
+        );
+    }
 
-            $product = SanPham::query()
-                ->where('Ma_san_pham', $productId)
-                ->where('Trang_thai', 'Dang_ban')
-                ->lockForUpdate()
-                ->first();
+    private function getOrCreateCart(int $userId, bool $lock = false): GioHang
+    {
+        $query = GioHang::query()->where('Ma_nguoi_dung', $userId);
+        if ($lock) {
+            $query->lockForUpdate();
+        }
 
-            if (! $product) {
-                return $this->errorResponse(
-                    message: 'Sản phẩm không tồn tại hoặc hiện đã tạm ngưng bán.',
-                    status: 404,
-                    errorCode: self::ERR_NOT_FOUND
-                );
-            }
+        return $query->firstOrCreate(['Ma_nguoi_dung' => $userId]);
+    }
 
-            $batches = DB::table('lo_hang as lh')
-                ->join('lo_canh_tac as lct', 'lct.Ma_lo_canh_tac', '=', 'lh.Ma_lo_canh_tac')
-                ->where('lct.Ma_san_pham', $productId)
-                ->whereIn('lh.Trang_thai', ['Con_hang', 'Sap_het_han'])
-                ->where('lh.So_luong_con_lai', '>', 0)
-                ->where('lh.Han_su_dung', '>=', now()->toDateString())
-                ->select(['lh.Ma_lo_hang', 'lh.So_luong_con_lai'])
-                ->lockForUpdate()
-                ->get();
+    /**
+     * Trả dữ liệu hiển thị đã tính ở server, không tin giá hay thành tiền từ trình duyệt.
+     */
+    private function formatCart(GioHang $cart, CartPricingService $pricing): array
+    {
+        $formattedItems = collect($pricing->priceCart($cart))->map(function (array $item): array {
+            $product = $item['product'];
 
-            $availableStock = round(
-                $batches->sum(fn ($batch) => (float) $batch->So_luong_con_lai),
-                2
-            );
-
-            $cart = DB::table('gio_hang')
-                ->where('Ma_nguoi_dung', $userId)
-                ->lockForUpdate()
-                ->first();
-            $cartItem = $cart
-                ? DB::table('chi_tiet_gio_hang')
-                    ->where('Ma_gio_hang', $cart->Ma_gio_hang)
-                    ->where('Ma_san_pham', $productId)
-                    ->lockForUpdate()
-                    ->first()
-                : null;
-            $updatedQuantity = round((float) ($cartItem->So_luong ?? 0) + $quantity, 2);
-
-            if ($updatedQuantity > $availableStock) {
-                return $this->errorResponse(
-                    message: 'Số lượng yêu cầu vượt quá tồn kho khả dụng.',
-                    status: 422,
-                    errorCode: self::ERR_VALIDATION,
-                    errors: [
-                        'quantity' => ['Số lượng tối đa có thể thêm là '.max(0, (int) floor($availableStock - (float) ($cartItem->So_luong ?? 0))).'.'],
-                    ]
-                );
-            }
-
-            $now = now();
-            $cartId = $cart
-                ? (int) $cart->Ma_gio_hang
-                : (int) DB::table('gio_hang')->insertGetId([
-                    'Ma_nguoi_dung' => $userId,
-                    'created_at'    => $now,
-                    'updated_at'    => $now,
-                ]);
-
-            if ($cartItem) {
-                DB::table('chi_tiet_gio_hang')
-                    ->where('Ma_ct_gio_hang', $cartItem->Ma_ct_gio_hang)
-                    ->update([
-                        'So_luong'  => $updatedQuantity,
-                        'updated_at' => $now,
-                    ]);
-            } else {
-                DB::table('chi_tiet_gio_hang')->insert([
-                    'Ma_gio_hang'  => $cartId,
-                    'Ma_san_pham'  => $productId,
-                    'So_luong'     => $updatedQuantity,
-                    'created_at'   => $now,
-                    'updated_at'   => $now,
-                ]);
-            }
-
-            $cartCount = (float) DB::table('chi_tiet_gio_hang')
-                ->where('Ma_gio_hang', $cartId)
-                ->sum('So_luong');
-
-            return $this->successResponse(
-                message: 'Đã thêm sản phẩm vào giỏ hàng.',
-                data: [
-                    'product_id'      => $productId,
-                    'quantity'        => $updatedQuantity,
-                    'available_stock' => $availableStock,
-                    'cart_count'       => $cartCount,
-                ]
-            );
+            return [
+                'id' => $item['id'],
+                'name' => $product->Ten_san_pham,
+                'unit' => $product->Don_vi_tinh,
+                'price' => $item['price'],
+                'quantity' => $item['quantity'],
+                'line_total' => $item['line_total'],
+                'image_url' => $this->resolveImageUrl($product->Hinh_anh_dai_dien),
+                'available_stock' => $item['available_stock'],
+                'is_available' => $item['is_available'],
+            ];
         });
+
+        return [
+            'items' => $formattedItems,
+            'item_count' => (float) $formattedItems->sum('quantity'),
+            'subtotal' => round((float) $formattedItems->sum('line_total'), 2),
+        ];
+    }
+
+    private function resolveImageUrl(?string $rawPath): ?string
+    {
+        if (! $rawPath) {
+            return null;
+        }
+
+        $path = trim($rawPath);
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        $relativePath = ltrim($path, '/');
+        if (Str::startsWith($relativePath, 'storage/')) {
+            $diskPath = Str::after($relativePath, 'storage/');
+
+            return Storage::disk('public')->exists($diskPath) ? asset($relativePath) : null;
+        }
+
+        return file_exists(public_path($relativePath)) ? asset($relativePath) : null;
     }
 }

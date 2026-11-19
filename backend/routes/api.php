@@ -140,8 +140,21 @@ Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookC
 
 // Nhóm API Khách hàng (bảo vệ bằng auth:sanctum + role:customer)
 Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
-    Route::post('/cart/items', [\App\Http\Controllers\Api\Customer\CartController::class, 'storeItem']);
+    // Cart APIs không nhận user_id từ client: controller luôn lấy giỏ theo phiên Sanctum hiện tại.
+    Route::get('/cart', [\App\Http\Controllers\Api\Customer\CartController::class, 'index']);
+    Route::post('/cart/items', [\App\Http\Controllers\Api\Customer\CartController::class, 'store']);
+    Route::put('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'update'])->whereNumber('productId');
+    Route::delete('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'destroy'])->whereNumber('productId');
+    Route::get('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'addresses']);
+    Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
+    Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
+    Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
+    Route::get('/checkout/options', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'options']);
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
+    // Đăng ký/lịch gói định kỳ và thanh toán thuộc riêng tài khoản khách hiện tại.
+    Route::post('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'store']);
+    Route::get('/subscriptions/{subscriptionId}', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'show'])->whereNumber('subscriptionId');
+    Route::post('/subscriptions/{subscriptionId}/checkout', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'checkout'])->whereNumber('subscriptionId');
 });
 
 // Nhóm API Nhân viên Nông trại (bảo vệ bằng auth:sanctum + role:farm_staff)
@@ -187,4 +200,18 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::put('/users/{id}/status', [\App\Http\Controllers\Api\Admin\UserRoleController::class, 'updateStatus']);
     Route::get('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'index']);
     Route::put('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'update']);
+
+    // Quản lý danh mục nông sản (Admin)
+    Route::get('/categories', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'index']);
+    Route::post('/categories', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'store']);
+    Route::put('/categories/{id}', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'update']);
+    Route::patch('/categories/{id}/status', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'updateStatus']);
+    Route::delete('/categories/{id}', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'destroy']);
+
+    // Quản lý danh sách sản phẩm nông sản (Admin)
+    Route::get('/products', [\App\Http\Controllers\Api\Admin\ProductController::class, 'index']);
+    Route::post('/products', [\App\Http\Controllers\Api\Admin\ProductController::class, 'store']);
+    Route::put('/products/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'update']);
+    Route::patch('/products/{id}/status', [\App\Http\Controllers\Api\Admin\ProductController::class, 'updateStatus']);
+    Route::delete('/products/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'destroy']);
 });

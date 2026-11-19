@@ -26,6 +26,11 @@ export const storefrontApi = {
     return res.data;
   },
 
+  getProduct: async (productId) => {
+    const res = await axiosClient.get(`/products/${productId}`);
+    return res.data?.data ?? null;
+  },
+
   getActiveFlashSales: async () => {
     const res = await axiosClient.get("/flash-sales/active");
     return res.data?.data || null;
