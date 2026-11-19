@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Api\Public\StorefrontController;
+use App\Http\Controllers\Api\Public\QrTraceController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -134,6 +135,7 @@ Route::get('/categories', [\App\Http\Controllers\Api\Public\CategoryController::
 Route::get('/products', [\App\Http\Controllers\Api\Public\ProductController::class, 'index']);
 Route::get('/products/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
 Route::get('/public/san-pham/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
+Route::get('/trace/{code}', [QrTraceController::class, 'show'])->where('code', '[^/]+');
 
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
 Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);

@@ -117,7 +117,7 @@ export default function HeroSection() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to="/trace/DEMO-QR-001"
+                to="/trace"
                 className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition-all"
               >
                 <QrCode className="w-4 h-4 text-[#86efac]" />
