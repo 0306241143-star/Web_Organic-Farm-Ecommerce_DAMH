@@ -133,12 +133,14 @@ Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
 Route::get('/categories', [\App\Http\Controllers\Api\Public\CategoryController::class, 'index']);
 Route::get('/products', [\App\Http\Controllers\Api\Public\ProductController::class, 'index']);
 Route::get('/products/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
+Route::get('/public/san-pham/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
 
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
 Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
 
 // Nhóm API Khách hàng (bảo vệ bằng auth:sanctum + role:customer)
 Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
+    Route::post('/cart/items', [\App\Http\Controllers\Api\Customer\CartController::class, 'storeItem']);
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
 });
 

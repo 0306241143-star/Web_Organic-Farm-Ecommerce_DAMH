@@ -22,7 +22,7 @@ export const publicApi = {
   getCategories: () => axiosClient.get("/categories"),
   getProducts: (params = {}) =>
     axiosClient.get("/products", { params: sanitizeParams(params) }),
-  getProduct: (productId) => axiosClient.get(`/products/${productId}`),
+  getProduct: (productId) => axiosClient.get(`/public/san-pham/${productId}`),
   getBrandStory: () => axiosClient.get("/brand-story"),
   getQrTrace: (code) => axiosClient.get(`/trace/${code}`),
 };
