@@ -1,12 +1,10 @@
 /* Registration, ApiPay checkout, and status recovery for recurring vegetable packages. */
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "../../context/useAuth";
 import { customerApi } from "../../services/customerApi";
 import { storefrontApi } from "../../services/storefrontApi";
 import SubscriptionScheduleForm from "../../components/customer/SubscriptionScheduleForm";
-
-const SUBSCRIPTION_ID_KEY = "pending-subscription-id";
-const IDEMPOTENCY_KEY = "pending-subscription-idempotency-key";
 
 function localDateString(date = new Date()) {
   const year = date.getFullYear();
@@ -36,7 +34,11 @@ function apiErrorMessage(error) {
 }
 
 export default function SubscriptionRegisterPage() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const subscriptionStorageKey = user?.id ? `xanhfarm:pendingSubscription:${user.id}` : null;
+  const idempotencyStorageKey = user?.id ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}` : null;
+
   const [packages, setPackages] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [addressMode, setAddressMode] = useState("new");
@@ -55,7 +57,7 @@ export default function SubscriptionRegisterPage() {
   const [deliveryDays, setDeliveryDays] = useState([]);
   const [apiPayReady, setApiPayReady] = useState(false);
   const [subscriptionId, setSubscriptionId] = useState(
-    () => window.localStorage.getItem(SUBSCRIPTION_ID_KEY) ?? ""
+    () => (subscriptionStorageKey ? window.localStorage.getItem(subscriptionStorageKey) ?? "" : "")
   );
   const [payment, setPayment] = useState(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
@@ -64,6 +66,14 @@ export default function SubscriptionRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    setSubscriptionId(
+      subscriptionStorageKey ? window.localStorage.getItem(subscriptionStorageKey) ?? "" : ""
+    );
+    setPayment(null);
+    setSubscriptionStatus(null);
+  }, [subscriptionStorageKey]);
 
   useEffect(() => {
     let active = true;
@@ -102,8 +112,8 @@ export default function SubscriptionRegisterPage() {
         const status = response.data;
         setSubscriptionStatus(status);
         if (status?.status === "Dang_hoat_dong") {
-          window.localStorage.removeItem(SUBSCRIPTION_ID_KEY);
-          window.localStorage.removeItem(IDEMPOTENCY_KEY);
+          if (subscriptionStorageKey) window.localStorage.removeItem(subscriptionStorageKey);
+          if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
           setSubscriptionId("");
           setPayment(null);
           setNotice("Thanh toán thành công. Gói rau định kỳ của bạn đã được kích hoạt.");
@@ -112,8 +122,8 @@ export default function SubscriptionRegisterPage() {
       .catch((error) => {
         if (!active) return;
         if (error.status === 404) {
-          window.localStorage.removeItem(SUBSCRIPTION_ID_KEY);
-          window.localStorage.removeItem(IDEMPOTENCY_KEY);
+          if (subscriptionStorageKey) window.localStorage.removeItem(subscriptionStorageKey);
+          if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
           setSubscriptionId("");
           setPayment(null);
         }
@@ -123,7 +133,7 @@ export default function SubscriptionRegisterPage() {
     return () => {
       active = false;
     };
-  }, [subscriptionId, statusRefresh]);
+  }, [subscriptionId, statusRefresh, subscriptionStorageKey, idempotencyStorageKey]);
 
   const startPayment = async (id) => {
     setErrorMessage("");
@@ -148,11 +158,14 @@ export default function SubscriptionRegisterPage() {
     try {
       let id = subscriptionId;
       if (!id) {
-        // Reuse the key if a network failure left the create request outcome uncertain.
-        let idempotencyKey = window.localStorage.getItem(IDEMPOTENCY_KEY);
+        let idempotencyKey = idempotencyStorageKey
+          ? window.localStorage.getItem(idempotencyStorageKey)
+          : null;
         if (!idempotencyKey) {
           idempotencyKey = createIdempotencyKey();
-          window.localStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
+          if (idempotencyStorageKey) {
+            window.localStorage.setItem(idempotencyStorageKey, idempotencyKey);
+          }
         }
 
         const registration = await customerApi.createSubscription({
@@ -166,8 +179,8 @@ export default function SubscriptionRegisterPage() {
         });
         id = String(registration.data?.subscription_id ?? "");
         if (!id) throw new Error("Máy chủ chưa trả về mã đăng ký.");
-        window.localStorage.setItem(SUBSCRIPTION_ID_KEY, id);
-        window.localStorage.removeItem(IDEMPOTENCY_KEY);
+        if (subscriptionStorageKey) window.localStorage.setItem(subscriptionStorageKey, id);
+        if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
         setSubscriptionId(id);
       }
 
@@ -175,8 +188,8 @@ export default function SubscriptionRegisterPage() {
       setPayment(checkout.data ?? null);
       setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
     } catch (error) {
-      if (error.status === 409) {
-        window.localStorage.removeItem(IDEMPOTENCY_KEY);
+      if (error.status === 409 && idempotencyStorageKey) {
+        window.localStorage.removeItem(idempotencyStorageKey);
       }
       setErrorMessage(apiErrorMessage(error));
     } finally {
