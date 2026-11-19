@@ -16,6 +16,10 @@ export const customerApi = {
   getRetailOrderStatus: (orderId) => axiosClient.get(`/customer/checkout/orders/${orderId}`),
   checkout: (data) => axiosClient.post("/customer/checkout", data),
   createSubscription: (data) => axiosClient.post("/customer/subscriptions", data),
+  getSubscriptionStatus: (subscriptionId) =>
+    axiosClient.get(`/customer/subscriptions/${subscriptionId}`),
+  checkoutSubscription: (subscriptionId) =>
+    axiosClient.post(`/customer/subscriptions/${subscriptionId}/checkout`),
   getOrders: () => axiosClient.get("/customer/orders"),
   getRewardPoints: () => axiosClient.get("/customer/rewards"),
   createClaim: (data) => axiosClient.post("/customer/claims", data),

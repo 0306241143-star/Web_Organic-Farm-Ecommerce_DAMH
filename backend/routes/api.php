@@ -150,6 +150,10 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
     Route::get('/checkout/options', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'options']);
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
+    // Đăng ký/lịch gói định kỳ và thanh toán thuộc riêng tài khoản khách hiện tại.
+    Route::post('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'store']);
+    Route::get('/subscriptions/{subscriptionId}', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'show'])->whereNumber('subscriptionId');
+    Route::post('/subscriptions/{subscriptionId}/checkout', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'checkout'])->whereNumber('subscriptionId');
 });
 
 // Nhóm API Nhân viên Nông trại (bảo vệ bằng auth:sanctum + role:farm_staff)
