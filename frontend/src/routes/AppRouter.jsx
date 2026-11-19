@@ -60,6 +60,7 @@ export default function AppRouter() {
                 <Route path="subscriptions" element={<SubscriptionRegisterPage />} />
                 <Route path="orders" element={<OrderHistoryPage />} />
                 <Route path="rewards" element={<RewardWalletPage />} />
+                <Route path="profile" element={<RewardWalletPage />} />
               </Route>
             </Route>
           </Route>

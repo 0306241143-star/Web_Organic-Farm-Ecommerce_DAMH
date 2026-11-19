@@ -1,4 +1,10 @@
-/* Customer-owned delivery address selector for retail checkout. */
+/* ==========================================================================
+ * THÀNH PHẦN CHỌN ĐỊA CHỈ GIAO HÀNG (ADDRESS DISTANCE PICKER)
+ * Hiển thị danh sách địa chỉ nhận hàng của khách khi thanh toán
+ * và cung cấp liên kết truy cập nhanh đến sổ địa chỉ.
+ * ========================================================================== */
+import { Link } from "react-router-dom";
+
 export default function AddressDistancePicker({
   addresses,
   value,
@@ -9,13 +15,30 @@ export default function AddressDistancePicker({
 
   return (
     <section aria-label="Địa chỉ giao hàng" className="rounded-2xl border border-slate-200 bg-white p-5">
-      <label htmlFor="delivery-address" className="block text-lg font-extrabold text-slate-900">
-        Địa chỉ giao hàng
-      </label>
+      <div className="flex items-center justify-between">
+        <label htmlFor="delivery-address" className="block text-lg font-extrabold text-slate-900">
+          Địa chỉ giao hàng
+        </label>
+        <Link
+          to="/rewards?tab=address"
+          className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 hover:underline"
+        >
+          Quản lý sổ địa chỉ
+        </Link>
+      </div>
+
       {addresses.length === 0 ? (
-        <p className="mt-3 text-sm text-amber-800" role="status">
-          Tài khoản chưa có địa chỉ giao hàng. Vui lòng thêm địa chỉ trước khi đặt hàng.
-        </p>
+        <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-4">
+          <p className="text-sm text-amber-900">
+            Tài khoản chưa có địa chỉ giao hàng. Vui lòng thêm địa chỉ trước khi đặt hàng.
+          </p>
+          <Link
+            to="/rewards?tab=address"
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 underline"
+          >
+            + Thêm địa chỉ nhận hàng mới
+          </Link>
+        </div>
       ) : (
         <>
           <select
