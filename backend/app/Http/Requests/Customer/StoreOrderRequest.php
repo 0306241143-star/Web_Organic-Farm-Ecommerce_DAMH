@@ -20,6 +20,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'address_id' => ['required', 'integer', 'min:1'],
+            'points_to_use' => ['sometimes', 'integer', 'min:0'],
             'note' => ['nullable', 'string', 'max:2000'],
             'payment_method' => ['sometimes', 'string', Rule::in(['ApiPay', 'COD'])],
         ];

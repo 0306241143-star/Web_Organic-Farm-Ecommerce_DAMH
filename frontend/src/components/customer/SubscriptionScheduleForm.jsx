@@ -19,19 +19,23 @@ const DELIVERY_WINDOWS = [
 export default function SubscriptionScheduleForm({
   packages,
   addresses,
+  addressMode,
   packageId,
   addressId,
+  shippingAddress,
   startDate,
   minStartDate,
   deliveryDays,
   onPackageChange,
+  onAddressModeChange,
   onAddressChange,
+  onShippingAddressChange,
   onStartDateChange,
   onToggleDay,
   onWindowChange,
   onSubmit,
   isSubmitting,
-  bankConfigured,
+  apiPayReady,
 }) {
   const selectedPackage = packages.find((item) => String(item.id) === String(packageId));
 
@@ -81,28 +85,136 @@ export default function SubscriptionScheduleForm({
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <label htmlFor="subscription-address" className="block text-lg font-extrabold text-slate-900">
-          Địa chỉ giao hàng
-        </label>
-        <select
-          id="subscription-address"
-          value={addressId}
-          onChange={(event) => onAddressChange(event.target.value)}
-          required
-          disabled={isSubmitting || addresses.length === 0}
-          className="mt-3 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
-        >
-          <option value="">Chọn địa chỉ nhận hàng</option>
-          {addresses.map((address) => (
-            <option key={address.id} value={address.id}>
-              {address.recipient_name} — {address.address}
-              {address.is_default ? " (Mặc định)" : ""}
-            </option>
-          ))}
-        </select>
+        <h2 className="text-lg font-extrabold text-slate-900">Địa chỉ giao hàng</h2>
+        <div className="mt-3 flex flex-wrap gap-4">
+          {addresses.length > 0 && (
+            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-slate-800">
+              <input
+                type="radio"
+                name="subscription-address-mode"
+                value="saved"
+                checked={addressMode === "saved"}
+                onChange={() => onAddressModeChange("saved")}
+                disabled={isSubmitting}
+              />
+              Chọn địa chỉ đã lưu
+            </label>
+          )}
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-slate-800">
+            <input
+              type="radio"
+              name="subscription-address-mode"
+              value="new"
+              checked={addressMode === "new"}
+              onChange={() => onAddressModeChange("new")}
+              disabled={isSubmitting}
+            />
+            Nhập địa chỉ giao hàng mới
+          </label>
+        </div>
+
+        {addressMode === "saved" && (
+          <select
+            id="subscription-address"
+            value={addressId}
+            onChange={(event) => onAddressChange(event.target.value)}
+            required
+            disabled={isSubmitting || addresses.length === 0}
+            className="mt-3 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
+          >
+            <option value="">Chọn địa chỉ nhận hàng</option>
+            {addresses.map((address) => (
+              <option key={address.id} value={address.id}>
+                {address.recipient_name} — {address.address}
+                {address.is_default ? " (Mặc định)" : ""}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {addressMode === "new" && (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-semibold text-slate-800">
+              Tên người nhận
+              <input
+                autoComplete="name"
+                value={shippingAddress.recipient_name}
+                onChange={(event) => onShippingAddressChange("recipient_name", event.target.value)}
+                maxLength={150}
+                required
+                disabled={isSubmitting}
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-semibold text-slate-800">
+              Số điện thoại
+              <input
+                type="tel"
+                autoComplete="tel"
+                value={shippingAddress.phone}
+                onChange={(event) => onShippingAddressChange("phone", event.target.value)}
+                pattern="(?:[+]84|0)[0-9]{9,10}"
+                title="Nhập số điện thoại Việt Nam, ví dụ 0912345678 hoặc +84912345678"
+                maxLength={13}
+                required
+                disabled={isSubmitting}
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-semibold text-slate-800 sm:col-span-2">
+              Số nhà, tên đường
+              <input
+                autoComplete="street-address"
+                value={shippingAddress.street}
+                onChange={(event) => onShippingAddressChange("street", event.target.value)}
+                maxLength={255}
+                required
+                disabled={isSubmitting}
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-semibold text-slate-800">
+              Phường / xã
+              <input
+                value={shippingAddress.ward}
+                onChange={(event) => onShippingAddressChange("ward", event.target.value)}
+                maxLength={100}
+                required
+                disabled={isSubmitting}
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-semibold text-slate-800">
+              Quận / huyện
+              <input
+                value={shippingAddress.district}
+                onChange={(event) => onShippingAddressChange("district", event.target.value)}
+                maxLength={100}
+                required
+                disabled={isSubmitting}
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-semibold text-slate-800 sm:col-span-2">
+              Tỉnh / thành phố
+              <input
+                autoComplete="address-level1"
+                value={shippingAddress.province}
+                onChange={(event) => onShippingAddressChange("province", event.target.value)}
+                maxLength={100}
+                required
+                disabled={isSubmitting}
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 font-normal"
+              />
+            </label>
+            <p className="text-xs text-slate-500 sm:col-span-2">
+              Địa chỉ mới sẽ được lưu vào tài khoản và định vị để hỗ trợ tính toán giao hàng.
+            </p>
+          </div>
+        )}
         {addresses.length === 0 && (
           <p className="mt-2 text-sm text-amber-800" role="status">
-            Tài khoản chưa có địa chỉ giao hàng. Hãy thêm địa chỉ trước khi đăng ký.
+            Nhập địa chỉ bên dưới để lưu vào tài khoản và tiếp tục đăng ký.
           </p>
         )}
       </section>
@@ -164,15 +276,15 @@ export default function SubscriptionScheduleForm({
         </fieldset>
       </section>
 
-      {!bankConfigured && (
+      {!apiPayReady && (
         <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
-          Thanh toán ApiPay chưa được cấu hình ngân hàng nhận. Vui lòng liên hệ quản trị viên.
+          ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook. Vui lòng liên hệ quản trị viên.
         </p>
       )}
 
       <button
         type="submit"
-        disabled={isSubmitting || !bankConfigured || !packageId || !addressId || !startDate || deliveryDays.length === 0}
+        disabled={isSubmitting || !apiPayReady || !packageId || (addressMode === "saved" && !addressId) || !startDate || deliveryDays.length === 0}
         className="min-h-11 w-full rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {isSubmitting ? "Đang xử lý..." : "Đăng ký gói & thanh toán ApiPay"}

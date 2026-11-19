@@ -29,9 +29,9 @@ function createIdempotencyKey() {
 }
 
 function apiErrorMessage(error) {
-  const validationMessages = Object.values(error.response?.data?.errors ?? {}).flat();
+  const validationMessages = Object.values(error.fieldErrors ?? {}).flat();
   return validationMessages[0]
-    || error.response?.data?.message
+    || error.message
     || "Không thể xử lý đăng ký. Vui lòng thử lại.";
 }
 
@@ -39,12 +39,21 @@ export default function SubscriptionRegisterPage() {
   const [searchParams] = useSearchParams();
   const [packages, setPackages] = useState([]);
   const [addresses, setAddresses] = useState([]);
+  const [addressMode, setAddressMode] = useState("new");
   const [packageId, setPackageId] = useState(searchParams.get("package_id") ?? "");
   const [addressId, setAddressId] = useState("");
+  const [shippingAddress, setShippingAddress] = useState({
+    recipient_name: "",
+    phone: "",
+    street: "",
+    ward: "",
+    district: "",
+    province: "",
+  });
   const [startDate, setStartDate] = useState(() => localDateString());
   const [minStartDate] = useState(() => localDateString());
   const [deliveryDays, setDeliveryDays] = useState([]);
-  const [bankConfigured, setBankConfigured] = useState(false);
+  const [apiPayReady, setApiPayReady] = useState(false);
   const [subscriptionId, setSubscriptionId] = useState(
     () => window.localStorage.getItem(SUBSCRIPTION_ID_KEY) ?? ""
   );
@@ -65,11 +74,12 @@ export default function SubscriptionRegisterPage() {
     ])
       .then(([availablePackages, addressResponse, optionsResponse]) => {
         if (!active) return;
-        const addressList = addressResponse.data?.data ?? [];
+        const addressList = addressResponse.data ?? [];
         setPackages(availablePackages);
         setAddresses(addressList);
+        setAddressMode(addressList.length > 0 ? "saved" : "new");
         setAddressId(String(addressList.find((address) => address.is_default)?.id ?? addressList[0]?.id ?? ""));
-        setBankConfigured(Boolean(optionsResponse.data?.data?.bank_configured));
+        setApiPayReady(Boolean(optionsResponse.data?.ready));
       })
       .catch((error) => {
         if (active) setErrorMessage(apiErrorMessage(error));
@@ -89,7 +99,7 @@ export default function SubscriptionRegisterPage() {
     customerApi.getSubscriptionStatus(subscriptionId)
       .then((response) => {
         if (!active) return;
-        const status = response.data?.data;
+        const status = response.data;
         setSubscriptionStatus(status);
         if (status?.status === "Dang_hoat_dong") {
           window.localStorage.removeItem(SUBSCRIPTION_ID_KEY);
@@ -101,7 +111,7 @@ export default function SubscriptionRegisterPage() {
       })
       .catch((error) => {
         if (!active) return;
-        if (error.response?.status === 404) {
+        if (error.status === 404) {
           window.localStorage.removeItem(SUBSCRIPTION_ID_KEY);
           window.localStorage.removeItem(IDEMPOTENCY_KEY);
           setSubscriptionId("");
@@ -120,7 +130,7 @@ export default function SubscriptionRegisterPage() {
     setIsSubmitting(true);
     try {
       const response = await customerApi.checkoutSubscription(id);
-      setPayment(response.data?.data ?? null);
+      setPayment(response.data ?? null);
       setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
     } catch (error) {
       setErrorMessage(apiErrorMessage(error));
@@ -147,12 +157,14 @@ export default function SubscriptionRegisterPage() {
 
         const registration = await customerApi.createSubscription({
           package_id: Number(packageId),
-          address_id: Number(addressId),
+          ...(addressMode === "saved"
+            ? { address_id: Number(addressId) }
+            : { shipping_address: shippingAddress }),
           start_date: startDate,
           delivery_days: deliveryDays,
           idempotency_key: idempotencyKey,
         });
-        id = String(registration.data?.data?.subscription_id ?? "");
+        id = String(registration.data?.subscription_id ?? "");
         if (!id) throw new Error("Máy chủ chưa trả về mã đăng ký.");
         window.localStorage.setItem(SUBSCRIPTION_ID_KEY, id);
         window.localStorage.removeItem(IDEMPOTENCY_KEY);
@@ -160,10 +172,10 @@ export default function SubscriptionRegisterPage() {
       }
 
       const checkout = await customerApi.checkoutSubscription(id);
-      setPayment(checkout.data?.data ?? null);
+      setPayment(checkout.data ?? null);
       setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
     } catch (error) {
-      if (error.response?.status === 409) {
+      if (error.status === 409) {
         window.localStorage.removeItem(IDEMPOTENCY_KEY);
       }
       setErrorMessage(apiErrorMessage(error));
@@ -182,6 +194,10 @@ export default function SubscriptionRegisterPage() {
     setDeliveryDays((current) => current.map((item) => (
       item.weekday === weekday ? { ...item, delivery_window: deliveryWindow } : item
     )));
+  };
+
+  const changeShippingAddress = (field, value) => {
+    setShippingAddress((current) => ({ ...current, [field]: value }));
   };
 
   if (loading) {
@@ -275,19 +291,23 @@ export default function SubscriptionRegisterPage() {
         <SubscriptionScheduleForm
           packages={packages}
           addresses={addresses}
+          addressMode={addressMode}
           packageId={packageId}
           addressId={addressId}
+          shippingAddress={shippingAddress}
           startDate={startDate}
           minStartDate={minStartDate}
           deliveryDays={deliveryDays}
           onPackageChange={setPackageId}
+          onAddressModeChange={setAddressMode}
           onAddressChange={setAddressId}
+          onShippingAddressChange={changeShippingAddress}
           onStartDateChange={setStartDate}
           onToggleDay={toggleDay}
           onWindowChange={changeWindow}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
-          bankConfigured={bankConfigured}
+          apiPayReady={apiPayReady}
         />
       )}
 
