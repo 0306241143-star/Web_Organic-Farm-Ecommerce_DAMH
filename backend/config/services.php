@@ -42,11 +42,18 @@ return [
         'secret_key' => env('APIPAY_SECRET_KEY'),
         'webhook_secret' => env('APIPAY_WEBHOOK_SECRET'),
         'webhook_url' => env('APIPAY_WEBHOOK_URL'),
+        'bank_public_id' => env('APIPAY_BANK_PUBLIC_ID'),
+        'bank_name' => env('APIPAY_BANK_NAME', 'ApiPay'),
     ],
 
     'goong' => [
         'api_key' => env('GOONG_API_KEY'),
         'distance_matrix_url' => env('GOONG_DISTANCE_MATRIX_URL', 'https://rsapi.goong.io/DistanceMatrix'),
+    ],
+
+    'shipping' => [
+        // Dữ liệu mẫu tính 25.000đ cho 12,5km, tương ứng đơn giá 2.000đ/km.
+        'price_per_km' => env('SHIPPING_PRICE_PER_KM', 2000),
     ],
 
 ];
