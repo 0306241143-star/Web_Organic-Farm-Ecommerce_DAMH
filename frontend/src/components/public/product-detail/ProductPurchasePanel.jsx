@@ -35,10 +35,11 @@ export default function ProductPurchasePanel({ product }) {
     setQuantity(Math.min(maxAddQuantity, Math.max(1, Math.floor(next))));
   };
 
-  const requireCustomer = () => {
+  const requireCustomer = (guestMessage = "") => {
     if (isLoading) return false;
     if (!user) {
       navigate("/login", { state: { from: location } });
+      if (guestMessage) showGlobalToast(guestMessage, "info");
       return false;
     }
     if (!isCustomer) {
@@ -56,8 +57,11 @@ export default function ProductPurchasePanel({ product }) {
     ) {
       return;
     }
-    if (user && !isCustomer) {
-      showGlobalToast("Chỉ tài khoản khách hàng mới có thể mua sản phẩm.", "warning");
+    if (
+      !requireCustomer(
+        "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng."
+      )
+    ) {
       return;
     }
 
