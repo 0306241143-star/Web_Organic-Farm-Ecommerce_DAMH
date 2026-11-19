@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { storefrontApi } from "../../services/storefrontApi";
+import { useAuth } from "../../context/useAuth";
 
 function getErrorMessage(error) {
   return error.response?.data?.message || "Không thể tải thông tin sản phẩm.";
@@ -9,11 +10,16 @@ function getErrorMessage(error) {
 
 export default function ProductDetailPage() {
   const { productId } = useParams();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [packageErrorMessage, setPackageErrorMessage] = useState("");
+
+  const isInternalStaff = Boolean(
+    user && ["admin", "farm_staff", "sales"].includes(user.role)
+  );
 
   useEffect(() => {
     let active = true;
@@ -100,12 +106,18 @@ export default function ProductDetailPage() {
                     <span className="text-sm font-semibold text-emerald-950">
                       {item.name} · {Number(item.price).toLocaleString("vi-VN")}đ
                     </span>
-                    <Link
-                      to={`/subscriptions?package_id=${encodeURIComponent(item.id)}`}
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
-                    >
-                      Đăng ký gói này
-                    </Link>
+                    {isInternalStaff ? (
+                      <span className="inline-flex min-h-11 items-center rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800">
+                        Chế độ xem nội bộ
+                      </span>
+                    ) : (
+                      <Link
+                        to={`/subscriptions?package_id=${encodeURIComponent(item.id)}`}
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-800 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
+                      >
+                        Đăng ký gói này
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
