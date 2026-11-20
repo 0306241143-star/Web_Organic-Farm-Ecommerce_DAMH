@@ -162,7 +162,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const canSubmit = (paymentMethod === "COD" || options?.bank_configured) && !submitting && (
+  const canSubmit = (paymentMethod === "COD" || options?.ready) && !submitting && (
     pendingOrderId || (addressId && quote && !quoteLoading)
   );
   const displaySubtotal = quote?.subtotal ?? order?.subtotal;
@@ -301,9 +301,9 @@ export default function CheckoutPage() {
             </section>
           )}
 
-          {paymentMethod === "ApiPay" && !options?.bank_configured && (
+          {paymentMethod === "ApiPay" && !options?.ready && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
-              Thanh toán ApiPay chưa được cấu hình ngân hàng nhận. Vui lòng liên hệ quản trị viên.
+              ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook. Vui lòng liên hệ quản trị viên.
             </p>
           )}
           {payment && (

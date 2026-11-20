@@ -7,6 +7,7 @@ use App\Models\GioHang;
 use App\Models\NguoiDung;
 use App\Models\NongTrai;
 use App\Services\ShippingDistanceService;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -27,6 +28,8 @@ class CustomerCheckoutTest extends TestCase
             'services.apipay.access_key' => 'test-access-key',
             'services.apipay.secret_key' => 'test-secret-key',
             'services.apipay.bank_public_id' => 'test-bank',
+            'services.apipay.webhook_secret' => 'checkout-test-webhook-secret',
+            'services.apipay.webhook_url' => 'https://example.test/api/webhooks/apipay',
         ]);
         Http::fake(function ($request) {
             if (str_contains($request->url(), 'rsapi.goong.io')) {
@@ -123,12 +126,19 @@ class CustomerCheckoutTest extends TestCase
         $this->assertDatabaseMissing('chi_tiet_gio_hang', ['Ma_gio_hang' => 1]);
 
         $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/checkout', ['order_id' => $orderId])
+            ->postJson('/api/customer/checkout', [
+                'order_id' => $orderId,
+                'bank_public_id' => 'attacker-controlled-bank',
+            ])
             ->assertCreated()
             ->assertJsonPath('data.pay_url', 'https://pay.apipay.vn/test')
             ->assertJsonPath('data.qr_url', 'https://app.apipay.vn/qr/test');
 
-        config(['services.apipay.webhook_secret' => 'checkout-test-webhook-secret']);
+        Http::assertSent(fn (ClientRequest $request): bool => $request->method() === 'POST'
+            && str_ends_with($request->url(), '/payment-requests')
+            && $request['bankPublicId'] === 'test-bank'
+        );
+
         $paymentContent = DB::table('thanh_toan')
             ->where('Ma_don_hang', $orderId)
             ->value('Noi_dung_thanh_toan');
@@ -186,6 +196,47 @@ class CustomerCheckoutTest extends TestCase
             ->postJson('/api/customer/checkout/orders', ['address_id' => 1])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['cart']);
+    }
+
+    public function test_apipay_checkout_requires_webhook_configuration(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+        GioHang::query()
+            ->where('Ma_nguoi_dung', 5)
+            ->firstOrFail()
+            ->chiTiets()
+            ->delete();
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/cart/items', [
+                'product_id' => 1,
+                'quantity' => 2,
+            ])
+            ->assertOk();
+
+        $created = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/checkout/orders', ['address_id' => 1])
+            ->assertCreated();
+        $orderId = $created->json('data.order_id');
+
+        config([
+            'services.apipay.webhook_secret' => '',
+            'services.apipay.webhook_url' => '',
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson('/api/customer/checkout/options')
+            ->assertOk()
+            ->assertJsonPath('data.payment_configured', true)
+            ->assertJsonPath('data.webhook_configured', false)
+            ->assertJsonPath('data.ready', false);
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/checkout', ['order_id' => $orderId])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['order_id']);
+
+        $this->assertDatabaseMissing('thanh_toan', ['Ma_don_hang' => $orderId]);
     }
 
     public function test_system_shipping_rate_overrides_the_environment_fallback(): void

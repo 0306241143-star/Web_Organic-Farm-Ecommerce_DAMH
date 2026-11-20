@@ -11,6 +11,33 @@ use RuntimeException;
 
 class ApiPayPaymentService
 {
+    /**
+     * Report whether payment and webhook configuration is complete without exposing credentials.
+     *
+     * @return array{bank_configured: bool, payment_configured: bool, webhook_configured: bool, ready: bool}
+     */
+    public function configurationStatus(): array
+    {
+        $bankConfigured = is_string(config('services.apipay.bank_public_id'))
+            && config('services.apipay.bank_public_id') !== '';
+        $paymentConfigured = $bankConfigured
+            && is_string(config('services.apipay.access_key'))
+            && config('services.apipay.access_key') !== ''
+            && is_string(config('services.apipay.secret_key'))
+            && config('services.apipay.secret_key') !== '';
+        $webhookConfigured = is_string(config('services.apipay.webhook_secret'))
+            && config('services.apipay.webhook_secret') !== ''
+            && is_string(config('services.apipay.webhook_url'))
+            && config('services.apipay.webhook_url') !== '';
+
+        return [
+            'bank_configured' => $bankConfigured,
+            'payment_configured' => $paymentConfigured,
+            'webhook_configured' => $webhookConfigured,
+            'ready' => $paymentConfigured && $webhookConfigured,
+        ];
+    }
+
     public function createPaymentRequest(string $bankPublicId, int $amount, string $content): array
     {
         $response = $this->request('post', 'payment-requests', [

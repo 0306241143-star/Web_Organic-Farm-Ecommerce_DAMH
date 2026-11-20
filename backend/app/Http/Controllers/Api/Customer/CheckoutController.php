@@ -24,14 +24,13 @@ class CheckoutController extends Controller
 {
     use ApiResponse;
 
-    public function options(): JsonResponse
+    public function options(ApiPayPaymentService $apiPay): JsonResponse
     {
         return $this->successResponse(
             message: 'Lấy cấu hình thanh toán thành công.',
             data: [
                 'bank_name' => config('services.apipay.bank_name', 'ApiPay'),
-                'bank_configured' => is_string(config('services.apipay.bank_public_id'))
-                    && config('services.apipay.bank_public_id') !== '',
+                ...$apiPay->configurationStatus(),
             ]
         );
     }
@@ -40,13 +39,16 @@ class CheckoutController extends Controller
     {
         $validated = $request->validate([
             'order_id' => ['required', 'integer', 'min:1'],
-            'bank_public_id' => ['sometimes', 'string', 'max:100'],
         ]);
-        $bankPublicId = $validated['bank_public_id'] ?? config('services.apipay.bank_public_id');
+        $bankPublicId = config('services.apipay.bank_public_id');
 
-        if (! is_string($bankPublicId) || $bankPublicId === '') {
+        if (
+            ! is_string($bankPublicId)
+            || $bankPublicId === ''
+            || ! $apiPay->configurationStatus()['ready']
+        ) {
             throw ValidationException::withMessages([
-                'bank_public_id' => 'Chưa cấu hình ngân hàng nhận thanh toán ApiPay.',
+                'order_id' => 'ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook.',
             ]);
         }
 
