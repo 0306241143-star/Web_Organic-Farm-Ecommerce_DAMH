@@ -59,10 +59,6 @@ function CartStateProvider({ children, user }) {
   }, []);
 
   const addItem = useCallback(async (product, quantity = 1) => {
-    if (user?.role !== "customer") {
-      throw new Error("Chỉ khách hàng đã đăng nhập mới có thể thêm sản phẩm vào giỏ.");
-    }
-
     return enqueueCartMutation(async () => {
       const response = await customerApi.addCartItem({
         product_id: product.id,
@@ -71,31 +67,23 @@ function CartStateProvider({ children, user }) {
       cartRevision.current += 1;
       return applyCartResponse(response);
     });
-  }, [applyCartResponse, enqueueCartMutation, user?.role]);
+  }, [applyCartResponse, enqueueCartMutation]);
 
   const updateItem = useCallback(async (productId, quantity) => {
-    if (user?.role !== "customer") {
-      throw new Error("Vui lòng đăng nhập bằng tài khoản khách hàng để sửa giỏ hàng.");
-    }
-
     return enqueueCartMutation(async () => {
       const response = await customerApi.updateCartItem(productId, { quantity });
       cartRevision.current += 1;
       return applyCartResponse(response);
     });
-  }, [applyCartResponse, enqueueCartMutation, user?.role]);
+  }, [applyCartResponse, enqueueCartMutation]);
 
   const removeItem = useCallback(async (productId) => {
-    if (user?.role !== "customer") {
-      throw new Error("Vui lòng đăng nhập bằng tài khoản khách hàng để xóa sản phẩm.");
-    }
-
     return enqueueCartMutation(async () => {
       const response = await customerApi.removeCartItem(productId);
       cartRevision.current += 1;
       return applyCartResponse(response);
     });
-  }, [applyCartResponse, enqueueCartMutation, user?.role]);
+  }, [applyCartResponse, enqueueCartMutation]);
 
   useEffect(() => {
     if (user?.role !== "customer") return undefined;

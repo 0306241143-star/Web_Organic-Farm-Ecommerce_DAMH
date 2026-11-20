@@ -94,12 +94,8 @@ export default function FlashSaleSection({ onAddToCart }) {
       if (added === false) return;
       setAddedId(item.flash_sale_item_id);
       setTimeout(() => setAddedId(null), 1500);
-    } catch (error) {
-      notifyApiErrorToast(error, "Không thể thêm sản phẩm vào giỏ hàng.");
     } finally {
-      setAddingIds((current) =>
-        current.filter((id) => id !== item.flash_sale_item_id)
-      );
+      setAddingIds((current) => current.filter((id) => id !== item.flash_sale_item_id));
     }
   };
 

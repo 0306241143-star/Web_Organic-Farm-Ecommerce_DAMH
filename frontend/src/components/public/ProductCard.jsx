@@ -252,11 +252,6 @@ export default function ProductCard({ product, onAddToCart = null }) {
 
     if (!item.in_stock) return;
 
-    if (isLoading) {
-      showGlobalToast("Đang kiểm tra phiên đăng nhập, vui lòng thử lại.", "info");
-      return;
-    }
-
     // Khớp với quyền backend: chỉ khách hàng đăng nhập mới được lưu giỏ vào tài khoản.
     if (!user) {
       navigate("/login", { state: { from: location } });
@@ -271,8 +266,7 @@ export default function ProductCard({ product, onAddToCart = null }) {
     setIsAdding(true);
     try {
       if (typeof onAddToCart === "function") {
-        const added = await onAddToCart(item);
-        if (added === false) return;
+        await onAddToCart(item);
       } else {
         await addItem(item);
         showGlobalToast(`Đã thêm "${item.name}" vào giỏ hàng.`, "success");

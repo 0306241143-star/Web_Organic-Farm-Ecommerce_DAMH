@@ -49,7 +49,7 @@ export default function FeaturedProductsSection({ onAddToCart }) {
 
   const handleQuickAdd = async (product) => {
     if (Number(product.available_stock) <= 0) return;
-    if (typeof onAddToCart !== "function" || addingIds.includes(product.id)) return;
+    if (!onAddToCart || addingIds.includes(product.id)) return;
 
     setAddingIds((current) => [...current, product.id]);
     try {
@@ -57,8 +57,6 @@ export default function FeaturedProductsSection({ onAddToCart }) {
       if (added === false) return;
       setAddedId(product.id);
       setTimeout(() => setAddedId(null), 1500);
-    } catch (error) {
-      notifyApiErrorToast(error, "Không thể thêm sản phẩm vào giỏ hàng.");
     } finally {
       setAddingIds((current) => current.filter((id) => id !== product.id));
     }

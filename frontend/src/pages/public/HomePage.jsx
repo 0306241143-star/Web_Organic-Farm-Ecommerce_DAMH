@@ -14,17 +14,12 @@ import { useCart } from "../../context/useCart";
 import { notifyApiErrorToast } from "../../services/axiosClient";
 
 export default function HomePage() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const { addItem } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
 
   const handleAddToCart = async (product) => {
-    if (isLoading) {
-      showGlobalToast("Đang kiểm tra phiên đăng nhập, vui lòng thử lại.", "info");
-      return false;
-    }
-
     if (!user) {
       navigate("/login", { state: { from: location } });
       showGlobalToast("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.", "info");

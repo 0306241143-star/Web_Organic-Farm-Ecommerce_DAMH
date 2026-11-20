@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\NguoiDung;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -200,10 +201,17 @@ class CustomerSubscriptionTest extends TestCase
         $subscriptionId = $registrationResponse->json('data.subscription_id');
 
         $this->actingAs($customer, 'sanctum')
-            ->postJson("/api/customer/subscriptions/{$subscriptionId}/checkout")
+            ->postJson("/api/customer/subscriptions/{$subscriptionId}/checkout", [
+                'bank_public_id' => 'attacker-controlled-bank',
+            ])
             ->assertCreated()
             ->assertJsonPath('data.pay_url', 'https://pay.apipay.vn/subscription-test')
             ->assertJsonPath('data.qr_url', 'https://app.apipay.vn/qr/subscription-test');
+
+        Http::assertSent(fn (ClientRequest $request): bool => $request->method() === 'POST'
+            && str_ends_with($request->url(), '/payment-requests')
+            && $request['bankPublicId'] === 'test-bank'
+        );
 
         $payment = DB::table('thanh_toan')
             ->where('Ma_dang_ky_goi', $subscriptionId)
@@ -301,6 +309,29 @@ class CustomerSubscriptionTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.bank_configured', false)
             ->assertJsonPath('data.ready', false);
+    }
+
+    public function test_subscription_checkout_is_blocked_when_webhook_is_not_configured(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+        $registration = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/subscriptions', $this->validPayload())
+            ->assertCreated();
+        $subscriptionId = $registration->json('data.subscription_id');
+
+        config([
+            'services.apipay.webhook_secret' => '',
+            'services.apipay.webhook_url' => '',
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson("/api/customer/subscriptions/{$subscriptionId}/checkout")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['subscription_id']);
+
+        $this->assertDatabaseMissing('thanh_toan', [
+            'Ma_dang_ky_goi' => $subscriptionId,
+        ]);
     }
 
     private function validPayload(): array
