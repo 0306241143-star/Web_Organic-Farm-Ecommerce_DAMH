@@ -1,8 +1,12 @@
 /* Product details with a direct route into any recurring package containing this product. */
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Check, ShoppingCart } from "lucide-react";
+import { showGlobalToast } from "../../components/GlobalToast";
+import { useCart } from "../../context/useCart";
 import { storefrontApi } from "../../services/storefrontApi";
 import { useAuth } from "../../context/useAuth";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 function getErrorMessage(error) {
   return error.response?.data?.message || "Không thể tải thông tin sản phẩm.";
@@ -11,11 +15,16 @@ function getErrorMessage(error) {
 export default function ProductDetailPage() {
   const { productId } = useParams();
   const { user } = useAuth();
+  const { addItem } = useCart();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [packageErrorMessage, setPackageErrorMessage] = useState("");
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   const isInternalStaff = Boolean(
     user && ["admin", "farm_staff", "sales"].includes(user.role)
@@ -67,6 +76,32 @@ export default function ProductDetailPage() {
   const packagesIncludingProduct = packages.filter((item) =>
     item.items?.some((packageItem) => String(packageItem.product_id) === String(product.id))
   );
+  const hasAvailableStock = product.in_stock ?? Number(product.available_stock) > 0;
+
+  const handleAddToCart = async () => {
+    if (addingToCart || !hasAvailableStock) return;
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      showGlobalToast("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.", "info");
+      return;
+    }
+    if (user.role !== "customer") {
+      showGlobalToast("Chỉ tài khoản khách hàng mới có thể mua sản phẩm.", "warning");
+      return;
+    }
+
+    setAddingToCart(true);
+    try {
+      await addItem(product);
+      setAddedToCart(true);
+      showGlobalToast(`Đã thêm "${product.name}" vào giỏ hàng.`, "success");
+      setTimeout(() => setAddedToCart(false), 1500);
+    } catch (requestError) {
+      notifyApiErrorToast(requestError, "Không thể thêm sản phẩm vào giỏ hàng.");
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -94,6 +129,34 @@ export default function ProductDetailPage() {
             <span className="ml-1 text-base font-semibold text-slate-600">/{product.unit}</span>
           </p>
           {product.farm?.name && <p className="mt-3 text-sm text-slate-600">Nông trại: {product.farm.name}</p>}
+          {isInternalStaff ? (
+            <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              Chế độ xem nội bộ — không thể mua sản phẩm.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleAddToCart()}
+              disabled={!hasAvailableStock || addingToCart}
+              className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto sm:min-w-56"
+            >
+              {addingToCart ? (
+                <span role="status">Đang thêm vào giỏ...</span>
+              ) : addedToCart ? (
+                <>
+                  <Check className="h-5 w-5" aria-hidden="true" />
+                  Đã thêm vào giỏ
+                </>
+              ) : !hasAvailableStock ? (
+                "Tạm hết hàng"
+              ) : (
+                <>
+                  <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+                  Thêm vào giỏ hàng
+                </>
+              )}
+            </button>
+          )}
 
           <section className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
             <h2 className="text-lg font-extrabold text-emerald-950">Có trong gói rau định kỳ</h2>
