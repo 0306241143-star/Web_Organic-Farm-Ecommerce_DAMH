@@ -14,6 +14,7 @@ use App\Models\GoiDinhKy;
 use App\Models\LichGiaoDinhKy;
 use App\Models\ThanhToan;
 use App\Services\ApiPayPaymentService;
+use App\Services\GoongGeocodingService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -32,17 +33,53 @@ class SubscriptionController extends Controller
     /**
      * Lưu gói và toàn bộ lịch trong một transaction; đăng ký chỉ hoạt động sau ApiPay webhook.
      */
-    public function store(StoreSubscriptionRequest $request): JsonResponse
+    public function store(StoreSubscriptionRequest $request, GoongGeocodingService $geocoder): JsonResponse
     {
         $validated = $request->validated();
         $userId = (int) $request->user()->getAuthIdentifier();
+        $shippingAddress = $validated['shipping_address'] ?? null;
+        $address = isset($validated['address_id'])
+            ? DiaChiGiaoHang::query()
+                ->where('Ma_dia_chi', $validated['address_id'])
+                ->where('Ma_nguoi_dung', $userId)
+                ->firstOrFail()
+            : null;
+        $coordinates = null;
 
-        $address = DiaChiGiaoHang::query()
-            ->where('Ma_dia_chi', $validated['address_id'])
-            ->where('Ma_nguoi_dung', $userId)
-            ->firstOrFail();
+        if ($shippingAddress !== null) {
+            $existingRegistration = DangKyGoi::query()
+                ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
+                ->first();
 
-        $registration = DB::transaction(function () use ($validated, $userId, $address): DangKyGoi {
+            if ($existingRegistration && (int) $existingRegistration->Ma_nguoi_dung !== $userId) {
+                abort(409, 'Mã yêu cầu đã được sử dụng.');
+            }
+
+            if (! $existingRegistration) {
+                $fullAddress = implode(', ', [
+                    $shippingAddress['street'],
+                    $shippingAddress['ward'],
+                    $shippingAddress['district'],
+                    $shippingAddress['province'],
+                ]);
+
+                try {
+                    $coordinates = $geocoder->geocode($fullAddress);
+                } catch (ConnectionException|RuntimeException $exception) {
+                    Log::warning('Goong could not geocode a customer subscription address.', [
+                        'exception' => $exception::class,
+                    ]);
+
+                    return $this->errorResponse(
+                        message: 'Không thể xác định tọa độ địa chỉ. Vui lòng kiểm tra địa chỉ hoặc liên hệ quản trị viên.',
+                        status: 422,
+                        errorCode: self::ERR_BAD_REQUEST
+                    );
+                }
+            }
+        }
+
+        $registration = DB::transaction(function () use ($validated, $userId, $address, $shippingAddress, $coordinates): DangKyGoi {
             $existing = DangKyGoi::query()
                 ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
                 ->lockForUpdate()
@@ -71,9 +108,16 @@ class SubscriptionController extends Controller
                     ->values()
                     ->all();
 
+                $sameAddress = $shippingAddress === null
+                    ? (int) $existing->Ma_dia_chi === (int) $address->Ma_dia_chi
+                    : $this->addressMatches(
+                        DiaChiGiaoHang::query()->findOrFail($existing->Ma_dia_chi),
+                        $shippingAddress
+                    );
+
                 if (
                     (int) $existing->Ma_goi !== (int) $validated['package_id']
-                    || (int) $existing->Ma_dia_chi !== (int) $address->Ma_dia_chi
+                    || ! $sameAddress
                     || $existing->Ngay_bat_dau !== $validated['start_date']
                     || $existingDays !== $requestedDays
                 ) {
@@ -82,6 +126,21 @@ class SubscriptionController extends Controller
 
                 return $existing;
             }
+
+            $address ??= DiaChiGiaoHang::query()->create([
+                'Ma_nguoi_dung' => $userId,
+                'Ten_nguoi_nhan' => $shippingAddress['recipient_name'],
+                'So_dien_thoai_nguoi_nhan' => $shippingAddress['phone'],
+                'Dia_chi_chi_tiet' => $shippingAddress['street'],
+                'Phuong_xa' => $shippingAddress['ward'],
+                'Quan_huyen' => $shippingAddress['district'],
+                'Tinh_thanh' => $shippingAddress['province'],
+                'Vi_do' => $coordinates['latitude'],
+                'Kinh_do' => $coordinates['longitude'],
+                'La_mac_dinh' => ! DiaChiGiaoHang::query()
+                    ->where('Ma_nguoi_dung', $userId)
+                    ->exists(),
+            ]);
 
             $package = GoiDinhKy::query()
                 ->where('Ma_goi', $validated['package_id'])
@@ -131,6 +190,19 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Compare user-entered address fields with the saved snapshot for an idempotent retry.
+     */
+    private function addressMatches(DiaChiGiaoHang $address, array $requested): bool
+    {
+        return $address->Ten_nguoi_nhan === $requested['recipient_name']
+            && $address->So_dien_thoai_nguoi_nhan === $requested['phone']
+            && $address->Dia_chi_chi_tiet === $requested['street']
+            && $address->Phuong_xa === $requested['ward']
+            && $address->Quan_huyen === $requested['district']
+            && $address->Tinh_thanh === $requested['province'];
+    }
+
+    /**
      * Tạo hoặc khôi phục yêu cầu ApiPay cho đăng ký đang chờ thanh toán.
      */
     public function checkout(
@@ -143,9 +215,13 @@ class SubscriptionController extends Controller
         ]);
         $bankPublicId = $validated['bank_public_id'] ?? config('services.apipay.bank_public_id');
 
-        if (! is_string($bankPublicId) || $bankPublicId === '') {
+        if (
+            ! is_string($bankPublicId)
+            || $bankPublicId === ''
+            || ! $apiPay->configurationStatus()['ready']
+        ) {
             throw ValidationException::withMessages([
-                'bank_public_id' => 'Chưa cấu hình ngân hàng nhận thanh toán ApiPay.',
+                'bank_public_id' => 'ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook.',
             ]);
         }
 

@@ -146,9 +146,13 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::put('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'update'])->whereNumber('productId');
     Route::delete('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'destroy'])->whereNumber('productId');
     Route::get('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'addresses']);
+    Route::post('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'createAddress']);
+    Route::put('/addresses/{addressId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateAddress'])->whereNumber('addressId');
+    Route::get('/rewards', [\App\Http\Controllers\Api\Customer\RewardPointController::class, 'index']);
     Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
     Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
     Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
+    Route::post('/checkout/orders/{orderId}/cancel', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'cancel'])->whereNumber('orderId');
     Route::get('/checkout/options', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'options']);
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
     // Đăng ký/lịch gói định kỳ và thanh toán thuộc riêng tài khoản khách hiện tại.

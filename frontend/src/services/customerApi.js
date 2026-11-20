@@ -10,10 +10,14 @@ export const customerApi = {
   removeCartItem: (productId) =>
     axiosClient.delete(`/customer/cart/items/${productId}`),
   getAddresses: () => axiosClient.get("/customer/addresses"),
+  createAddress: (data) => axiosClient.post("/customer/addresses", data),
+  updateAddress: (addressId, data) =>
+    axiosClient.put(`/customer/addresses/${addressId}`, data),
   getCheckoutOptions: () => axiosClient.get("/customer/checkout/options"),
   getCheckoutQuote: (data) => axiosClient.post("/customer/checkout/quote", data),
   createRetailOrder: (data) => axiosClient.post("/customer/checkout/orders", data),
   getRetailOrderStatus: (orderId) => axiosClient.get(`/customer/checkout/orders/${orderId}`),
+  cancelRetailOrder: (orderId) => axiosClient.post(`/customer/checkout/orders/${orderId}/cancel`),
   checkout: (data) => axiosClient.post("/customer/checkout", data),
   createSubscription: (data) => axiosClient.post("/customer/subscriptions", data),
   getSubscriptionStatus: (subscriptionId) =>

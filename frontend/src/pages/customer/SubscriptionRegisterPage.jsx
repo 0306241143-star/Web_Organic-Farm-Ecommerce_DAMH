@@ -50,12 +50,21 @@ export default function SubscriptionRegisterPage() {
 
   const [packages, setPackages] = useState([]);
   const [addresses, setAddresses] = useState([]);
+  const [addressMode, setAddressMode] = useState("new");
   const [packageId, setPackageId] = useState(searchParams.get("package_id") ?? "");
   const [addressId, setAddressId] = useState("");
+  const [shippingAddress, setShippingAddress] = useState({
+    recipient_name: "",
+    phone: "",
+    street: "",
+    ward: "",
+    district: "",
+    province: "",
+  });
   const [startDate, setStartDate] = useState(() => localDateString());
   const [minStartDate] = useState(() => localDateString());
   const [deliveryDays, setDeliveryDays] = useState([]);
-  const [bankConfigured, setBankConfigured] = useState(false);
+  const [apiPayReady, setApiPayReady] = useState(false);
   const [subscriptionId, setSubscriptionId] = useState(
     () => (subscriptionStorageKey ? window.localStorage.getItem(subscriptionStorageKey) ?? "" : "")
   );
@@ -80,6 +89,7 @@ export default function SubscriptionRegisterPage() {
         const addressList = addressResponse.data ?? [];
         setPackages(availablePackages);
         setAddresses(addressList);
+        setAddressMode(addressList.length > 0 ? "saved" : "new");
         setAddressId(String(addressList.find((address) => address.is_default)?.id ?? addressList[0]?.id ?? ""));
         setBankConfigured(Boolean(optionsResponse.data?.bank_configured));
 
@@ -125,7 +135,7 @@ export default function SubscriptionRegisterPage() {
       })
       .catch((error) => {
         if (!active) return;
-        if (error.response?.status === 404) {
+        if (error.status === 404) {
           if (subscriptionStorageKey) window.localStorage.removeItem(subscriptionStorageKey);
           if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
           setSubscriptionId("");
@@ -174,7 +184,9 @@ export default function SubscriptionRegisterPage() {
 
         const registration = await customerApi.createSubscription({
           package_id: Number(packageId),
-          address_id: Number(addressId),
+          ...(addressMode === "saved"
+            ? { address_id: Number(addressId) }
+            : { shipping_address: shippingAddress }),
           start_date: startDate,
           delivery_days: deliveryDays,
           idempotency_key: idempotencyKey,
@@ -190,7 +202,7 @@ export default function SubscriptionRegisterPage() {
       setPayment(checkout.data ?? null);
       setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
     } catch (error) {
-      if (error.response?.status === 409 && idempotencyStorageKey) {
+      if (error.status === 409 && idempotencyStorageKey) {
         window.localStorage.removeItem(idempotencyStorageKey);
       }
       setErrorMessage(apiErrorMessage(error));
