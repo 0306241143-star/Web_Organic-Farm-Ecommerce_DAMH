@@ -1,333 +1,91 @@
-/* ==========================================================================
- * TRANG ĐĂNG KÝ GÓI RAU CỦ ĐỊNH KỲ (SUBSCRIPTION REGISTER PAGE)
- * Khách hàng chọn gói, lịch giao định kỳ trong tuần và thanh toán qua ApiPay.
- * ========================================================================== */
+/* Customer-owned delivery address selector for retail checkout. */
+import { MapPin } from "lucide-react";
 
-import { useEffect, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { useAuth } from "../../context/useAuth";
-import { customerApi } from "../../services/customerApi";
-import { storefrontApi } from "../../services/storefrontApi";
-import SubscriptionScheduleForm from "../../components/customer/SubscriptionScheduleForm";
-
-function localDateString(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function createIdempotencyKey() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-function apiErrorMessage(error) {
-  const validationMessages = Object.values(
-    error.fieldErrors ?? error.response?.data?.errors ?? {}
-  ).flat();
-  return validationMessages[0]
-    || error.message
-    || error.response?.data?.message
-    || "Không thể xử lý đăng ký. Vui lòng thử lại.";
-}
-
-export default function SubscriptionRegisterPage() {
-  const { user } = useAuth();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const selectedProduct = location.state?.product;
-  const subscriptionStorageKey = user?.id
-    ? `xanhfarm:pendingSubscription:${user.id}`
-    : null;
-  const idempotencyStorageKey = user?.id
-    ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}`
-    : null;
-
-  const [packages, setPackages] = useState([]);
-  const [addresses, setAddresses] = useState([]);
-  const [addressMode, setAddressMode] = useState("new");
-  const [packageId, setPackageId] = useState(searchParams.get("package_id") ?? "");
-  const [addressId, setAddressId] = useState("");
-  const [shippingAddress, setShippingAddress] = useState({
-    recipient_name: "",
-    phone: "",
-    street: "",
-    ward: "",
-    district: "",
-    province: "",
-  });
-  const [startDate, setStartDate] = useState(() => localDateString());
-  const [minStartDate] = useState(() => localDateString());
-  const [deliveryDays, setDeliveryDays] = useState([]);
-  const [apiPayReady, setApiPayReady] = useState(false);
-  const [subscriptionId, setSubscriptionId] = useState(
-    () => (subscriptionStorageKey ? window.localStorage.getItem(subscriptionStorageKey) ?? "" : "")
-  );
-  const [payment, setPayment] = useState(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
-  const [statusRefresh, setStatusRefresh] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [notice, setNotice] = useState("");
-  const paymentUrl = payment?.pay_url || payment?.payment_url;
-
-  useEffect(() => {
-    let active = true;
-    Promise.all([
-      storefrontApi.getSubscriptions(),
-      customerApi.getAddresses(),
-      customerApi.getCheckoutOptions(),
-    ])
-      .then(([availablePackages, addressResponse, optionsResponse]) => {
-        if (!active) return;
-        const addressList = addressResponse.data?.data ?? addressResponse.data ?? [];
-        setPackages(availablePackages);
-        setAddresses(addressList);
-        setAddressMode(addressList.length > 0 ? "saved" : "new");
-        setAddressId(String(addressList.find((address) => address.is_default)?.id ?? addressList[0]?.id ?? ""));
-        setBankConfigured(Boolean(optionsResponse.data?.data?.bank_configured ?? optionsResponse.data?.bank_configured));
-      })
-      .catch((error) => {
-        if (active) setErrorMessage(apiErrorMessage(error));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [searchParams, selectedProduct]);
-
-  useEffect(() => {
-    if (!subscriptionId) return undefined;
-    let active = true;
-    customerApi.getSubscriptionStatus(subscriptionId)
-      .then((response) => {
-        if (!active) return;
-        const status = response.data;
-        setSubscriptionStatus(status);
-        if (status?.status === "Dang_hoat_dong") {
-          if (subscriptionStorageKey) window.localStorage.removeItem(subscriptionStorageKey);
-          if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
-          setSubscriptionId("");
-          setPayment(null);
-          setNotice("Thanh toán thành công. Gói rau định kỳ của bạn đã được kích hoạt.");
-        }
-      })
-      .catch((error) => {
-        if (!active) return;
-        if (error.status === 404) {
-          if (subscriptionStorageKey) window.localStorage.removeItem(subscriptionStorageKey);
-          if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
-          setSubscriptionId("");
-          setPayment(null);
-        }
-        setErrorMessage(apiErrorMessage(error));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [subscriptionId, statusRefresh, subscriptionStorageKey, idempotencyStorageKey]);
-
-  const startPayment = async (id) => {
-    setErrorMessage("");
-    setIsSubmitting(true);
-    try {
-      const response = await customerApi.checkoutSubscription(id);
-      setPayment(response.data ?? null);
-      setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
-    } catch (error) {
-      setErrorMessage(apiErrorMessage(error));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setErrorMessage("");
-    setNotice("");
-    setIsSubmitting(true);
-
-    try {
-      let id = subscriptionId;
-      if (!id) {
-        let idempotencyKey = idempotencyStorageKey
-          ? window.localStorage.getItem(idempotencyStorageKey)
-          : null;
-        if (!idempotencyKey) {
-          idempotencyKey = createIdempotencyKey();
-          if (idempotencyStorageKey) {
-            window.localStorage.setItem(idempotencyStorageKey, idempotencyKey);
-          }
-        }
-
-        const payload = {
-          package_id: Number(packageId),
-          ...(addressMode === "saved"
-            ? { address_id: Number(addressId) }
-            : { shipping_address: shippingAddress }),
-          start_date: startDate,
-          delivery_days: deliveryDays,
-          idempotency_key: idempotencyKey,
-        };
-
-        const response = await customerApi.createSubscription(payload);
-        id = response.data?.data?.subscription_id ?? "";
-        if (subscriptionStorageKey) window.localStorage.setItem(subscriptionStorageKey, id);
-        if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
-        setSubscriptionId(id);
-      }
-
-      const checkout = await customerApi.checkoutSubscription(id);
-      setPayment(checkout.data ?? null);
-      setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
-    } catch (error) {
-      if (error.status === 409 && idempotencyStorageKey) {
-        window.localStorage.removeItem(idempotencyStorageKey);
-      }
-      setErrorMessage(apiErrorMessage(error));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const toggleDay = (day) => {
-    setDeliveryDays((current) => (
-      current.includes(day)
-        ? current.filter((item) => item !== day)
-        : [...current, day]
-    ));
-  };
-
-  const changeWindow = (day, deliveryWindow) => {
-    setDeliveryDays((current) => current.map((item) => (
-      typeof item === "object" && item.day === day ? { ...item, window: deliveryWindow } : item
-    )));
-  };
-
-  if (loading) {
-    return <main className="mx-auto max-w-4xl px-4 py-12 text-center text-slate-600">Đang tải thông tin gói rau...</main>;
-  }
+export default function AddressDistancePicker({
+  addresses,
+  value,
+  onChange,
+  onAddAddress,
+  onEditAddress,
+  disabled = false,
+}) {
+  const selectedAddress = addresses.find((address) => String(address.id) === String(value));
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <header className="mb-8">
-        <p className="text-sm font-bold uppercase tracking-wide text-emerald-800">Nông sản sạch · Giao định kỳ</p>
-        <h1 className="mt-2 text-3xl font-black text-slate-950">Đăng ký gói rau định kỳ</h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
-          Chọn gói, địa chỉ và lịch giao hằng tuần. Đăng ký chỉ được kích hoạt sau khi ApiPay xác nhận thanh toán.
-        </p>
-      </header>
-
-      {errorMessage && (
-        <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {errorMessage}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          {notice}
-        </p>
-      )}
-
-      {subscriptionId ? (
-        <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-950">Đăng ký #{subscriptionId} đang chờ thanh toán</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Gói chưa được kích hoạt cho đến khi hệ thống nhận được xác nhận thanh toán.
-            </p>
-            {subscriptionStatus && (
-              <p className="mt-2 text-sm text-slate-700">
-                Trạng thái: {subscriptionStatus.status} · Thanh toán: {subscriptionStatus.payment_status ?? "Chưa khởi tạo"}
-              </p>
-            )}
-          </div>
-          {payment?.pay_url && (
-            <div className="rounded-xl bg-emerald-50 p-4">
-              <p className="font-bold text-emerald-950">Hoàn tất thanh toán ApiPay</p>
-              {payment.qr_url && (
-                <img
-                  src={payment.qr_url}
-                  alt="Mã QR thanh toán ApiPay"
-                  className="mx-auto mt-4 h-48 w-48 rounded-lg bg-white object-contain p-2"
-                />
-              )}
-              <a
-                href={payment.pay_url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white hover:bg-emerald-700 sm:w-auto"
-              >
-                Mở trang thanh toán ApiPay
-              </a>
-              {payment.expires_at && (
-                <p className="mt-2 text-xs text-slate-600">Liên kết hết hạn: {payment.expires_at}</p>
-              )}
+    <section aria-label="Địa chỉ giao hàng" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
+        <MapPin className="h-5 w-5 text-emerald-700" aria-hidden="true" />
+        Thông Tin Nhận Hàng
+      </h2>
+      {addresses.length === 0 ? (
+        <div className="mt-3">
+          <p className="text-sm text-amber-800" role="status">
+            Tài khoản chưa có địa chỉ giao hàng. Thêm địa chỉ để tiếp tục đặt hàng.
+          </p>
+          <button
+            type="button"
+            onClick={onAddAddress}
+            disabled={disabled}
+            className="mt-3 min-h-10 rounded-lg border border-emerald-800 px-3 py-1.5 text-sm font-bold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
+          >
+            Thêm địa chỉ mới
+          </button>
+        </div>
+      ) : (
+        <>
+          <select
+            id="delivery-address"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            required
+            disabled={disabled}
+            className="mt-4 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
+          >
+            <option value="" disabled>Chọn địa chỉ nhận hàng</option>
+            {addresses.map((address) => (
+              <option key={address.id} value={address.id}>
+                {address.recipient_name} — {address.address}
+                {address.is_default ? " (Mặc định)" : ""}
+              </option>
+            ))}
+          </select>
+          {selectedAddress && (
+            <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+              <p className="font-bold text-slate-900">{selectedAddress.recipient_name}</p>
+              <p className="mt-1">{selectedAddress.phone}</p>
+              <p className="mt-1">{selectedAddress.address}</p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => onEditAddress(selectedAddress)}
+                  disabled={disabled}
+                  className="min-h-10 rounded-lg border border-emerald-800 px-3 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
+                >
+                  Sửa người nhận
+                </button>
+                <button
+                  type="button"
+                  onClick={onAddAddress}
+                  disabled={disabled}
+                  className="min-h-10 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                >
+                  Thêm địa chỉ mới
+                </button>
+              </div>
             </div>
           )}
-          <div className="flex flex-wrap gap-3">
+          {!selectedAddress && (
             <button
               type="button"
-              onClick={() => startPayment(subscriptionId)}
-              disabled={isSubmitting || !bankConfigured}
-              className="min-h-11 rounded-xl border border-emerald-800 px-4 py-2 font-bold text-emerald-900 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={onAddAddress}
+              disabled={disabled}
+              className="mt-3 min-h-10 rounded-lg border border-emerald-800 px-3 py-1.5 text-sm font-bold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
             >
-              {isSubmitting ? "Đang xử lý..." : payment ? "Lấy lại liên kết thanh toán" : "Tiếp tục thanh toán"}
+              Thêm địa chỉ mới
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setErrorMessage("");
-                setStatusRefresh((current) => current + 1);
-              }}
-              disabled={isSubmitting}
-              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 font-bold text-slate-800 hover:bg-slate-50"
-            >
-              Kiểm tra trạng thái thanh toán
-            </button>
-          </div>
-        </section>
-      ) : packages.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-5 text-slate-700">
-          Hiện chưa có gói rau định kỳ đang mở bán.
-        </p>
-      ) : (
-        <SubscriptionScheduleForm
-          packages={packages}
-          addresses={addresses}
-          packageId={packageId}
-          addressId={addressId}
-          startDate={startDate}
-          minStartDate={minStartDate}
-          deliveryDays={deliveryDays}
-          onPackageChange={setPackageId}
-          onAddressChange={setAddressId}
-          onStartDateChange={setStartDate}
-          onToggleDay={toggleDay}
-          onWindowChange={changeWindow}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          bankConfigured={bankConfigured}
-        />
+          )}
+        </>
       )}
-
-      <p className="mt-8 text-sm text-slate-600">
-        Cần chọn sản phẩm khác? <Link to="/products" className="font-bold text-emerald-800 underline">Quay lại cửa hàng</Link>
-      </p>
-    </main>
+    </section>
   );
 }
