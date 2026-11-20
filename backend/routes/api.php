@@ -153,6 +153,8 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::post('/change-password', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'changePassword']);
     Route::put('/profile', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateProfile']);
     Route::get('/rewards', [\App\Http\Controllers\Api\Customer\RewardPointController::class, 'index']);
+    Route::get('/orders', [\App\Http\Controllers\Api\Customer\OrderController::class, 'index']);
+    Route::get('/orders/{orderId}', [\App\Http\Controllers\Api\Customer\OrderController::class, 'show'])->whereNumber('orderId');
     Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
     Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
     Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
@@ -161,7 +163,10 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
     // Đăng ký/lịch gói định kỳ và thanh toán thuộc riêng tài khoản khách hiện tại.
     Route::post('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'store']);
+    Route::get('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'index']);
     Route::get('/subscriptions/{subscriptionId}', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'show'])->whereNumber('subscriptionId');
+    Route::post('/subscriptions/{subscriptionId}/pause', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'pause'])->whereNumber('subscriptionId');
+    Route::post('/subscriptions/{subscriptionId}/resume', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'resume'])->whereNumber('subscriptionId');
     Route::post('/subscriptions/{subscriptionId}/checkout', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'checkout'])->whereNumber('subscriptionId');
 });
 

@@ -10,6 +10,7 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\DiemTichLuy;
+use App\Services\RewardPointService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,19 +22,16 @@ class RewardPointController extends Controller
     /**
      * Lấy tổng số dư điểm tích lũy, quy tắc quy đổi và lịch sử giao dịch điểm.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, RewardPointService $rewards): JsonResponse
     {
         $userId = $request->user()->getAuthIdentifier();
-
-        // 1. Tính toán tổng số dư điểm tích lũy khả dụng hiện tại
-        $totalPoints = (int) DiemTichLuy::query()
-            ->where('Ma_nguoi_dung', $userId)
-            ->sum('So_diem');
+        $totalPoints = $rewards->balance((int) $userId);
+        $conversionRate = $rewards->conversionRate();
 
         // 2. Quy tắc quy đổi và tích lũy điểm thưởng hệ thống
         $conversionRules = [
-            'point_to_vnd' => 1000,
-            'points_label' => '1 điểm thưởng = 1.000 VNĐ khi thanh toán đơn hàng.',
+            'point_to_vnd' => $conversionRate,
+            'points_label' => '1 điểm thưởng = '.number_format($conversionRate, 0, ',', '.').' VNĐ khi thanh toán đơn hàng.',
             'earn_rule'    => 'Điểm được cộng tự động khi đơn hàng mua lẻ hoặc gói định kỳ giao thành công.',
             'redeem_rule'  => 'Điểm được trừ trực tiếp vào tổng tiền thanh toán khi áp dụng ưu đãi.',
             'refund_rule'  => 'Điểm đã sử dụng sẽ được hoàn lại đầy đủ nếu đơn hàng bị hủy hoặc có sự cố.',
@@ -44,8 +42,8 @@ class RewardPointController extends Controller
             ->where('Ma_nguoi_dung', $userId)
             ->orderByDesc('created_at')
             ->orderByDesc('Ma_gd_diem')
-            ->get()
-            ->map(function (DiemTichLuy $item) {
+            ->paginate(min(max((int) $request->query('per_page', 50), 1), 100))
+            ->through(function (DiemTichLuy $item) {
                 $typeLabel = match ($item->Loai_giao_dich) {
                     'Tich_diem' => 'Cộng điểm',
                     'Su_dung'   => 'Trừ điểm',
@@ -67,7 +65,14 @@ class RewardPointController extends Controller
         return $this->successResponse('Lấy thông tin ví điểm thưởng thành công.', [
             'total_points'     => $totalPoints,
             'conversion_rules' => $conversionRules,
-            'history'          => $history,
+            'history' => $history->items(),
+        ], meta: [
+            'history' => [
+                'current_page' => $history->currentPage(),
+                'per_page' => $history->perPage(),
+                'total' => $history->total(),
+                'last_page' => $history->lastPage(),
+            ],
         ]);
     }
 }

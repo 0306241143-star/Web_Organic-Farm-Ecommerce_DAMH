@@ -428,6 +428,7 @@ class RetailOrderController extends Controller
                 ]);
             }
 
+            $stockRestored = $this->restoreAllocatedStock($order);
             $order->update(['Trang_thai' => 'Da_huy']);
             DB::table('thanh_toan')
                 ->whereIn(
@@ -439,6 +440,7 @@ class RetailOrderController extends Controller
             return [
                 'order' => $order->refresh(),
                 'points_refunded' => $rewards->refundOrderPoints($order),
+                'stock_restored' => $stockRestored,
             ];
         });
 
@@ -448,8 +450,49 @@ class RetailOrderController extends Controller
                 'order_id' => (int) $result['order']->Ma_don_hang,
                 'status' => $result['order']->Trang_thai,
                 'points_refunded' => $result['points_refunded'],
+                'stock_restored' => $result['stock_restored'] ?? 0,
             ]
         );
+    }
+
+    private function restoreAllocatedStock(DonHang $order): float
+    {
+        $allocations = DB::table('phan_bo_lo_hang as allocation')
+            ->join('chi_tiet_don_hang as detail', 'detail.Ma_ct_don_hang', '=', 'allocation.Ma_ct_don_hang')
+            ->where('detail.Ma_don_hang', $order->Ma_don_hang)
+            ->lockForUpdate()
+            ->get(['allocation.Ma_lo_hang', 'allocation.So_luong_xuat'])
+            ->groupBy('Ma_lo_hang');
+        $restored = 0.0;
+
+        foreach ($allocations as $batchId => $items) {
+            $batch = DB::table('lo_hang')
+                ->where('Ma_lo_hang', $batchId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $batch || $batch->Trang_thai === 'Da_huy') {
+                continue;
+            }
+
+            $quantity = (float) $items->sum('So_luong_xuat');
+            DB::table('lo_hang')
+                ->where('Ma_lo_hang', $batchId)
+                ->increment('So_luong_con_lai', $quantity);
+
+            if (
+                $batch->Trang_thai === 'Het_hang'
+                && $batch->Han_su_dung >= now()->toDateString()
+            ) {
+                DB::table('lo_hang')
+                    ->where('Ma_lo_hang', $batchId)
+                    ->update(['Trang_thai' => 'Con_hang']);
+            }
+
+            $restored += $quantity;
+        }
+
+        return $restored;
     }
 
     public function quote(

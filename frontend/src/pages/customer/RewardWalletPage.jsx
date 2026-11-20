@@ -374,17 +374,25 @@ export default function RewardWalletPage() {
    * ========================================================================== */
   const [walletData, setWalletData] = useState(null);
   const [walletLoading, setWalletLoading] = useState(true);
+  const [walletHistoryMeta, setWalletHistoryMeta] = useState(null);
+  const [walletHistoryLoadingMore, setWalletHistoryLoadingMore] = useState(false);
   const [historyFilter, setHistoryFilter] = useState("all"); // all | earned | spent
 
-  const fetchWallet = useCallback(async () => {
-    setWalletLoading(true);
+  const fetchWallet = useCallback(async (page = 1, append = false) => {
+    if (page === 1) setWalletLoading(true);
     try {
-      const response = await customerApi.getRewardPoints();
-      setWalletData(response.data || null);
+      const response = await customerApi.getRewardPoints({ page, per_page: 50 });
+      setWalletData((current) => ({
+        ...response.data,
+        history: append
+          ? [...(current?.history || []), ...(response.data?.history || [])]
+          : (response.data?.history || []),
+      }));
+      setWalletHistoryMeta(response.meta?.history || null);
     } catch {
       showGlobalToast("Không thể tải thông tin ví điểm thưởng.", "error");
     } finally {
-      setWalletLoading(false);
+      if (page === 1) setWalletLoading(false);
     }
   }, []);
 
@@ -399,6 +407,16 @@ export default function RewardWalletPage() {
     if (historyFilter === "spent") return item.transaction_type === "Su_dung";
     return true;
   });
+
+  const loadMoreWalletHistory = async () => {
+    if (!walletHistoryMeta || walletHistoryMeta.current_page >= walletHistoryMeta.last_page) return;
+    setWalletHistoryLoadingMore(true);
+    try {
+      await fetchWallet(walletHistoryMeta.current_page + 1, true);
+    } finally {
+      setWalletHistoryLoadingMore(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] py-8 sm:py-10">
@@ -897,7 +915,7 @@ export default function RewardWalletPage() {
                           <p className="text-xs text-white/90 mt-1 font-medium">
                             Tương đương:{" "}
                             <span className="font-bold text-amber-200">
-                              {(Number(walletData?.total_points || 0) * 1000).toLocaleString("vi-VN")} VNĐ
+                              {(Number(walletData?.total_points || 0) * Number(walletData?.conversion_rules?.point_to_vnd || 0)).toLocaleString("vi-VN")} VNĐ
                             </span>
                           </p>
                         </div>
@@ -914,7 +932,9 @@ export default function RewardWalletPage() {
                     {/* Khung quy tắc tích điểm */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="p-3.5 rounded-xl bg-[#f9fafb] border border-slate-200 text-xs">
-                        <p className="font-bold text-[#00450d]">1 điểm = 1.000đ</p>
+                        <p className="font-bold text-[#00450d]">
+                          1 điểm = {Number(walletData?.conversion_rules?.point_to_vnd || 0).toLocaleString("vi-VN")}đ
+                        </p>
                         <p className="text-[#5a6357] mt-0.5">Khấu trừ trực tiếp vào đơn hàng</p>
                       </div>
                       <div className="p-3.5 rounded-xl bg-[#f9fafb] border border-slate-200 text-xs">
@@ -1009,6 +1029,16 @@ export default function RewardWalletPage() {
                             );
                           })}
                         </div>
+                      )}
+                      {walletHistoryMeta && walletHistoryMeta.current_page < walletHistoryMeta.last_page && (
+                        <button
+                          type="button"
+                          onClick={loadMoreWalletHistory}
+                          disabled={walletHistoryLoadingMore}
+                          className="mt-4 rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-[#00450d] hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          {walletHistoryLoadingMore ? "Đang tải..." : "Tải thêm lịch sử"}
+                        </button>
                       )}
                     </div>
                   </div>
