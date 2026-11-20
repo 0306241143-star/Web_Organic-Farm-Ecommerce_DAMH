@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, Minus, PackageX, Plus, ShoppingCart } from "lucide-react";
 import Button from "../../common/Button";
@@ -20,19 +20,26 @@ export default function ProductPurchasePanel({ product }) {
   );
   const maxAddQuantity = Math.max(
     0,
-    Math.floor(availableStock - (Number(cartItem?.quantity) || 0))
+    Math.round((availableStock - (Number(cartItem?.quantity) || 0)) * 100) / 100
   );
   const [quantity, setQuantity] = useState(1);
   const effectivePrice = Number(product.effective_price ?? product.price);
   const isDiscounted = effectivePrice < Number(product.price);
   const isCustomer = hasRole("customer");
-  const canAddToCart = maxAddQuantity >= 1;
+  const canAddToCart = maxAddQuantity >= 0.01;
   const [isAdding, setIsAdding] = useState(false);
+
+  useEffect(() => {
+    if (canAddToCart) {
+      setQuantity((current) => Math.min(current, maxAddQuantity));
+    }
+  }, [canAddToCart, maxAddQuantity]);
 
   const updateQuantity = (value) => {
     const next = Number(value);
     if (!Number.isFinite(next)) return;
-    setQuantity(Math.min(maxAddQuantity, Math.max(1, Math.floor(next))));
+    const rounded = Math.round(next * 100) / 100;
+    setQuantity(Math.min(maxAddQuantity, Math.max(0.01, rounded)));
   };
 
   const requireCustomer = (guestMessage = "") => {
@@ -148,9 +155,9 @@ export default function ProductPurchasePanel({ product }) {
           <input
             id="detail-product-quantity"
             type="number"
-            min="1"
+            min="0.01"
             max={maxAddQuantity}
-            step="1"
+            step="0.01"
             value={canAddToCart ? quantity : 0}
             disabled={isAdding || !canAddToCart}
             onChange={(event) => updateQuantity(event.target.value)}
