@@ -133,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
 Route::get('/categories', [\App\Http\Controllers\Api\Public\CategoryController::class, 'index']);
 Route::get('/products', [\App\Http\Controllers\Api\Public\ProductController::class, 'index']);
 Route::get('/products/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
+Route::get('/public/san-pham/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
 
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
 Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
@@ -155,6 +156,7 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
     Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
     Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
+    Route::post('/checkout/orders/{orderId}/cancel', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'cancel'])->whereNumber('orderId');
     Route::get('/checkout/options', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'options']);
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
     // Đăng ký/lịch gói định kỳ và thanh toán thuộc riêng tài khoản khách hiện tại.

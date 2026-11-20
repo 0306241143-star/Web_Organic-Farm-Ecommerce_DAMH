@@ -4,7 +4,7 @@
  * ========================================================================== */
 
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { customerApi } from "../../services/customerApi";
 import { storefrontApi } from "../../services/storefrontApi";
@@ -31,26 +31,44 @@ function createIdempotencyKey() {
 }
 
 function apiErrorMessage(error) {
-  const validationMessages = Object.values(error.response?.data?.errors ?? {}).flat();
+  const validationMessages = Object.values(
+    error.fieldErrors ?? error.response?.data?.errors ?? {}
+  ).flat();
   return validationMessages[0]
+    || error.message
     || error.response?.data?.message
     || "Không thể xử lý đăng ký. Vui lòng thử lại.";
 }
 
 export default function SubscriptionRegisterPage() {
   const { user } = useAuth();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const subscriptionStorageKey = user?.id ? `xanhfarm:pendingSubscription:${user.id}` : null;
-  const idempotencyStorageKey = user?.id ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}` : null;
+  const selectedProduct = location.state?.product;
+  const subscriptionStorageKey = user?.id
+    ? `xanhfarm:pendingSubscription:${user.id}`
+    : null;
+  const idempotencyStorageKey = user?.id
+    ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}`
+    : null;
 
   const [packages, setPackages] = useState([]);
   const [addresses, setAddresses] = useState([]);
+  const [addressMode, setAddressMode] = useState("new");
   const [packageId, setPackageId] = useState(searchParams.get("package_id") ?? "");
   const [addressId, setAddressId] = useState("");
+  const [shippingAddress, setShippingAddress] = useState({
+    recipient_name: "",
+    phone: "",
+    street: "",
+    ward: "",
+    district: "",
+    province: "",
+  });
   const [startDate, setStartDate] = useState(() => localDateString());
   const [minStartDate] = useState(() => localDateString());
   const [deliveryDays, setDeliveryDays] = useState([]);
-  const [bankConfigured, setBankConfigured] = useState(false);
+  const [apiPayReady, setApiPayReady] = useState(false);
   const [subscriptionId, setSubscriptionId] = useState(
     () => (subscriptionStorageKey ? window.localStorage.getItem(subscriptionStorageKey) ?? "" : "")
   );
@@ -61,14 +79,7 @@ export default function SubscriptionRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
-
-  useEffect(() => {
-    setSubscriptionId(
-      subscriptionStorageKey ? window.localStorage.getItem(subscriptionStorageKey) ?? "" : ""
-    );
-    setPayment(null);
-    setSubscriptionStatus(null);
-  }, [subscriptionStorageKey]);
+  const paymentUrl = payment?.pay_url || payment?.payment_url;
 
   useEffect(() => {
     let active = true;
@@ -82,6 +93,7 @@ export default function SubscriptionRegisterPage() {
         const addressList = addressResponse.data?.data ?? addressResponse.data ?? [];
         setPackages(availablePackages);
         setAddresses(addressList);
+        setAddressMode(addressList.length > 0 ? "saved" : "new");
         setAddressId(String(addressList.find((address) => address.is_default)?.id ?? addressList[0]?.id ?? ""));
         setBankConfigured(Boolean(optionsResponse.data?.data?.bank_configured ?? optionsResponse.data?.bank_configured));
       })
@@ -95,7 +107,7 @@ export default function SubscriptionRegisterPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [searchParams, selectedProduct]);
 
   useEffect(() => {
     if (!subscriptionId) return undefined;
@@ -103,7 +115,7 @@ export default function SubscriptionRegisterPage() {
     customerApi.getSubscriptionStatus(subscriptionId)
       .then((response) => {
         if (!active) return;
-        const status = response.data?.data;
+        const status = response.data;
         setSubscriptionStatus(status);
         if (status?.status === "Dang_hoat_dong") {
           if (subscriptionStorageKey) window.localStorage.removeItem(subscriptionStorageKey);
@@ -115,7 +127,7 @@ export default function SubscriptionRegisterPage() {
       })
       .catch((error) => {
         if (!active) return;
-        if (error.response?.status === 404) {
+        if (error.status === 404) {
           if (subscriptionStorageKey) window.localStorage.removeItem(subscriptionStorageKey);
           if (idempotencyStorageKey) window.localStorage.removeItem(idempotencyStorageKey);
           setSubscriptionId("");
@@ -134,7 +146,7 @@ export default function SubscriptionRegisterPage() {
     setIsSubmitting(true);
     try {
       const response = await customerApi.checkoutSubscription(id);
-      setPayment(response.data?.data ?? null);
+      setPayment(response.data ?? null);
       setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
     } catch (error) {
       setErrorMessage(apiErrorMessage(error));
@@ -164,7 +176,9 @@ export default function SubscriptionRegisterPage() {
 
         const payload = {
           package_id: Number(packageId),
-          address_id: Number(addressId),
+          ...(addressMode === "saved"
+            ? { address_id: Number(addressId) }
+            : { shipping_address: shippingAddress }),
           start_date: startDate,
           delivery_days: deliveryDays,
           idempotency_key: idempotencyKey,
@@ -178,10 +192,10 @@ export default function SubscriptionRegisterPage() {
       }
 
       const checkout = await customerApi.checkoutSubscription(id);
-      setPayment(checkout.data?.data ?? null);
+      setPayment(checkout.data ?? null);
       setNotice("Đăng ký đã được lưu. Hoàn tất thanh toán để kích hoạt gói.");
     } catch (error) {
-      if (error.response?.status === 409 && idempotencyStorageKey) {
+      if (error.status === 409 && idempotencyStorageKey) {
         window.localStorage.removeItem(idempotencyStorageKey);
       }
       setErrorMessage(apiErrorMessage(error));
