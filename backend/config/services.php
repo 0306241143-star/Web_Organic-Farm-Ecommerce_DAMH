@@ -49,11 +49,16 @@ return [
     'goong' => [
         'api_key' => env('GOONG_API_KEY'),
         'distance_matrix_url' => env('GOONG_DISTANCE_MATRIX_URL', 'https://rsapi.goong.io/DistanceMatrix'),
+        'geocoding_url' => env('GOONG_GEOCODING_URL', 'https://rsapi.goong.io/Geocode'),
     ],
 
     'shipping' => [
         // Dữ liệu mẫu tính 25.000đ cho 12,5km, tương ứng đơn giá 2.000đ/km.
         'price_per_km' => env('SHIPPING_PRICE_PER_KM', 2000),
+    ],
+
+    'checkout' => [
+        'pending_payment_timeout_minutes' => env('CHECKOUT_PENDING_PAYMENT_TIMEOUT_MINUTES', 30),
     ],
 
 ];

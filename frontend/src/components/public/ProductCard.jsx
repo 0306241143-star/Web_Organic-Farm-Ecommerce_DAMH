@@ -140,7 +140,7 @@ function ProductPriceDisplay({ product }) {
 }
 
 /* ================= THÀNH PHẦN CON 3: TÌNH TRẠNG TỒN KHO & NÚT THÊM GIỎ HÀNG ================= */
-function ProductStockFooter({ product, onQuickAdd, isInternalStaff }) {
+function ProductStockFooter({ product, onQuickAdd, isInternalStaff, isAdding }) {
   const inStock = Boolean(product.in_stock);
   const stockQty = Number(product.available_stock || 0);
   const formattedQty = Number.isInteger(stockQty)
@@ -177,21 +177,31 @@ function ProductStockFooter({ product, onQuickAdd, isInternalStaff }) {
       ) : (
         <button
           type="button"
-          disabled={!inStock}
+          disabled={!inStock || isAdding}
           onClick={() => onQuickAdd(product)}
           aria-label={
-            inStock
+            isAdding
+              ? `Đang thêm ${product.name} vào giỏ hàng`
+              : inStock
               ? `Thêm ${product.name} vào giỏ hàng`
               : `${product.name} hiện tạm hết hàng`
           }
           className={`shrink-0 min-w-[38px] min-h-[38px] px-3 rounded-xl text-[12.5px] font-bold inline-flex items-center justify-center gap-1.5 transition-all ${
-            inStock
+            isAdding
+              ? "bg-[#eceeec] text-[#5a6357] cursor-wait"
+              : inStock
               ? "bg-[#00450d] hover:bg-[#006e1c] text-white shadow-2xs cursor-pointer"
               : "bg-[#eceeec] text-[#5a6357] cursor-not-allowed"
           }`}
         >
-          <Plus className="w-4 h-4 shrink-0" />
-          <span className="hidden sm:inline">{inStock ? "Thêm" : "Hết hàng"}</span>
+          {isAdding ? (
+            <span role="status">Đang thêm...</span>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">{inStock ? "Thêm" : "Hết hàng"}</span>
+            </>
+          )}
         </button>
       )}
     </div>
@@ -220,9 +230,10 @@ export function ProductCardSkeleton() {
 /* ================= THÀNH PHẦN CHÍNH: THẺ SẢN PHẨM ================= */
 export default function ProductCard({ product, onAddToCart = null }) {
   const { addItem } = useCart();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isAdding, setIsAdding] = useState(false);
   const isInternalStaff = Boolean(
     user && ["admin", "farm_staff", "sales"].includes(user.role)
   );
@@ -230,6 +241,7 @@ export default function ProductCard({ product, onAddToCart = null }) {
   if (!product) return null;
 
   const handleQuickAdd = async (item) => {
+    if (isAdding) return;
     if (isInternalStaff) {
       showGlobalToast(
         "Tài khoản nội bộ chỉ có quyền xem danh mục, không thể thực hiện mua hàng.",
@@ -240,9 +252,8 @@ export default function ProductCard({ product, onAddToCart = null }) {
 
     if (!item.in_stock) return;
 
-    // Callback tùy biến của trang cha được ưu tiên; luồng mặc định dùng API giỏ của khách.
-    if (typeof onAddToCart === "function") {
-      onAddToCart(item);
+    if (isLoading) {
+      showGlobalToast("Đang kiểm tra phiên đăng nhập, vui lòng thử lại.", "info");
       return;
     }
 
@@ -257,11 +268,19 @@ export default function ProductCard({ product, onAddToCart = null }) {
       return;
     }
 
+    setIsAdding(true);
     try {
-      await addItem(item);
-      showGlobalToast(`Đã thêm "${item.name}" vào giỏ hàng.`, "success");
+      if (typeof onAddToCart === "function") {
+        const added = await onAddToCart(item);
+        if (added === false) return;
+      } else {
+        await addItem(item);
+        showGlobalToast(`Đã thêm "${item.name}" vào giỏ hàng.`, "success");
+      }
     } catch (error) {
       notifyApiErrorToast(error, "Không thể thêm sản phẩm vào giỏ hàng.");
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -298,6 +317,7 @@ export default function ProductCard({ product, onAddToCart = null }) {
             product={product}
             onQuickAdd={handleQuickAdd}
             isInternalStaff={isInternalStaff}
+            isAdding={isAdding}
           />
         </div>
       </div>

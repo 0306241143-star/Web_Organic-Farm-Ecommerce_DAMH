@@ -26,6 +26,8 @@ class CheckoutController extends Controller
 
     public function options(ApiPayPaymentService $apiPay): JsonResponse
     {
+        $configuration = $apiPay->configurationStatus();
+
         return $this->successResponse(
             message: 'Lấy cấu hình thanh toán thành công.',
             data: [

@@ -8,9 +8,11 @@ import {
   ChevronDown,
   LayoutDashboard,
   LogOut,
+  MapPin,
   Menu,
   Receipt,
   ShoppingBag,
+  User,
   X,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
@@ -24,6 +26,7 @@ export default function StorefrontHeader() {
   );
   const { items } = useCart();
   const location = useLocation();
+  const isProductDetailPage = location.pathname.startsWith("/products/");
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -84,7 +87,11 @@ export default function StorefrontHeader() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="h-20 flex items-center justify-between gap-4">
+        <div
+          className={`h-20 flex items-center justify-between ${
+            isProductDetailPage ? "gap-2 sm:gap-4" : "gap-4"
+          }`}
+        >
           {/* ================= ZONE 1: BRAND LOGO (LEFT) ================= */}
           <Link
             to="/"
@@ -202,7 +209,11 @@ export default function StorefrontHeader() {
           </nav>
 
           {/* ================= ZONE 3: ACTIONS & AUTH (RIGHT) ================= */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div
+            className={`flex items-center shrink-0 ${
+              isProductDetailPage ? "gap-1 sm:gap-3" : "gap-2 sm:gap-3"
+            }`}
+          >
             {!isInternalStaff && (
               <Link
                 to="/cart"
@@ -216,23 +227,24 @@ export default function StorefrontHeader() {
               </Link>
             )}
 
-            {!user ? (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-[#00450d] bg-[#f2f4f2] hover:bg-[#e6eae6] transition-colors whitespace-nowrap"
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-white bg-[#00450d] hover:bg-[#006e1c] transition-colors shadow-2xs whitespace-nowrap"
-                >
-                  Đăng ký
-                </Link>
-              </div>
-            ) : (
-              <div className="relative" ref={userMenuRef}>
+            <div className={isProductDetailPage ? "hidden sm:block" : ""}>
+              {!user ? (
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-[#00450d] bg-[#f2f4f2] hover:bg-[#e6eae6] transition-colors whitespace-nowrap"
+                  >
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-white bg-[#00450d] hover:bg-[#006e1c] transition-colors shadow-2xs whitespace-nowrap"
+                  >
+                    Đăng ký
+                  </Link>
+                </div>
+              ) : (
+                <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
@@ -240,8 +252,12 @@ export default function StorefrontHeader() {
                   aria-expanded={isUserMenuOpen}
                   aria-label="Menu tài khoản"
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#00450d] text-white flex items-center justify-center font-bold text-[13px] shrink-0">
-                    {(user.name || user.email || "U").charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-[#00450d] text-white flex items-center justify-center font-bold text-[13px] shrink-0 overflow-hidden border border-[#c0c9bb]/40">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      (user.name || user.email || "U").charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="text-left hidden md:block max-w-[120px]">
                     <p className="text-[12.5px] font-bold text-[#00450d] truncate leading-tight">
@@ -285,12 +301,28 @@ export default function StorefrontHeader() {
                             <span>Gói rau định kỳ</span>
                           </Link>
                           <Link
-                            to="/rewards"
+                            to="/rewards?tab=rewards"
                             onClick={closeMenus}
                             className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
                           >
                             <Award className="w-4 h-4 text-[#5a6357]" />
                             <span>Ví điểm thưởng</span>
+                          </Link>
+                          <Link
+                            to="/rewards?tab=address"
+                            onClick={closeMenus}
+                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
+                          >
+                            <MapPin className="w-4 h-4 text-[#5a6357]" />
+                            <span>Sổ địa chỉ giao hàng</span>
+                          </Link>
+                          <Link
+                            to="/rewards?tab=profile"
+                            onClick={closeMenus}
+                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
+                          >
+                            <User className="w-4 h-4 text-[#5a6357]" />
+                            <span>Hồ sơ & Bảo mật</span>
                           </Link>
                         </>
                       )}
@@ -319,10 +351,11 @@ export default function StorefrontHeader() {
                         <span>Đăng xuất</span>
                       </button>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <button
               type="button"
@@ -446,8 +479,12 @@ export default function StorefrontHeader() {
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center gap-3 px-3 py-2 bg-[#f2f4f2] rounded-xl">
-                  <div className="w-8 h-8 rounded-full bg-[#00450d] text-white flex items-center justify-center font-bold text-[13px]">
-                    {(user.name || user.email || "U").charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-[#00450d] text-white flex items-center justify-center font-bold text-[13px] shrink-0 overflow-hidden border border-[#c0c9bb]/40">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      (user.name || user.email || "U").charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="flex-1 truncate">
                     <p className="text-[13px] font-bold text-[#191c1b] truncate">{user.name}</p>
@@ -471,6 +508,30 @@ export default function StorefrontHeader() {
                     >
                       <Calendar className="w-4 h-4 text-[#5a6357]" />
                       Gói rau định kỳ
+                    </Link>
+                    <Link
+                      to="/rewards?tab=rewards"
+                      onClick={closeMenus}
+                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
+                    >
+                      <Award className="w-4 h-4 text-[#5a6357]" />
+                      Ví điểm thưởng
+                    </Link>
+                    <Link
+                      to="/rewards?tab=address"
+                      onClick={closeMenus}
+                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
+                    >
+                      <MapPin className="w-4 h-4 text-[#5a6357]" />
+                      Sổ địa chỉ giao hàng
+                    </Link>
+                    <Link
+                      to="/rewards?tab=profile"
+                      onClick={closeMenus}
+                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
+                    >
+                      <User className="w-4 h-4 text-[#5a6357]" />
+                      Hồ sơ & Bảo mật
                     </Link>
                   </div>
                 ) : (

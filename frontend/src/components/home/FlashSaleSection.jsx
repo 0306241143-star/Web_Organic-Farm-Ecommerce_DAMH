@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { storefrontApi } from "../../services/storefrontApi";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 const DEFAULT_IMG =
   "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=600&q=80";
@@ -25,6 +26,7 @@ export default function FlashSaleSection({ onAddToCart }) {
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [addedId, setAddedId] = useState(null);
+  const [addingIds, setAddingIds] = useState([]);
   const [timeLeft, setTimeLeft] = useState({ hours: "00", minutes: "00", seconds: "00" });
 
   useEffect(() => {
@@ -80,15 +82,25 @@ export default function FlashSaleSection({ onAddToCart }) {
     return null;
   }
 
-  const handleQuickAdd = (item) => {
-    if (onAddToCart) {
-      onAddToCart({
+  const handleQuickAdd = async (item) => {
+    if (!onAddToCart || addingIds.includes(item.flash_sale_item_id)) return;
+
+    setAddingIds((current) => [...current, item.flash_sale_item_id]);
+    try {
+      const added = await onAddToCart({
         ...item,
         current_price: item.sale_price,
       });
+      if (added === false) return;
+      setAddedId(item.flash_sale_item_id);
+      setTimeout(() => setAddedId(null), 1500);
+    } catch (error) {
+      notifyApiErrorToast(error, "Không thể thêm sản phẩm vào giỏ hàng.");
+    } finally {
+      setAddingIds((current) =>
+        current.filter((id) => id !== item.flash_sale_item_id)
+      );
     }
-    setAddedId(item.flash_sale_item_id);
-    setTimeout(() => setAddedId(null), 1500);
   };
 
   return (
@@ -138,6 +150,7 @@ export default function FlashSaleSection({ onAddToCart }) {
             const soldPercent = Math.min(100, Math.round((sold / limit) * 100));
             const isSoldOut = remainingPromo <= 0 || Number(item.available_stock) <= 0;
             const isAdded = addedId === item.flash_sale_item_id;
+            const isAdding = addingIds.includes(item.flash_sale_item_id);
 
             return (
               <div
@@ -240,11 +253,13 @@ export default function FlashSaleSection({ onAddToCart }) {
                 <div className="px-4 pb-4">
                   <button
                     type="button"
-                    onClick={() => handleQuickAdd(item)}
-                    disabled={isSoldOut}
+                    onClick={() => void handleQuickAdd(item)}
+                    disabled={isSoldOut || isAdding}
                     className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                       isSoldOut
                         ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        : isAdding
+                        ? "bg-slate-200 text-slate-600 cursor-wait"
                         : isAdded
                         ? "bg-emerald-600 text-white cursor-pointer"
                         : "bg-amber-600 hover:bg-amber-700 text-white shadow-xs cursor-pointer"
@@ -252,6 +267,8 @@ export default function FlashSaleSection({ onAddToCart }) {
                   >
                     {isSoldOut ? (
                       <span>Đã Hết Suất Ưu Đãi</span>
+                    ) : isAdding ? (
+                      <span role="status">Đang thêm...</span>
                     ) : isAdded ? (
                       <>
                         <Check className="w-4 h-4" />

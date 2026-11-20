@@ -21,6 +21,7 @@ function CartStateProvider({ children, user }) {
   const [isLoading, setIsLoading] = useState(user?.role === "customer");
   const [error, setError] = useState("");
   const cartRevision = useRef(0);
+  const mutationQueue = useRef(Promise.resolve());
 
   const applyCartResponse = useCallback((response) => {
     const nextItems = response?.data?.items;
@@ -51,26 +52,50 @@ function CartStateProvider({ children, user }) {
     }
   }, [applyCartResponse, user?.role]);
 
+  const enqueueCartMutation = useCallback((mutation) => {
+    const result = mutationQueue.current.then(mutation);
+    mutationQueue.current = result.catch(() => {});
+    return result;
+  }, []);
+
   const addItem = useCallback(async (product, quantity = 1) => {
-    const response = await customerApi.addCartItem({
-      product_id: product.id,
-      quantity,
+    if (user?.role !== "customer") {
+      throw new Error("Chỉ khách hàng đã đăng nhập mới có thể thêm sản phẩm vào giỏ.");
+    }
+
+    return enqueueCartMutation(async () => {
+      const response = await customerApi.addCartItem({
+        product_id: product.id,
+        quantity,
+      });
+      cartRevision.current += 1;
+      return applyCartResponse(response);
     });
-    cartRevision.current += 1;
-    return applyCartResponse(response);
-  }, [applyCartResponse]);
+  }, [applyCartResponse, enqueueCartMutation, user?.role]);
 
   const updateItem = useCallback(async (productId, quantity) => {
-    const response = await customerApi.updateCartItem(productId, { quantity });
-    cartRevision.current += 1;
-    return applyCartResponse(response);
-  }, [applyCartResponse]);
+    if (user?.role !== "customer") {
+      throw new Error("Vui lòng đăng nhập bằng tài khoản khách hàng để sửa giỏ hàng.");
+    }
+
+    return enqueueCartMutation(async () => {
+      const response = await customerApi.updateCartItem(productId, { quantity });
+      cartRevision.current += 1;
+      return applyCartResponse(response);
+    });
+  }, [applyCartResponse, enqueueCartMutation, user?.role]);
 
   const removeItem = useCallback(async (productId) => {
-    const response = await customerApi.removeCartItem(productId);
-    cartRevision.current += 1;
-    return applyCartResponse(response);
-  }, [applyCartResponse]);
+    if (user?.role !== "customer") {
+      throw new Error("Vui lòng đăng nhập bằng tài khoản khách hàng để xóa sản phẩm.");
+    }
+
+    return enqueueCartMutation(async () => {
+      const response = await customerApi.removeCartItem(productId);
+      cartRevision.current += 1;
+      return applyCartResponse(response);
+    });
+  }, [applyCartResponse, enqueueCartMutation, user?.role]);
 
   useEffect(() => {
     if (user?.role !== "customer") return undefined;

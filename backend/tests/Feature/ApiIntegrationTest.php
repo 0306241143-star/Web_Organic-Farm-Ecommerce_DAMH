@@ -476,4 +476,181 @@ class ApiIntegrationTest extends TestCase
             ->assertNotFound()
             ->assertJsonPath('error_code', 'NOT_FOUND');
     }
+
+    /**
+     * Kiểm thử luồng Ví điểm thưởng, Sổ địa chỉ giao hàng và Đổi mật khẩu của Khách hàng.
+     */
+    public function test_customer_reward_wallet_and_address_management_flow(): void
+    {
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
+
+        $customer = \App\Models\NguoiDung::where('Email', 'ngocanh.khach@gmail.com')->first();
+        $this->assertNotNull($customer, 'Tài khoản khách hàng thử nghiệm không tồn tại trong CSDL.');
+
+        $token = $customer->createToken('test_customer_token')->plainTextToken;
+        $headers = ['Authorization' => 'Bearer ' . $token];
+
+        // 1. Kiểm tra ví điểm thưởng & lịch sử giao dịch điểm thực tế
+        $rewardRes = $this->getJson('/api/customer/rewards', $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_points', 85)
+            ->assertJsonStructure([
+                'success',
+                'message',
+                'data' => [
+                    'total_points',
+                    'conversion_rules' => [
+                        'point_to_vnd',
+                        'points_label',
+                        'earn_rule',
+                        'redeem_rule',
+                        'refund_rule',
+                    ],
+                    'history' => [
+                        '*' => [
+                            'id',
+                            'order_id',
+                            'transaction_type',
+                            'type_label',
+                            'points',
+                            'description',
+                            'created_at',
+                        ],
+                    ],
+                ],
+            ]);
+
+        $this->assertCount(4, $rewardRes->json('data.history'));
+
+        // 2. Lấy danh sách địa chỉ giao hàng hiện tại (có 2 địa chỉ mẫu)
+        $addressRes = $this->getJson('/api/customer/addresses', $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'id',
+                        'recipient_name',
+                        'phone',
+                        'detail_address',
+                        'ward',
+                        'district',
+                        'province',
+                        'latitude',
+                        'longitude',
+                        'address',
+                        'is_default',
+                    ],
+                ],
+            ]);
+
+        // 3. Thêm địa chỉ nhận hàng mới
+        $createAddrRes = $this->postJson('/api/customer/addresses', [
+            'recipient_name' => 'Đặng Ngọc Anh (Nhà riêng)',
+            'phone'          => '0933112233',
+            'detail_address' => '78 Đường 3/2',
+            'ward'           => 'Phường 12',
+            'district'       => 'Quận 10',
+            'province'       => 'TP. Hồ Chí Minh',
+            'is_default'     => true,
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.recipient_name', 'Đặng Ngọc Anh (Nhà riêng)')
+            ->assertJsonPath('data.is_default', true);
+
+        $newAddrId = $createAddrRes->json('data.id');
+        $this->assertNotNull($newAddrId);
+
+        // Kiểm tra địa chỉ cũ không còn là mặc định
+        $this->assertDatabaseHas('dia_chi_giao_hang', [
+            'Ma_dia_chi'  => $newAddrId,
+            'La_mac_dinh' => 1,
+        ]);
+
+        // 4. Cập nhật địa chỉ nhận hàng
+        $this->putJson("/api/customer/addresses/{$newAddrId}", [
+            'recipient_name' => 'Đặng Ngọc Anh (Căn hộ)',
+            'phone'          => '0933112233',
+            'detail_address' => '78A Đường 3/2',
+            'ward'           => 'Phường 12',
+            'district'       => 'Quận 10',
+            'province'       => 'TP. Hồ Chí Minh',
+            'is_default'     => true,
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.recipient_name', 'Đặng Ngọc Anh (Căn hộ)')
+            ->assertJsonPath('data.detail_address', '78A Đường 3/2');
+
+        // 5. Thiết lập địa chỉ #1 làm mặc định trở lại
+        $this->patchJson('/api/customer/addresses/1/default', [], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.is_default', true);
+
+        $this->assertEquals(1, \App\Models\DiaChiGiaoHang::find(1)->La_mac_dinh);
+        $this->assertEquals(0, \App\Models\DiaChiGiaoHang::find($newAddrId)->La_mac_dinh);
+
+        // 6. Xóa địa chỉ vừa tạo
+        $this->deleteJson("/api/customer/addresses/{$newAddrId}", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('dia_chi_giao_hang', ['Ma_dia_chi' => $newAddrId]);
+
+        // 7. Kiểm thử đổi mật khẩu tài khoản
+        // 7a. Nhập sai mật khẩu hiện tại -> 422
+        $this->postJson('/api/customer/change-password', [
+            'current_password'          => 'mat-khau-sai',
+            'new_password'              => 'MatKhauMoi@123',
+            'new_password_confirmation' => 'MatKhauMoi@123',
+        ], $headers)
+            ->assertStatus(422)
+            ->assertJsonPath('error_code', 'VALIDATION_ERROR')
+            ->assertJsonValidationErrors(['current_password']);
+
+        // 7b. Nhập đúng mật khẩu hiện tại -> 200
+        $this->postJson('/api/customer/change-password', [
+            'current_password'          => 'password',
+            'new_password'              => 'MatKhauMoi@123',
+            'new_password_confirmation' => 'MatKhauMoi@123',
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Khôi phục lại mật khẩu gốc 'password' cho tài khoản test
+        $this->postJson('/api/customer/change-password', [
+            'current_password'          => 'MatKhauMoi@123',
+            'new_password'              => 'password',
+            'new_password_confirmation' => 'password',
+        ], $headers)
+            ->assertOk();
+
+        // 8. Kiểm thử cập nhật hồ sơ cá nhân (Số điện thoại, Email, Họ tên)
+        $this->putJson('/api/customer/profile', [
+            'name'  => 'Đặng Ngọc Anh Cập Nhật',
+            'phone' => '0988776655',
+            'email' => 'ngocanh.updated@gmail.com',
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.name', 'Đặng Ngọc Anh Cập Nhật')
+            ->assertJsonPath('data.user.phone', '0988776655')
+            ->assertJsonPath('data.user.email', 'ngocanh.updated@gmail.com');
+
+        // Khôi phục lại hồ sơ ban đầu
+        $this->putJson('/api/customer/profile', [
+            'name'  => 'Đặng Ngọc Anh',
+            'phone' => '0912345678',
+            'email' => 'ngocanh.khach@gmail.com',
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.user.name', 'Đặng Ngọc Anh')
+            ->assertJsonPath('data.user.email', 'ngocanh.khach@gmail.com');
+
+        $customer->tokens()->delete();
+    }
 }

@@ -33,6 +33,19 @@ class CustomerCheckoutTest extends TestCase
         ]);
         Http::fake(function ($request) {
             if (str_contains($request->url(), 'rsapi.goong.io')) {
+                if (str_contains($request->url(), 'Geocode')) {
+                    return Http::response([
+                        'results' => [[
+                            'geometry' => [
+                                'location' => [
+                                    'lat' => 10.8231,
+                                    'lng' => 106.6297,
+                                ],
+                            ],
+                        ]],
+                    ]);
+                }
+
                 if ($this->goongUnavailable) {
                     return Http::response([], 503);
                 }

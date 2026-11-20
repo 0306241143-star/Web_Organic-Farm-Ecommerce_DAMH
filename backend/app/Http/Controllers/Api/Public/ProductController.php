@@ -348,8 +348,8 @@ class ProductController extends Controller
             ->unique('Ma_chung_nhan')
             ->values();
 
-        $certifications = $mergedCerts->map(function (ChungNhan $cert): array {
-            return [
+        $certifications = $mergedCerts->map(function (ChungNhan $cert) use ($includeDetail): array {
+            $data = [
                 'id'           => (int) $cert->Ma_chung_nhan,
                 'name'         => $cert->Ten_chung_nhan,
                 'standard'     => $this->classifyCertificationStandard($cert->Ten_chung_nhan),
@@ -358,6 +358,12 @@ class ProductController extends Controller
                 'expires_at'   => $cert->Ngay_het_han,
                 'batch_id'     => $cert->Ma_lo_hang ? (int) $cert->Ma_lo_hang : null,
             ];
+
+            if ($includeDetail) {
+                $data['file_url'] = $this->resolveImageUrl($cert->Duong_dan_tep);
+            }
+
+            return $data;
         })->values()->all();
 
         $certificationStandards = collect($certifications)
