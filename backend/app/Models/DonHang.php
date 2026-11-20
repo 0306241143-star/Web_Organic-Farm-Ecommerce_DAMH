@@ -39,4 +39,9 @@ class DonHang extends Model
     {
         return $this->belongsTo(DangKyGoi::class, 'Ma_dang_ky_goi', 'Ma_dang_ky');
     }
+
+    public function khieuNais(): HasMany
+    {
+        return $this->hasMany(KhieuNai::class, 'Ma_don_hang', 'Ma_don_hang');
+    }
 }

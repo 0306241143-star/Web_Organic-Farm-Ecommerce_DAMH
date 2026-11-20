@@ -3,7 +3,7 @@
  * Bao gồm giỏ hàng, đặt mua lẻ, đăng ký gói định kỳ, ví điểm thưởng,
  * sổ địa chỉ nhận hàng và đổi mật khẩu tài khoản.
  * ========================================================================== */
-import axiosClient from "./axiosClient";
+import axiosClient, { postMultipart } from "./axiosClient";
 
 export const customerApi = {
   // Thao tác giỏ hàng mua lẻ
@@ -49,5 +49,7 @@ export const customerApi = {
   resumeSubscription: (subscriptionId) =>
     axiosClient.post(`/customer/subscriptions/${subscriptionId}/resume`),
   getRewardPoints: (params) => axiosClient.get("/customer/rewards", { params }),
-  createClaim: (data) => axiosClient.post("/customer/claims", data),
+  getClaims: (params) => axiosClient.get("/customer/claims", { params }),
+  getClaim: (claimId) => axiosClient.get(`/customer/claims/${claimId}`),
+  createClaim: (data) => postMultipart("/customer/claims", data),
 };
