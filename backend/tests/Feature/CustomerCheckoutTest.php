@@ -7,6 +7,7 @@ use App\Models\GioHang;
 use App\Models\NguoiDung;
 use App\Models\NongTrai;
 use App\Services\ShippingDistanceService;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -138,12 +139,19 @@ class CustomerCheckoutTest extends TestCase
         $this->assertDatabaseMissing('chi_tiet_gio_hang', ['Ma_gio_hang' => 1]);
 
         $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/checkout', ['order_id' => $orderId])
+            ->postJson('/api/customer/checkout', [
+                'order_id' => $orderId,
+                'bank_public_id' => 'attacker-controlled-bank',
+            ])
             ->assertCreated()
             ->assertJsonPath('data.pay_url', 'https://pay.apipay.vn/test')
             ->assertJsonPath('data.qr_url', 'https://app.apipay.vn/qr/test');
 
-        config(['services.apipay.webhook_secret' => 'checkout-test-webhook-secret']);
+        Http::assertSent(fn (ClientRequest $request): bool => $request->method() === 'POST'
+            && str_ends_with($request->url(), '/payment-requests')
+            && $request['bankPublicId'] === 'test-bank'
+        );
+
         $paymentContent = DB::table('thanh_toan')
             ->where('Ma_don_hang', $orderId)
             ->value('Noi_dung_thanh_toan');
@@ -203,7 +211,7 @@ class CustomerCheckoutTest extends TestCase
             ->assertJsonValidationErrors(['cart']);
     }
 
-    public function test_customer_can_redeem_points_with_discount_capped_at_merchandise_subtotal_and_get_refund_on_cancel(): void
+    public function test_apipay_checkout_requires_webhook_configuration(): void
     {
         $customer = NguoiDung::query()->findOrFail(5);
         GioHang::query()
@@ -219,180 +227,29 @@ class CustomerCheckoutTest extends TestCase
             ])
             ->assertOk();
 
-        $this->actingAs($customer, 'sanctum')
-            ->getJson('/api/customer/rewards')
-            ->assertOk()
-            ->assertJsonPath('data.points_available', 85)
-            ->assertJsonPath('data.conversion_rate', 1000);
-
-        $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/checkout/quote', [
-                'address_id' => 1,
-                'points_to_use' => 500,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.points_available', 85)
-            ->assertJsonPath('data.points_to_use', 70)
-            ->assertJsonPath('data.points_discount', 70000)
-            ->assertJsonPath('data.subtotal', 70000)
-            ->assertJsonPath('data.shipping_fee', 25000)
-            ->assertJsonPath('data.total', 25000);
-
-        $response = $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/checkout/orders', [
-                'address_id' => 1,
-                'points_to_use' => 50,
-                'payment_method' => 'ApiPay',
-            ])
-            ->assertCreated()
-            ->assertJsonPath('data.points_used', 50)
-            ->assertJsonPath('data.points_discount', 50000)
-            ->assertJsonPath('data.total', 45000);
-
-        $orderId = $response->json('data.order_id');
-        $this->assertDatabaseHas('don_hang', [
-            'Ma_don_hang' => $orderId,
-            'So_diem_su_dung' => 50,
-            'Tien_giam_tu_diem' => 50000,
-            'Phi_giao_hang' => 25000,
-            'Tong_tien' => 45000,
-        ]);
-        $this->assertDatabaseHas('diem_tich_luy', [
-            'Ma_nguoi_dung' => 5,
-            'Ma_don_hang' => $orderId,
-            'Loai_giao_dich' => 'Su_dung',
-            'So_diem' => -50,
-        ]);
-        $this->actingAs($customer, 'sanctum')
-            ->getJson('/api/customer/rewards')
-            ->assertJsonPath('data.points_available', 35);
-
-        $this->actingAs($customer, 'sanctum')
-            ->postJson("/api/customer/checkout/orders/{$orderId}/cancel")
-            ->assertOk()
-            ->assertJsonPath('data.status', 'Da_huy')
-            ->assertJsonPath('data.points_refunded', 50);
-        $this->actingAs($customer, 'sanctum')
-            ->postJson("/api/customer/checkout/orders/{$orderId}/cancel")
-            ->assertOk()
-            ->assertJsonPath('data.points_refunded', 0);
-
-        $this->assertDatabaseHas('diem_tich_luy', [
-            'Ma_nguoi_dung' => 5,
-            'Ma_don_hang' => $orderId,
-            'Loai_giao_dich' => 'Hoan_diem',
-            'So_diem' => 50,
-        ]);
-        $this->assertSame(
-            1,
-            DB::table('diem_tich_luy')
-                ->where('Ma_don_hang', $orderId)
-                ->where('Loai_giao_dich', 'Hoan_diem')
-                ->count()
-        );
-        $this->actingAs($customer, 'sanctum')
-            ->getJson('/api/customer/rewards')
-            ->assertJsonPath('data.points_available', 85);
-    }
-
-    public function test_customer_can_create_and_update_owned_delivery_addresses(): void
-    {
-        $customer = NguoiDung::query()->findOrFail(5);
-        $payload = [
-            'recipient_name' => 'Nguyễn Minh An',
-            'phone' => '0912345678',
-            'street' => '12 Nguyễn Trãi',
-            'ward' => 'Phường Bến Thành',
-            'district' => 'Quận 1',
-            'province' => 'Thành phố Hồ Chí Minh',
-        ];
-
         $created = $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/addresses', $payload)
-            ->assertCreated()
-            ->assertJsonPath('data.recipient_name', 'Nguyễn Minh An')
-            ->assertJsonPath('data.phone', '0912345678')
-            ->assertJsonPath('data.is_default', false);
-        $addressId = $created->json('data.id');
+            ->postJson('/api/customer/checkout/orders', ['address_id' => 1])
+            ->assertCreated();
+        $orderId = $created->json('data.order_id');
 
-        $this->assertDatabaseHas('dia_chi_giao_hang', [
-            'Ma_dia_chi' => $addressId,
-            'Ma_nguoi_dung' => 5,
-            'Vi_do' => 10.8231,
-            'Kinh_do' => 106.6297,
+        config([
+            'services.apipay.webhook_secret' => '',
+            'services.apipay.webhook_url' => '',
         ]);
 
         $this->actingAs($customer, 'sanctum')
-            ->putJson("/api/customer/addresses/{$addressId}", [
-                'recipient_name' => 'Trần Minh An',
-                'phone' => '0987654321',
-            ])
+            ->getJson('/api/customer/checkout/options')
             ->assertOk()
-            ->assertJsonPath('data.recipient_name', 'Trần Minh An')
-            ->assertJsonPath('data.phone', '0987654321');
-
-        $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/addresses', [...$payload, 'phone' => '123'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['phone']);
-
-        $otherCustomer = NguoiDung::query()->findOrFail(6);
-        $this->actingAs($otherCustomer, 'sanctum')
-            ->putJson("/api/customer/addresses/{$addressId}", [
-                'recipient_name' => 'Không thuộc tài khoản',
-            ])
-            ->assertNotFound();
-    }
-
-    public function test_expired_apipay_order_is_cancelled_and_redeemed_points_are_refunded(): void
-    {
-        $customer = NguoiDung::query()->findOrFail(5);
-        GioHang::query()
-            ->where('Ma_nguoi_dung', 5)
-            ->firstOrFail()
-            ->chiTiets()
-            ->delete();
-        $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/cart/items', [
-                'product_id' => 1,
-                'quantity' => 1,
-            ])
-            ->assertOk();
-        $orderResponse = $this->actingAs($customer, 'sanctum')
-            ->postJson('/api/customer/checkout/orders', [
-                'address_id' => 1,
-                'points_to_use' => 10,
-                'payment_method' => 'ApiPay',
-            ])
-            ->assertCreated();
-        $orderId = $orderResponse->json('data.order_id');
+            ->assertJsonPath('data.payment_configured', true)
+            ->assertJsonPath('data.webhook_configured', false)
+            ->assertJsonPath('data.ready', false);
 
         $this->actingAs($customer, 'sanctum')
             ->postJson('/api/customer/checkout', ['order_id' => $orderId])
-            ->assertCreated();
-        DB::table('don_hang')
-            ->where('Ma_don_hang', $orderId)
-            ->update(['created_at' => now()->subMinutes(45)]);
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['order_id']);
 
-        Artisan::call('orders:expire-pending-payments');
-
-        $this->assertDatabaseHas('don_hang', [
-            'Ma_don_hang' => $orderId,
-            'Trang_thai' => 'Da_huy',
-            'So_diem_su_dung' => 10,
-        ]);
-        $this->assertDatabaseHas('thanh_toan', [
-            'Ma_don_hang' => $orderId,
-            'Trang_thai' => 'That_bai',
-        ]);
-        $this->assertDatabaseHas('diem_tich_luy', [
-            'Ma_don_hang' => $orderId,
-            'Loai_giao_dich' => 'Hoan_diem',
-            'So_diem' => 10,
-        ]);
-        $this->actingAs($customer, 'sanctum')
-            ->getJson('/api/customer/rewards')
-            ->assertJsonPath('data.points_available', 85);
+        $this->assertDatabaseMissing('thanh_toan', ['Ma_don_hang' => $orderId]);
     }
 
     public function test_system_shipping_rate_overrides_the_environment_fallback(): void

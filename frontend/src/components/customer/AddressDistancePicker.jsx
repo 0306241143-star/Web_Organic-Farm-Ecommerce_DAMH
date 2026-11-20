@@ -1,5 +1,9 @@
-/* Customer-owned delivery address selector for retail checkout. */
-import { MapPin } from "lucide-react";
+/* ==========================================================================
+ * THÀNH PHẦN CHỌN ĐỊA CHỈ GIAO HÀNG (ADDRESS DISTANCE PICKER)
+ * Hiển thị danh sách địa chỉ nhận hàng của khách khi thanh toán
+ * và cung cấp liên kết truy cập nhanh đến sổ địa chỉ.
+ * ========================================================================== */
+import { Link } from "react-router-dom";
 
 export default function AddressDistancePicker({
   addresses,
@@ -12,24 +16,30 @@ export default function AddressDistancePicker({
   const selectedAddress = addresses.find((address) => String(address.id) === String(value));
 
   return (
-    <section aria-label="Địa chỉ giao hàng" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-      <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
-        <MapPin className="h-5 w-5 text-emerald-700" aria-hidden="true" />
-        Thông Tin Nhận Hàng
-      </h2>
+    <section aria-label="Địa chỉ giao hàng" className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center justify-between">
+        <label htmlFor="delivery-address" className="block text-lg font-extrabold text-slate-900">
+          Địa chỉ giao hàng
+        </label>
+        <Link
+          to="/rewards?tab=address"
+          className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 hover:underline"
+        >
+          Quản lý sổ địa chỉ
+        </Link>
+      </div>
+
       {addresses.length === 0 ? (
-        <div className="mt-3">
-          <p className="text-sm text-amber-800" role="status">
-            Tài khoản chưa có địa chỉ giao hàng. Thêm địa chỉ để tiếp tục đặt hàng.
+        <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-4">
+          <p className="text-sm text-amber-900">
+            Tài khoản chưa có địa chỉ giao hàng. Vui lòng thêm địa chỉ trước khi đặt hàng.
           </p>
-          <button
-            type="button"
-            onClick={onAddAddress}
-            disabled={disabled}
-            className="mt-3 min-h-10 rounded-lg border border-emerald-800 px-3 py-1.5 text-sm font-bold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
+          <Link
+            to="/rewards?tab=address"
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 underline"
           >
-            Thêm địa chỉ mới
-          </button>
+            + Thêm địa chỉ nhận hàng mới
+          </Link>
         </div>
       ) : (
         <>

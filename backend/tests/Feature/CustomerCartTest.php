@@ -83,4 +83,51 @@ class CustomerCartTest extends TestCase
             ->getJson('/api/customer/cart')
             ->assertForbidden();
     }
+
+    public function test_customer_can_only_view_their_own_cart(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+        $otherCustomer = NguoiDung::query()->findOrFail(6);
+
+        $customerCart = $this->actingAs($customer, 'sanctum')
+            ->getJson('/api/customer/cart')
+            ->assertOk();
+        $otherCustomerCart = $this->actingAs($otherCustomer, 'sanctum')
+            ->getJson('/api/customer/cart')
+            ->assertOk();
+
+        $customerProductIds = collect($customerCart->json('data.items'))
+            ->pluck('id')
+            ->all();
+        $otherCustomerProductIds = collect($otherCustomerCart->json('data.items'))
+            ->pluck('id')
+            ->all();
+
+        $this->assertNotSame($customerProductIds, $otherCustomerProductIds);
+        $this->assertContains(4, $customerProductIds);
+        $this->assertContains(1, $otherCustomerProductIds);
+    }
+
+    public function test_customer_cannot_update_or_remove_another_customers_cart_items(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+        $otherCustomer = NguoiDung::query()->findOrFail(6);
+
+        $this->actingAs($customer, 'sanctum')
+            ->putJson('/api/customer/cart/items/1', ['quantity' => 1])
+            ->assertNotFound();
+
+        $this->actingAs($customer, 'sanctum')
+            ->deleteJson('/api/customer/cart/items/1')
+            ->assertNotFound();
+
+        $otherCart = $this->actingAs($otherCustomer, 'sanctum')
+            ->getJson('/api/customer/cart')
+            ->assertOk();
+
+        $this->assertSame(
+            2.0,
+            (float) collect($otherCart->json('data.items'))->firstWhere('id', 1)['quantity']
+        );
+    }
 }

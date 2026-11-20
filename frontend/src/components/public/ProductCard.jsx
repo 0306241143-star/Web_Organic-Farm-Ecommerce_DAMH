@@ -230,7 +230,7 @@ export function ProductCardSkeleton() {
 /* ================= THÀNH PHẦN CHÍNH: THẺ SẢN PHẨM ================= */
 export default function ProductCard({ product, onAddToCart = null }) {
   const { addItem } = useCart();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [isAdding, setIsAdding] = useState(false);

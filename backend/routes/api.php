@@ -146,8 +146,12 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::put('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'update'])->whereNumber('productId');
     Route::delete('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'destroy'])->whereNumber('productId');
     Route::get('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'addresses']);
-    Route::post('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'createAddress']);
-    Route::put('/addresses/{addressId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateAddress'])->whereNumber('addressId');
+    Route::post('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'storeAddress']);
+    Route::put('/addresses/{id}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateAddress'])->whereNumber('id');
+    Route::delete('/addresses/{id}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'destroyAddress'])->whereNumber('id');
+    Route::patch('/addresses/{id}/default', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'setDefaultAddress'])->whereNumber('id');
+    Route::post('/change-password', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'changePassword']);
+    Route::put('/profile', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateProfile']);
     Route::get('/rewards', [\App\Http\Controllers\Api\Customer\RewardPointController::class, 'index']);
     Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
     Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);

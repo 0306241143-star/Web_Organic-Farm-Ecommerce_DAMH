@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { storefrontApi } from "../../services/storefrontApi";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 const DEFAULT_IMG =
   "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=600&q=80";

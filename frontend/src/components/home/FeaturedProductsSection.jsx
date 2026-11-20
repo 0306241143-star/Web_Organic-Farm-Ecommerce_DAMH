@@ -9,6 +9,7 @@ import {
   PackageX,
 } from "lucide-react";
 import { storefrontApi } from "../../services/storefrontApi";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 const DEFAULT_PROD_IMAGE =
   "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=600&q=80";

@@ -22,6 +22,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -30,6 +31,9 @@ class RetailOrderController extends Controller
 {
     use ApiResponse;
 
+    /**
+     * Lấy danh sách địa chỉ giao hàng của khách hàng hiện tại.
+     */
     public function addresses(Request $request): JsonResponse
     {
         $addresses = DiaChiGiaoHang::query()
@@ -52,10 +56,12 @@ class RetailOrderController extends Controller
                 'id' => (int) $address->Ma_dia_chi,
                 'recipient_name' => $address->Ten_nguoi_nhan,
                 'phone' => $address->So_dien_thoai_nguoi_nhan,
-                'street' => $address->Dia_chi_chi_tiet,
+                'detail_address' => $address->Dia_chi_chi_tiet,
                 'ward' => $address->Phuong_xa,
                 'district' => $address->Quan_huyen,
                 'province' => $address->Tinh_thanh,
+                'latitude' => (float) $address->Vi_do,
+                'longitude' => (float) $address->Kinh_do,
                 'address' => implode(', ', array_filter([
                     $address->Dia_chi_chi_tiet,
                     $address->Phuong_xa,
@@ -71,71 +77,296 @@ class RetailOrderController extends Controller
         );
     }
 
-    public function createAddress(Request $request, GoongGeocodingService $geocoder): JsonResponse
+    /**
+     * Thêm địa chỉ nhận hàng mới cho khách hàng.
+     */
+    public function storeAddress(Request $request): JsonResponse
     {
-        $validated = $request->validate($this->addressRules());
-        $coordinates = $this->geocodeAddress($validated, $geocoder);
-        $userId = (int) $request->user()->getAuthIdentifier();
+        $userId = $request->user()->getAuthIdentifier();
 
-        $address = DiaChiGiaoHang::query()->create([
-            ...$this->addressAttributes($validated),
-            'Ma_nguoi_dung' => $userId,
-            'Vi_do' => $coordinates['latitude'],
-            'Kinh_do' => $coordinates['longitude'],
-            'La_mac_dinh' => ! DiaChiGiaoHang::query()->where('Ma_nguoi_dung', $userId)->exists(),
+        $validated = $request->validate([
+            'recipient_name' => ['required', 'string', 'max:150'],
+            'phone'          => ['required', 'string', 'max:15'],
+            'detail_address' => ['required', 'string', 'max:255'],
+            'ward'           => ['required', 'string', 'max:100'],
+            'district'       => ['required', 'string', 'max:100'],
+            'province'       => ['required', 'string', 'max:100'],
+            'latitude'       => ['nullable', 'numeric'],
+            'longitude'      => ['nullable', 'numeric'],
+            'is_default'     => ['nullable', 'boolean'],
+        ], [
+            'recipient_name.required' => 'Vui lòng nhập tên người nhận.',
+            'phone.required'          => 'Vui lòng nhập số điện thoại người nhận.',
+            'detail_address.required' => 'Vui lòng nhập số nhà, tên đường chi tiết.',
+            'ward.required'           => 'Vui lòng nhập phường/xã.',
+            'district.required'       => 'Vui lòng nhập quận/huyện.',
+            'province.required'       => 'Vui lòng nhập tỉnh/thành phố.',
+        ]);
+
+        $hasExisting = DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)->exists();
+        $isDefault = !empty($validated['is_default']) || !$hasExisting;
+
+        if ($isDefault) {
+            DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)->update(['La_mac_dinh' => false]);
+        }
+
+        $address = DiaChiGiaoHang::create([
+            'Ma_nguoi_dung'            => $userId,
+            'Ten_nguoi_nhan'           => $validated['recipient_name'],
+            'So_dien_thoai_nguoi_nhan' => $validated['phone'],
+            'Dia_chi_chi_tiet'         => $validated['detail_address'],
+            'Phuong_xa'                => $validated['ward'],
+            'Quan_huyen'               => $validated['district'],
+            'Tinh_thanh'               => $validated['province'],
+            'Vi_do'                    => $validated['latitude'] ?? 10.7825400,
+            'Kinh_do'                  => $validated['longitude'] ?? 106.6934200,
+            'La_mac_dinh'              => $isDefault,
         ]);
 
         return $this->successResponse(
-            message: 'Thêm địa chỉ giao hàng thành công.',
-            data: $this->formatAddress($address),
-            status: 201
+            message: 'Thêm địa chỉ giao hàng mới thành công.',
+            data: [
+                'id'             => (int) $address->Ma_dia_chi,
+                'recipient_name' => $address->Ten_nguoi_nhan,
+                'phone'          => $address->So_dien_thoai_nguoi_nhan,
+                'detail_address' => $address->Dia_chi_chi_tiet,
+                'ward'           => $address->Phuong_xa,
+                'district'       => $address->Quan_huyen,
+                'province'       => $address->Tinh_thanh,
+                'latitude'       => (float) $address->Vi_do,
+                'longitude'      => (float) $address->Kinh_do,
+                'address'        => implode(', ', array_filter([
+                    $address->Dia_chi_chi_tiet,
+                    $address->Phuong_xa,
+                    $address->Quan_huyen,
+                    $address->Tinh_thanh,
+                ])),
+                'is_default'     => (bool) $address->La_mac_dinh,
+            ]
         );
     }
 
-    public function updateAddress(
-        Request $request,
-        int $addressId,
-        GoongGeocodingService $geocoder
-    ): JsonResponse {
-        $address = $this->addressForCustomer($addressId, $request);
+    /**
+     * Cập nhật thông tin địa chỉ giao hàng.
+     */
+    public function updateAddress(Request $request, int $id): JsonResponse
+    {
+        $userId = $request->user()->getAuthIdentifier();
+
+        $address = DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)
+            ->where('Ma_dia_chi', $id)
+            ->first();
+
+        if (!$address) {
+            return $this->errorResponse(
+                message: 'Không tìm thấy địa chỉ giao hàng yêu cầu.',
+                status: 404,
+                errorCode: self::ERR_NOT_FOUND
+            );
+        }
+
         $validated = $request->validate([
-            'recipient_name' => ['sometimes', 'required', 'string', 'max:150'],
-            'phone' => ['sometimes', 'required', 'string', 'regex:/^(?:\+84|0)\d{9,10}$/'],
-            'street' => ['sometimes', 'required', 'string', 'max:255'],
-            'ward' => ['sometimes', 'required', 'string', 'max:100'],
-            'district' => ['sometimes', 'required', 'string', 'max:100'],
-            'province' => ['sometimes', 'required', 'string', 'max:100'],
+            'recipient_name' => ['required', 'string', 'max:150'],
+            'phone'          => ['required', 'string', 'max:15'],
+            'detail_address' => ['required', 'string', 'max:255'],
+            'ward'           => ['required', 'string', 'max:100'],
+            'district'       => ['required', 'string', 'max:100'],
+            'province'       => ['required', 'string', 'max:100'],
+            'latitude'       => ['nullable', 'numeric'],
+            'longitude'      => ['nullable', 'numeric'],
+            'is_default'     => ['nullable', 'boolean'],
         ]);
 
-        if ($validated === []) {
-            throw ValidationException::withMessages([
-                'address' => 'Cần cung cấp ít nhất một thông tin cần cập nhật.',
-            ]);
+        $isDefault = !empty($validated['is_default']);
+
+        if ($isDefault) {
+            DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)
+                ->where('Ma_dia_chi', '!=', $id)
+                ->update(['La_mac_dinh' => false]);
         }
 
-        $locationFields = ['street', 'ward', 'district', 'province'];
-        $changesLocation = collect($locationFields)->contains(
-            fn (string $field): bool => array_key_exists($field, $validated)
-        );
-
-        if ($changesLocation) {
-            $validated = array_merge([
-                'street' => $address->Dia_chi_chi_tiet,
-                'ward' => $address->Phuong_xa,
-                'district' => $address->Quan_huyen,
-                'province' => $address->Tinh_thanh,
-            ], $validated);
-            $coordinates = $this->geocodeAddress($validated, $geocoder);
-            $address->Vi_do = $coordinates['latitude'];
-            $address->Kinh_do = $coordinates['longitude'];
-        }
-
-        $address->fill($this->addressAttributes($validated));
-        $address->save();
+        $address->update([
+            'Ten_nguoi_nhan'           => $validated['recipient_name'],
+            'So_dien_thoai_nguoi_nhan' => $validated['phone'],
+            'Dia_chi_chi_tiet'         => $validated['detail_address'],
+            'Phuong_xa'                => $validated['ward'],
+            'Quan_huyen'               => $validated['district'],
+            'Tinh_thanh'               => $validated['province'],
+            'Vi_do'                    => $validated['latitude'] ?? $address->Vi_do,
+            'Kinh_do'                  => $validated['longitude'] ?? $address->Kinh_do,
+            'La_mac_dinh'              => $isDefault ? true : $address->La_mac_dinh,
+        ]);
 
         return $this->successResponse(
             message: 'Cập nhật địa chỉ giao hàng thành công.',
-            data: $this->formatAddress($address->refresh())
+            data: [
+                'id'             => (int) $address->Ma_dia_chi,
+                'recipient_name' => $address->Ten_nguoi_nhan,
+                'phone'          => $address->So_dien_thoai_nguoi_nhan,
+                'detail_address' => $address->Dia_chi_chi_tiet,
+                'ward'           => $address->Phuong_xa,
+                'district'       => $address->Quan_huyen,
+                'province'       => $address->Tinh_thanh,
+                'latitude'       => (float) $address->Vi_do,
+                'longitude'      => (float) $address->Kinh_do,
+                'address'        => implode(', ', array_filter([
+                    $address->Dia_chi_chi_tiet,
+                    $address->Phuong_xa,
+                    $address->Quan_huyen,
+                    $address->Tinh_thanh,
+                ])),
+                'is_default'     => (bool) $address->La_mac_dinh,
+            ]
+        );
+    }
+
+    /**
+     * Xóa một địa chỉ nhận hàng của khách.
+     */
+    public function destroyAddress(Request $request, int $id): JsonResponse
+    {
+        $userId = $request->user()->getAuthIdentifier();
+
+        $address = DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)
+            ->where('Ma_dia_chi', $id)
+            ->first();
+
+        if (!$address) {
+            return $this->errorResponse(
+                message: 'Không tìm thấy địa chỉ để xóa.',
+                status: 404,
+                errorCode: self::ERR_NOT_FOUND
+            );
+        }
+
+        $wasDefault = (bool) $address->La_mac_dinh;
+        $address->delete();
+
+        // Nếu vừa xóa địa chỉ mặc định, tự động gán địa chỉ còn lại gần nhất làm mặc định
+        if ($wasDefault) {
+            $nextAddress = DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)
+                ->orderByDesc('Ma_dia_chi')
+                ->first();
+
+            if ($nextAddress) {
+                $nextAddress->update(['La_mac_dinh' => true]);
+            }
+        }
+
+        return $this->successResponse(
+            message: 'Xóa địa chỉ giao hàng thành công.',
+            data: ['deleted_id' => $id]
+        );
+    }
+
+    /**
+     * Đặt một địa chỉ làm địa chỉ giao hàng mặc định.
+     */
+    public function setDefaultAddress(Request $request, int $id): JsonResponse
+    {
+        $userId = $request->user()->getAuthIdentifier();
+
+        $address = DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)
+            ->where('Ma_dia_chi', $id)
+            ->first();
+
+        if (!$address) {
+            return $this->errorResponse(
+                message: 'Không tìm thấy địa chỉ để đặt mặc định.',
+                status: 404,
+                errorCode: self::ERR_NOT_FOUND
+            );
+        }
+
+        DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)->update(['La_mac_dinh' => false]);
+        $address->update(['La_mac_dinh' => true]);
+
+        return $this->successResponse(
+            message: 'Thiết lập địa chỉ mặc định thành công.',
+            data: ['id' => $id, 'is_default' => true]
+        );
+    }
+
+    /**
+     * Cập nhật thông tin hồ sơ cá nhân của khách hàng (Số điện thoại, Email).
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $user->getAuthIdentifier();
+
+        $validated = $request->validate([
+            'phone' => ['required', 'string', 'max:15', 'unique:nguoi_dung,So_dien_thoai,' . $userId . ',Ma_nguoi_dung'],
+            'email' => ['nullable', 'email', 'max:150', 'unique:nguoi_dung,Email,' . $userId . ',Ma_nguoi_dung'],
+            'name'  => ['nullable', 'string', 'max:150'],
+        ], [
+            'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'phone.unique'   => 'Số điện thoại này đã được sử dụng bởi tài khoản khác.',
+            'email.email'    => 'Địa chỉ email không đúng định dạng.',
+            'email.unique'   => 'Địa chỉ email này đã được sử dụng bởi tài khoản khác.',
+        ]);
+
+        if (!empty($validated['name'])) {
+            $user->Ho_ten = $validated['name'];
+        }
+        if (!empty($validated['email'])) {
+            $user->Email = $validated['email'];
+        }
+        $user->So_dien_thoai = $validated['phone'];
+        $user->save();
+
+        $roleSlug = $user->getRoleSlug();
+
+        return $this->successResponse(
+            message: 'Cập nhật thông tin hồ sơ thành công.',
+            data: [
+                'user' => [
+                    'id'     => $user->Ma_nguoi_dung,
+                    'name'   => $user->Ho_ten,
+                    'email'  => $user->Email,
+                    'phone'  => $user->So_dien_thoai,
+                    'role'   => $roleSlug,
+                    'roles'  => [$roleSlug],
+                    'status' => $user->Trang_thai,
+                ],
+            ]
+        );
+    }
+
+    /**
+     * Khách hàng đổi mật khẩu tài khoản (xác thực mật khẩu cũ và mã hóa mật khẩu mới).
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password'     => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'current_password.required' => 'Vui lòng nhập mật khẩu hiện tại.',
+            'new_password.required'     => 'Vui lòng nhập mật khẩu mới.',
+            'new_password.min'          => 'Mật khẩu mới phải có tối thiểu 8 ký tự.',
+            'new_password.confirmed'    => 'Xác nhận mật khẩu mới không trùng khớp.',
+        ]);
+
+        // Kiểm tra tính chính xác của mật khẩu hiện tại
+        if (!Hash::check($validated['current_password'], $user->Mat_khau_ma_hoa)) {
+            return $this->errorResponse(
+                message: 'Mật khẩu hiện tại không chính xác.',
+                status: 422,
+                errorCode: self::ERR_VALIDATION,
+                errors: ['current_password' => ['Mật khẩu hiện tại không chính xác.']]
+            );
+        }
+
+        // Cập nhật mật khẩu mã hóa mới
+        $user->Mat_khau_ma_hoa = Hash::make($validated['new_password']);
+        $user->save();
+
+        return $this->successResponse(
+            message: 'Đổi mật khẩu tài khoản thành công.',
+            data: null
         );
     }
 
