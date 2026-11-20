@@ -603,6 +603,28 @@ export default function CheckoutPage() {
             </>
           )}
 
+          {quoteLoading && !pendingOrderId && (
+            <p className="rounded-xl bg-white p-4 text-sm text-slate-600" role="status">
+              Đang tính khoảng cách và phí giao hàng...
+            </p>
+          )}
+          {quoteError && !pendingOrderId && (
+            <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+              {quoteError}
+            </p>
+          )}
+          {!pendingOrderId && quote && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-lg font-extrabold text-slate-900">Khoảng cách giao hàng</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                {quote.origin_name} đến địa chỉ nhận: {quote.distance_km} km
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Đơn giá {formatCurrencyVnd(quote.price_per_km)}/km
+              </p>
+            </section>
+          )}
+
           {paymentMethod === "ApiPay" && !options?.ready && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
               ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook. Vui lòng liên hệ quản trị viên.

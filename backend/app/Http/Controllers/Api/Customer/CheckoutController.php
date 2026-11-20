@@ -32,7 +32,7 @@ class CheckoutController extends Controller
             message: 'Lấy cấu hình thanh toán thành công.',
             data: [
                 'bank_name' => config('services.apipay.bank_name', 'ApiPay'),
-                ...$configuration,
+                ...$apiPay->configurationStatus(),
             ]
         );
     }
@@ -41,9 +41,8 @@ class CheckoutController extends Controller
     {
         $validated = $request->validate([
             'order_id' => ['required', 'integer', 'min:1'],
-            'bank_public_id' => ['sometimes', 'string', 'max:100'],
         ]);
-        $bankPublicId = $validated['bank_public_id'] ?? config('services.apipay.bank_public_id');
+        $bankPublicId = config('services.apipay.bank_public_id');
 
         if (
             ! is_string($bankPublicId)
@@ -51,7 +50,7 @@ class CheckoutController extends Controller
             || ! $apiPay->configurationStatus()['ready']
         ) {
             throw ValidationException::withMessages([
-                'bank_public_id' => 'ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook.',
+                'order_id' => 'ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook.',
             ]);
         }
 
