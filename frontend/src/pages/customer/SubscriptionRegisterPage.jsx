@@ -1,7 +1,6 @@
-/* Registration, ApiPay checkout, and status recovery for recurring vegetable packages. */
+/* Registration and payment for recurring vegetable packages. */
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CalendarDays } from "lucide-react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { customerApi } from "../../services/customerApi";
 import { storefrontApi } from "../../services/storefrontApi";
@@ -28,17 +27,26 @@ function createIdempotencyKey() {
 }
 
 function apiErrorMessage(error) {
-  const validationMessages = Object.values(error.fieldErrors ?? {}).flat();
+  const validationMessages = Object.values(
+    error.fieldErrors ?? error.response?.data?.errors ?? {}
+  ).flat();
   return validationMessages[0]
     || error.message
+    || error.response?.data?.message
     || "Không thể xử lý đăng ký. Vui lòng thử lại.";
 }
 
 export default function SubscriptionRegisterPage() {
   const { user } = useAuth();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const subscriptionStorageKey = user?.id ? `xanhfarm:pendingSubscription:${user.id}` : null;
-  const idempotencyStorageKey = user?.id ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}` : null;
+  const selectedProduct = location.state?.product;
+  const subscriptionStorageKey = user?.id
+    ? `xanhfarm:pendingSubscription:${user.id}`
+    : null;
+  const idempotencyStorageKey = user?.id
+    ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}`
+    : null;
 
   const [packages, setPackages] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -67,14 +75,7 @@ export default function SubscriptionRegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [notice, setNotice] = useState("");
-
-  useEffect(() => {
-    setSubscriptionId(
-      subscriptionStorageKey ? window.localStorage.getItem(subscriptionStorageKey) ?? "" : ""
-    );
-    setPayment(null);
-    setSubscriptionStatus(null);
-  }, [subscriptionStorageKey]);
+  const paymentUrl = payment?.pay_url || payment?.payment_url;
 
   useEffect(() => {
     let active = true;
@@ -90,7 +91,19 @@ export default function SubscriptionRegisterPage() {
         setAddresses(addressList);
         setAddressMode(addressList.length > 0 ? "saved" : "new");
         setAddressId(String(addressList.find((address) => address.is_default)?.id ?? addressList[0]?.id ?? ""));
-        setApiPayReady(Boolean(optionsResponse.data?.ready));
+        setBankConfigured(Boolean(optionsResponse.data?.bank_configured));
+
+        const productPackage = selectedProduct
+          ? availablePackages.find((item) =>
+              item.items?.some(
+                (packageItem) =>
+                  String(packageItem.product_id) === String(selectedProduct.id)
+              )
+            )
+          : null;
+        setPackageId((current) =>
+          current || String(productPackage?.id ?? searchParams.get("package_id") ?? "")
+        );
       })
       .catch((error) => {
         if (active) setErrorMessage(apiErrorMessage(error));
@@ -102,7 +115,7 @@ export default function SubscriptionRegisterPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [searchParams, selectedProduct]);
 
   useEffect(() => {
     if (!subscriptionId) return undefined;
@@ -199,157 +212,138 @@ export default function SubscriptionRegisterPage() {
   };
 
   const toggleDay = (weekday) => {
-    setDeliveryDays((current) => current.some((item) => item.weekday === weekday)
-      ? current.filter((item) => item.weekday !== weekday)
-      : [...current, { weekday, delivery_window: "08:00 - 10:00" }].sort((a, b) => a.weekday - b.weekday));
+    setDeliveryDays((current) => {
+      const existing = current.some((item) => item.weekday === weekday);
+      return existing
+        ? current.filter((item) => item.weekday !== weekday)
+        : [...current, { weekday, delivery_window: "08:00 - 10:00" }]
+            .sort((left, right) => left.weekday - right.weekday);
+    });
   };
 
   const changeWindow = (weekday, deliveryWindow) => {
-    setDeliveryDays((current) => current.map((item) => (
-      item.weekday === weekday ? { ...item, delivery_window: deliveryWindow } : item
-    )));
+    setDeliveryDays((current) =>
+      current.map((item) =>
+        item.weekday === weekday
+          ? { ...item, delivery_window: deliveryWindow }
+          : item
+      )
+    );
   };
-
-  const changeShippingAddress = (field, value) => {
-    setShippingAddress((current) => ({ ...current, [field]: value }));
-  };
-
-  if (loading) {
-    return <main className="mx-auto max-w-7xl px-4 py-12 text-center text-slate-600 sm:px-6" role="status">Đang tải thông tin gói rau...</main>;
-  }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-      <nav aria-label="Điều hướng trang" className="mb-6 flex items-center gap-2 text-sm text-slate-500">
-        <Link to="/" className="hover:text-emerald-800">Trang Chủ</Link>
-        <span aria-hidden="true">›</span>
-        <span className="font-semibold text-emerald-900">Gói Nông Sản Định Kỳ Tuần/Tháng</span>
-      </nav>
+    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+      <Link to="/products" className="text-sm font-bold text-emerald-800 underline">
+        ← Cửa hàng
+      </Link>
+      <h1 className="mt-4 text-2xl font-extrabold text-[#00450d]">
+        Đăng ký gói định kỳ
+      </h1>
 
-      <header className="mb-7 flex flex-wrap items-center justify-between gap-5">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <CalendarDays className="h-7 w-7 text-emerald-700" aria-hidden="true" />
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#15351d] sm:text-4xl">
-              Gói Nông Sản Sạch Định Kỳ
-            </h1>
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800">
-              Giao theo lịch
-            </span>
-          </div>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">
-            Không lo chợ búa mỗi sáng · Thu hoạch sương mai và giao tận cửa nhà bằng thùng giữ nhiệt
+      {selectedProduct && (
+        <section className="mt-5 rounded-2xl border border-[#c0c9bb]/40 bg-white p-5">
+          <p className="text-sm text-[#5a6357]">Sản phẩm đang xem</p>
+          <p className="mt-1 text-lg font-bold text-[#191c1b]">
+            {selectedProduct.name}
           </p>
-        </div>
-        <Link
-          to="/products"
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Quay lại cửa hàng
-        </Link>
-      </header>
-
-      {errorMessage && (
-        <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {errorMessage}
-        </p>
+          <p className="mt-1 text-sm text-[#41493e]">
+            {Number(selectedProduct.price).toLocaleString("vi-VN")}đ / {selectedProduct.unit}
+          </p>
+          <Link
+            to={`/products/${selectedProduct.id}`}
+            className="mt-3 inline-flex text-sm font-bold text-[#006e1c] hover:text-[#00450d]"
+          >
+            Quay lại chi tiết sản phẩm
+          </Link>
+        </section>
       )}
+
       {notice && (
-        <p role="status" className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        <p role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
           {notice}
         </p>
       )}
-
-      {subscriptionId ? (
-        <section className="mx-auto max-w-4xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-950">Đăng ký #{subscriptionId} đang chờ thanh toán</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Gói chưa được kích hoạt cho đến khi hệ thống nhận được xác nhận thanh toán.
-            </p>
-            {subscriptionStatus && (
-              <p className="mt-2 text-sm text-slate-700">
-                Trạng thái: {subscriptionStatus.status} · Thanh toán: {subscriptionStatus.payment_status ?? "Chưa khởi tạo"}
-              </p>
-            )}
-          </div>
-          {payment?.pay_url && (
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
-              <p className="font-bold text-emerald-950">Hoàn tất thanh toán ApiPay</p>
-              {payment.qr_url && (
-                <img
-                  src={payment.qr_url}
-                  alt="Mã QR thanh toán ApiPay"
-                  className="mx-auto mt-4 h-48 w-48 rounded-lg border border-slate-100 bg-white object-contain p-2"
-                />
-              )}
-              <a
-                href={payment.pay_url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#0b4524] px-4 py-3 font-bold text-white transition hover:bg-emerald-800 sm:w-auto"
-              >
-                Mở trang thanh toán ApiPay
-              </a>
-              {payment.expires_at && (
-                <p className="mt-2 text-xs text-slate-600">Liên kết hết hạn: {payment.expires_at}</p>
-              )}
-            </div>
-          )}
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => startPayment(subscriptionId)}
-              disabled={isSubmitting || !bankConfigured}
-              className="min-h-11 rounded-xl bg-[#0b4524] px-4 py-2 font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSubmitting ? "Đang xử lý..." : payment ? "Lấy lại liên kết thanh toán" : "Tiếp tục thanh toán"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setErrorMessage("");
-                setStatusRefresh((current) => current + 1);
-              }}
-              disabled={isSubmitting}
-              className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 py-2 font-bold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800 disabled:opacity-50"
-            >
-              Kiểm tra trạng thái thanh toán
-            </button>
-          </div>
-        </section>
-      ) : packages.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-700 shadow-sm">
-          Hiện chưa có gói rau định kỳ đang mở bán.
-        </div>
-      ) : (
-        <SubscriptionScheduleForm
-          packages={packages}
-          addresses={addresses}
-          addressMode={addressMode}
-          packageId={packageId}
-          addressId={addressId}
-          shippingAddress={shippingAddress}
-          startDate={startDate}
-          minStartDate={minStartDate}
-          deliveryDays={deliveryDays}
-          onPackageChange={setPackageId}
-          onAddressModeChange={setAddressMode}
-          onAddressChange={setAddressId}
-          onShippingAddressChange={changeShippingAddress}
-          onStartDateChange={setStartDate}
-          onToggleDay={toggleDay}
-          onWindowChange={changeWindow}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          apiPayReady={apiPayReady}
-        />
+      {errorMessage && (
+        <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+          {errorMessage}
+        </p>
       )}
 
-      <p className="mt-8 text-sm text-slate-600">
-        Cần chọn sản phẩm khác? <Link to="/products" className="font-bold text-emerald-800 underline">Quay lại cửa hàng</Link>
-      </p>
+      {loading ? (
+        <p className="mt-6 text-center text-slate-600" role="status">
+          Đang tải thông tin gói định kỳ...
+        </p>
+      ) : (
+        <div className="mt-6">
+          <SubscriptionScheduleForm
+            packages={packages}
+            addresses={addresses}
+            packageId={packageId}
+            addressId={addressId}
+            startDate={startDate}
+            minStartDate={minStartDate}
+            deliveryDays={deliveryDays}
+            onPackageChange={setPackageId}
+            onAddressChange={setAddressId}
+            onStartDateChange={setStartDate}
+            onToggleDay={toggleDay}
+            onWindowChange={changeWindow}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            bankConfigured={bankConfigured}
+          />
+        </div>
+      )}
+
+      {payment && (
+        <section className="mt-6 rounded-2xl border border-emerald-200 bg-white p-5" aria-label="Thông tin thanh toán">
+          <h2 className="text-lg font-extrabold text-emerald-950">
+            Hoàn tất thanh toán
+          </h2>
+          {payment.qr_url && (
+            <img
+              src={payment.qr_url}
+              alt="Mã QR thanh toán"
+              className="mt-4 h-56 w-56 rounded-xl border border-slate-200 object-contain"
+            />
+          )}
+          {paymentUrl && (
+            <a
+              href={paymentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-emerald-800 px-4 py-2 font-bold text-white hover:bg-emerald-700"
+            >
+              Mở trang thanh toán
+            </a>
+          )}
+          {subscriptionId && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setStatusRefresh((current) => current + 1)}
+                className="min-h-11 rounded-xl border border-emerald-800 px-4 py-2 font-bold text-emerald-900"
+              >
+                Kiểm tra trạng thái
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => startPayment(subscriptionId)}
+                className="min-h-11 rounded-xl bg-emerald-800 px-4 py-2 font-bold text-white disabled:opacity-60"
+              >
+                Tạo lại yêu cầu thanh toán
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {subscriptionId && subscriptionStatus?.status && (
+        <p className="mt-4 text-sm text-slate-700" role="status">
+          Trạng thái đăng ký: {subscriptionStatus.status}
+        </p>
+      )}
     </main>
   );
 }
