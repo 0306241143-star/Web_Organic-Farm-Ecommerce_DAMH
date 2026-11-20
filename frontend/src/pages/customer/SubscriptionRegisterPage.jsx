@@ -91,7 +91,7 @@ export default function SubscriptionRegisterPage() {
         setAddresses(addressList);
         setAddressMode(addressList.length > 0 ? "saved" : "new");
         setAddressId(String(addressList.find((address) => address.is_default)?.id ?? addressList[0]?.id ?? ""));
-        setBankConfigured(Boolean(optionsResponse.data?.bank_configured));
+        setApiPayReady(Boolean(optionsResponse.data?.ready));
 
         const productPackage = selectedProduct
           ? availablePackages.find((item) =>
@@ -278,19 +278,25 @@ export default function SubscriptionRegisterPage() {
           <SubscriptionScheduleForm
             packages={packages}
             addresses={addresses}
+            addressMode={addressMode}
             packageId={packageId}
             addressId={addressId}
+            shippingAddress={shippingAddress}
             startDate={startDate}
             minStartDate={minStartDate}
             deliveryDays={deliveryDays}
             onPackageChange={setPackageId}
+            onAddressModeChange={setAddressMode}
             onAddressChange={setAddressId}
+            onShippingAddressChange={(field, value) =>
+              setShippingAddress((current) => ({ ...current, [field]: value }))
+            }
             onStartDateChange={setStartDate}
             onToggleDay={toggleDay}
             onWindowChange={changeWindow}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
-            bankConfigured={bankConfigured}
+            apiPayReady={apiPayReady}
           />
         </div>
       )}

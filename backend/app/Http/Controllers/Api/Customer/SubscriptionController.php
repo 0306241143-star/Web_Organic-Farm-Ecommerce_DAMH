@@ -210,10 +210,7 @@ class SubscriptionController extends Controller
         int $subscriptionId,
         ApiPayPaymentService $apiPay
     ): JsonResponse {
-        $validated = $request->validate([
-            'bank_public_id' => ['sometimes', 'string', 'max:100'],
-        ]);
-        $bankPublicId = $validated['bank_public_id'] ?? config('services.apipay.bank_public_id');
+        $bankPublicId = config('services.apipay.bank_public_id');
 
         if (
             ! is_string($bankPublicId)
@@ -221,7 +218,7 @@ class SubscriptionController extends Controller
             || ! $apiPay->configurationStatus()['ready']
         ) {
             throw ValidationException::withMessages([
-                'bank_public_id' => 'ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook.',
+                'subscription_id' => 'ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook.',
             ]);
         }
 
