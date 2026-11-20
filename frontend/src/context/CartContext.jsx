@@ -52,13 +52,37 @@ function CartStateProvider({ children, user }) {
   }, [applyCartResponse, user?.role]);
 
   const addItem = useCallback(async (product, quantity = 1) => {
+    if (user?.role !== "customer") {
+      setItems((currentItems) => {
+        const current = Array.isArray(currentItems) ? currentItems : [];
+        const existing = current.find((item) => String(item.id) === String(product.id));
+        const cartProduct = {
+          id: product.id,
+          name: product.name,
+          unit: product.unit,
+          price: product.effective_price ?? product.price,
+          image_url: product.image_url,
+        };
+
+        return existing
+          ? current.map((item) =>
+              String(item.id) === String(product.id)
+                ? { ...item, ...cartProduct, quantity: (Number(item.quantity) || 0) + quantity }
+                : item
+            )
+          : [...current, { ...cartProduct, quantity }];
+      });
+      setError("");
+      return;
+    }
+
     const response = await customerApi.addCartItem({
       product_id: product.id,
       quantity,
     });
     cartRevision.current += 1;
     return applyCartResponse(response);
-  }, [applyCartResponse]);
+  }, [applyCartResponse, user?.role]);
 
   const updateItem = useCallback(async (productId, quantity) => {
     const response = await customerApi.updateCartItem(productId, { quantity });

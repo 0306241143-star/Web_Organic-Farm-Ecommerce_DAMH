@@ -24,6 +24,7 @@ export default function StorefrontHeader() {
   );
   const { items } = useCart();
   const location = useLocation();
+  const isProductDetailPage = location.pathname.startsWith("/products/");
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -84,7 +85,11 @@ export default function StorefrontHeader() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="h-20 flex items-center justify-between gap-4">
+        <div
+          className={`h-20 flex items-center justify-between ${
+            isProductDetailPage ? "gap-2 sm:gap-4" : "gap-4"
+          }`}
+        >
           {/* ================= ZONE 1: BRAND LOGO (LEFT) ================= */}
           <Link
             to="/"
@@ -202,7 +207,11 @@ export default function StorefrontHeader() {
           </nav>
 
           {/* ================= ZONE 3: ACTIONS & AUTH (RIGHT) ================= */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div
+            className={`flex items-center shrink-0 ${
+              isProductDetailPage ? "gap-1 sm:gap-3" : "gap-2 sm:gap-3"
+            }`}
+          >
             {!isInternalStaff && (
               <Link
                 to="/cart"
@@ -216,23 +225,24 @@ export default function StorefrontHeader() {
               </Link>
             )}
 
-            {!user ? (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-[#00450d] bg-[#f2f4f2] hover:bg-[#e6eae6] transition-colors whitespace-nowrap"
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-white bg-[#00450d] hover:bg-[#006e1c] transition-colors shadow-2xs whitespace-nowrap"
-                >
-                  Đăng ký
-                </Link>
-              </div>
-            ) : (
-              <div className="relative" ref={userMenuRef}>
+            <div className={isProductDetailPage ? "hidden sm:block" : ""}>
+              {!user ? (
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-[#00450d] bg-[#f2f4f2] hover:bg-[#e6eae6] transition-colors whitespace-nowrap"
+                  >
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-white bg-[#00450d] hover:bg-[#006e1c] transition-colors shadow-2xs whitespace-nowrap"
+                  >
+                    Đăng ký
+                  </Link>
+                </div>
+              ) : (
+                <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
@@ -319,10 +329,11 @@ export default function StorefrontHeader() {
                         <span>Đăng xuất</span>
                       </button>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <button
               type="button"
