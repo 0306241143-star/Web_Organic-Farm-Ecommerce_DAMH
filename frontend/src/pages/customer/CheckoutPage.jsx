@@ -1,6 +1,7 @@
 /* Retail checkout: server quote, address selection, order creation, and ApiPay. */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { MapPin, PackageCheck, ShieldCheck, ShoppingBag, ShoppingCart } from "lucide-react";
 import AddressDistancePicker from "../../components/customer/AddressDistancePicker";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/useCart";
@@ -286,6 +287,12 @@ export default function CheckoutPage() {
   const displayTotal = quote?.total ?? order?.total;
   const displayPointsDiscount = quote?.points_discount ?? order?.points_discount ?? 0;
   const selectedAddress = addresses.find((address) => String(address.id) === String(addressId));
+  const checkoutItems = quote?.items?.length
+    ? quote.items.map((quoteItem) => ({
+      ...(cartItems.find((item) => String(item.id) === String(quoteItem.id)) ?? {}),
+      ...quoteItem,
+    }))
+    : cartItems;
 
   if (pageLoading) {
     return (
@@ -296,50 +303,151 @@ export default function CheckoutPage() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-      <div className="mb-8">
-        <Link to="/cart" className="mb-4 inline-flex min-h-10 items-center font-semibold text-emerald-800 hover:underline">
-          ← Quay lại giỏ hàng
-        </Link>
-        <p className="text-sm font-bold uppercase tracking-wider text-emerald-700">XanhFarm</p>
-        <h1 className="mt-1 text-3xl font-extrabold text-[#15351d]">Đặt mua lẻ & thanh toán</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Kiểm tra địa chỉ và chi phí giao hàng trước khi thanh toán trực tuyến.
-        </p>
-      </div>
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+      <nav aria-label="Điều hướng trang" className="mb-6 flex items-center gap-2 text-sm text-slate-500">
+        <Link to="/" className="hover:text-emerald-800">Trang Chủ</Link>
+        <span aria-hidden="true">›</span>
+        <span className="font-semibold text-emerald-900">Giỏ Hàng &amp; Thanh Toán Đặt Hàng</span>
+      </nav>
+
+      <header className="mb-7 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-3 text-3xl font-extrabold tracking-tight text-[#15351d] sm:text-4xl">
+            <ShoppingCart className="h-8 w-8 shrink-0 text-emerald-700" aria-hidden="true" />
+            Giỏ Hàng &amp; Thanh Toán Đặt Hàng
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
+            Giao hỏa tốc bằng thùng giữ lạnh chuyên dụng · Nông sản tươi sạch thu hoạch trong ngày
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/cart"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800"
+          >
+            Quay lại giỏ hàng
+          </Link>
+          <Link
+            to="/products"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-800"
+          >
+            ← Tiếp tục chọn nông sản
+          </Link>
+        </div>
+      </header>
 
       {pendingOrderId && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <span>
             Đơn hàng #{pendingOrderId} đang chờ thanh toán. Bạn có thể lấy lại liên kết thanh toán mà không tạo đơn mới.
           </span>
-          <button
-            type="button"
-            onClick={checkOrderStatus}
-            disabled={checkingStatus}
-            className="min-h-[44px] rounded-lg border border-amber-300 px-3.5 py-2 font-semibold disabled:opacity-50"
-          >
-            {checkingStatus ? "Đang kiểm tra..." : "Kiểm tra trạng thái"}
-          </button>
-          <button
-            type="button"
-            onClick={cancelPendingOrder}
-            disabled={cancellingOrder}
-            className="min-h-[44px] rounded-lg border border-red-300 px-3.5 py-2 font-semibold text-red-800 disabled:opacity-50"
-          >
-            {cancellingOrder ? "Đang hủy..." : "Hủy đơn"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={checkOrderStatus}
+              disabled={checkingStatus}
+              className="min-h-11 rounded-lg border border-amber-300 px-3.5 py-2 font-semibold transition hover:bg-amber-100 disabled:opacity-50"
+            >
+              {checkingStatus ? "Đang kiểm tra..." : "Kiểm tra trạng thái"}
+            </button>
+            <button
+              type="button"
+              onClick={cancelPendingOrder}
+              disabled={cancellingOrder}
+              className="min-h-11 rounded-lg border border-red-300 px-3.5 py-2 font-semibold text-red-800 transition hover:bg-red-50 disabled:opacity-50"
+            >
+              {cancellingOrder ? "Đang hủy..." : "Hủy đơn"}
+            </button>
+          </div>
         </div>
       )}
       {statusMessage && (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
+        <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
           {statusMessage}
           <Link to="/orders" className="ml-2 font-bold underline">Xem đơn hàng</Link>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-6">
+        <div className="space-y-5">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="flex items-center gap-2 border-b border-slate-100 pb-4 text-lg font-extrabold text-emerald-900">
+              <ShoppingBag className="h-5 w-5 text-emerald-700" aria-hidden="true" />
+              Danh Sách Nông Sản ({checkoutItems.length} mặt hàng)
+            </h2>
+            {pendingOrderId ? (
+              <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                Đơn hàng #{pendingOrderId} đã được tạo. Hoàn tất thanh toán hoặc kiểm tra trạng thái đơn hàng ở phía trên.
+              </p>
+            ) : checkoutItems.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {checkoutItems.map((item) => (
+                  <li key={item.id} className="flex items-center gap-3 py-4 sm:gap-4">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-emerald-50 sm:h-20 sm:w-20">
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-emerald-700">
+                          <ShoppingBag className="h-7 w-7" aria-hidden="true" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold leading-5 text-slate-900">{item.name}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Đơn giá: {formatCurrencyVnd(item.unit_price ?? item.price)}/{item.unit || "đơn vị"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Số lượng: {item.quantity} {item.unit || ""}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-right font-extrabold text-slate-900">
+                      {formatCurrencyVnd(item.line_total ?? (item.price * item.quantity))}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600" role="status">
+                {quoteLoading ? "Đang tải danh sách sản phẩm..." : "Giỏ hàng chưa có sản phẩm."}
+              </p>
+            )}
+
+            {!pendingOrderId && (
+              <label className="mt-2 flex min-h-16 cursor-pointer items-center gap-3 border-t border-slate-100 pt-4">
+                <input
+                  type="checkbox"
+                  checked={useRewardPoints}
+                  onChange={(event) => handleUsePointsChange(event.target.checked)}
+                  disabled={pointsLoading || pointsAvailable <= 0 || submitting || !addressId}
+                  className="h-5 w-5 shrink-0 accent-emerald-800"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-bold text-slate-900">Đổi điểm thưởng Loyalty</span>
+                  <span className="mt-1 block text-sm text-slate-500">
+                    {pointsLoading ? "Đang tải số dư..." : `Bạn có ${pointsAvailable.toLocaleString("vi-VN")} điểm khả dụng.`}
+                  </span>
+                </span>
+                <span className="hidden text-sm font-bold text-emerald-800 sm:block">
+                  {displayPointsDiscount > 0 ? `−${formatCurrencyVnd(displayPointsDiscount)}` : "Áp dụng điểm"}
+                </span>
+              </label>
+            )}
+          </section>
+
+          {quoteLoading && !pendingOrderId && (
+            <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600" role="status">
+              Đang tính khoảng cách và phí giao hàng...
+            </p>
+          )}
+          {quoteError && !pendingOrderId && (
+            <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+              {quoteError}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-5">
           {!pendingOrderId && (
             <>
               <AddressDistancePicker
@@ -351,13 +459,18 @@ export default function CheckoutPage() {
                 disabled={submitting}
               />
               {selectedAddress && quote && (
-                <div className="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
-                  <p>{quote.origin_name} đến địa chỉ nhận: {quote.distance_km} km</p>
-                  <p className="mt-1">Phí giao hàng {formatCurrencyVnd(quote.price_per_km)}/km</p>
+                <div className="-mt-3 rounded-b-2xl border border-t-0 border-slate-200 bg-white px-5 pb-4 pt-2 text-xs text-slate-600 sm:px-6">
+                  <p className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+                    {quote.origin_name} đến địa chỉ nhận: {quote.distance_km} km
+                  </p>
+                  <p className="mt-1 pl-6">
+                    Phí giao hàng {formatCurrencyVnd(quote.price_per_km)}/km
+                  </p>
                 </div>
               )}
               {addressEditor && (
-                <section className="rounded-2xl border border-emerald-200 bg-white p-5">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <h2 className="text-lg font-extrabold text-slate-900">
                     {addressEditor === "edit" ? "Sửa người nhận" : "Thêm địa chỉ giao hàng"}
                   </h2>
@@ -371,7 +484,7 @@ export default function CheckoutPage() {
                         maxLength={150}
                         required
                         disabled={savingAddress}
-                        className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 font-normal"
+                        className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
                       />
                     </label>
                     <label className="text-sm font-semibold text-slate-700">
@@ -385,7 +498,7 @@ export default function CheckoutPage() {
                         maxLength={13}
                         required
                         disabled={savingAddress}
-                        className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 font-normal"
+                        className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
                       />
                     </label>
                     {addressEditor === "create" && (
@@ -404,7 +517,7 @@ export default function CheckoutPage() {
                               maxLength={field === "street" ? 255 : 100}
                               required
                               disabled={savingAddress}
-                              className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 font-normal"
+                              className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
                             />
                           </label>
                         ))}
@@ -414,12 +527,12 @@ export default function CheckoutPage() {
                       </>
                     )}
                   </div>
-                  <div className="mt-4 flex gap-3">
+                  <div className="mt-4 flex flex-wrap gap-3">
                     <button
                       type="button"
                       onClick={saveAddress}
                       disabled={savingAddress}
-                      className="min-h-11 rounded-lg bg-emerald-800 px-4 py-2 font-bold text-white disabled:opacity-50"
+                      className="min-h-11 rounded-xl bg-[#0b4524] px-4 py-2 font-bold text-white transition hover:bg-emerald-800 disabled:opacity-50"
                     >
                       {savingAddress ? "Đang lưu..." : "Lưu địa chỉ"}
                     </button>
@@ -427,40 +540,21 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => setAddressEditor("")}
                       disabled={savingAddress}
-                      className="min-h-11 rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700"
+                      className="min-h-11 rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                     >
                       Hủy
                     </button>
                   </div>
                 </section>
               )}
-              <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={useRewardPoints}
-                    onChange={(event) => handleUsePointsChange(event.target.checked)}
-                    disabled={pointsLoading || pointsAvailable <= 0 || submitting || !addressId}
-                    className="mt-1 h-4 w-4 accent-emerald-800"
-                  />
-                  <span>
-                    <span className="block font-bold text-slate-900">Sử dụng điểm thưởng</span>
-                    <span className="mt-1 block text-sm text-slate-600">
-                      {pointsLoading ? "Đang tải số dư..." : `Bạn có ${pointsAvailable.toLocaleString("vi-VN")} điểm khả dụng.`}
-                    </span>
-                  </span>
-                </label>
-              </section>
               {addresses.length === 0 && (
-                <p className="text-sm text-amber-800" role="status">Thêm địa chỉ giao hàng để tiếp tục.</p>
+                <p className="-mt-3 text-sm text-amber-800" role="status">Thêm địa chỉ giao hàng để tiếp tục.</p>
               )}
-              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <fieldset>
-                  <legend className="text-lg font-extrabold text-slate-900">
-                    Phương thức thanh toán
-                  </legend>
-                  <div className="mt-3 space-y-2">
-                    <label className={`flex min-h-[72px] cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${paymentMethod === "ApiPay" ? "border-emerald-700 bg-emerald-50 ring-1 ring-emerald-700" : "border-slate-200 bg-white"}`}>
+                  <legend className="text-lg font-extrabold text-slate-900">Phương thức thanh toán</legend>
+                  <div className="mt-4 space-y-3">
+                    <label className={`flex min-h-[72px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${paymentMethod === "ApiPay" ? "border-emerald-600 bg-emerald-50/60 ring-1 ring-emerald-600" : "border-slate-200 bg-white hover:border-emerald-200"}`}>
                       <input
                         type="radio"
                         name="payment_method"
@@ -470,12 +564,12 @@ export default function CheckoutPage() {
                         disabled={submitting}
                         className="h-4 w-4 accent-emerald-800"
                       />
-                      <span className="text-sm font-semibold text-slate-800">
+                      <span className="flex-1 text-sm font-semibold text-slate-800">
                         <span className="block">Chuyển khoản trực tuyến ApiPay</span>
-                        <span className="mt-1 block text-xs font-normal text-slate-600">Quét mã hoặc mở liên kết để thanh toán an toàn.</span>
+                        <span className="mt-1 block text-xs font-normal text-slate-500">Quét mã hoặc mở liên kết để thanh toán an toàn.</span>
                       </span>
                     </label>
-                    <label className={`flex min-h-[72px] cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${paymentMethod === "COD" ? "border-emerald-700 bg-emerald-50 ring-1 ring-emerald-700" : "border-slate-200 bg-white"}`}>
+                    <label className={`flex min-h-[72px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${paymentMethod === "COD" ? "border-emerald-600 bg-emerald-50/60 ring-1 ring-emerald-600" : "border-slate-200 bg-white hover:border-emerald-200"}`}>
                       <input
                         type="radio"
                         name="payment_method"
@@ -485,58 +579,49 @@ export default function CheckoutPage() {
                         disabled={submitting}
                         className="h-4 w-4 accent-emerald-800"
                       />
-                      <span className="text-sm font-semibold text-slate-800">
+                      <span className="flex-1 text-sm font-semibold text-slate-800">
                         <span className="block">Thanh toán khi nhận hàng (COD)</span>
-                        <span className="mt-1 block text-xs font-normal text-slate-600">Thanh toán trực tiếp khi nhận được đơn.</span>
+                        <span className="mt-1 block text-xs font-normal text-slate-500">Kiểm tra nông sản trước khi thanh toán.</span>
                       </span>
                     </label>
                   </div>
                 </fieldset>
-              </section>
-              <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                <label htmlFor="order-note" className="block text-lg font-extrabold text-slate-900">
-                  Ghi chú giao hàng
+                <label htmlFor="order-note" className="mt-5 block text-sm font-semibold text-slate-700">
+                  Ghi chú cho shipper (tùy chọn)
+                  <textarea
+                    id="order-note"
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    maxLength={2000}
+                    rows={3}
+                    disabled={submitting}
+                    placeholder="Ví dụ: vui lòng gọi trước khi giao"
+                    className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
+                  />
                 </label>
-                <textarea
-                  id="order-note"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  maxLength={2000}
-                  rows={3}
-                  disabled={submitting}
-                  placeholder="Ví dụ: vui lòng gọi trước khi giao"
-                  className="mt-3 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
-                />
               </section>
             </>
           )}
 
-          {quoteLoading && !pendingOrderId && (
-            <p className="rounded-xl bg-white p-4 text-sm text-slate-600" role="status">
-              Đang tính khoảng cách và phí giao hàng...
-            </p>
-          )}
-          {quoteError && !pendingOrderId && (
-            <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
-              {quoteError}
-            </p>
-          )}
           {paymentMethod === "ApiPay" && !options?.ready && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
               ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook. Vui lòng liên hệ quản trị viên.
             </p>
           )}
           {payment && (
-            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5" aria-live="polite">
-              <h2 className="text-lg font-extrabold text-emerald-950">Đang chờ thanh toán</h2>
-              <p className="mt-1 text-sm text-emerald-900">
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm" aria-live="polite">
+              <h2 className="flex items-center gap-2 text-lg font-extrabold text-emerald-950">
+                <PackageCheck className="h-5 w-5" aria-hidden="true" />
+                Đang chờ thanh toán
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-emerald-900">
                 Hoàn tất thanh toán tại ApiPay; đơn chỉ được xác nhận sau khi hệ thống nhận webhook hợp lệ.
               </p>
               {payment.qr_url && (
                 <img
                   src={payment.qr_url}
                   alt="Mã QR thanh toán ApiPay"
-                  className="mx-auto mt-4 h-56 w-56 rounded-xl border border-emerald-100 bg-white p-2"
+                  className="mx-auto mt-4 h-48 w-48 rounded-xl border border-emerald-100 bg-white p-2"
                 />
               )}
               {orderStatus === "Cho_thanh_toan" && pendingOrderId && (
@@ -548,7 +633,7 @@ export default function CheckoutPage() {
                 href={payment.pay_url}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 inline-flex w-full justify-center rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white hover:bg-emerald-700"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#0b4524] px-5 py-3 font-bold text-white transition hover:bg-emerald-800"
               >
                 Mở trang thanh toán ApiPay
               </a>
@@ -557,69 +642,59 @@ export default function CheckoutPage() {
                   Liên kết hết hạn: {new Date(payment.expires_at).toLocaleString("vi-VN")}
                 </p>
               )}
+              <p className="mt-4 flex items-center justify-center gap-2 text-center text-xs text-slate-600">
+                <ShieldCheck className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+                Thanh toán an toàn qua cổng ApiPay
+              </p>
             </section>
           )}
-        </div>
 
-        <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="text-lg font-extrabold text-slate-900">Tóm tắt thanh toán</h2>
-          {quote?.items?.length > 0 && !pendingOrderId && (
-            <ul className="mt-4 space-y-3 border-b border-slate-100 pb-4">
-              {quote.items.map((item) => (
-                <li key={item.id} className="flex justify-between gap-4 text-sm">
-                  <span className="text-slate-600">
-                    <span className="block">{item.name} × {item.quantity} {item.unit}</span>
-                    <span className="mt-1 block text-xs text-slate-500">{formatCurrencyVnd(item.unit_price)}/{item.unit}</span>
-                  </span>
-                  <span className="shrink-0 font-semibold text-slate-900">
-                    {formatCurrencyVnd(item.line_total)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-4 flex justify-between gap-4 text-sm text-slate-600">
-            <span>Tiền hàng</span>
-            <span className="font-bold text-slate-900">
-              {displaySubtotal === undefined ? "—" : formatCurrencyVnd(displaySubtotal)}
-            </span>
-          </div>
-          <div className="mt-3 flex justify-between gap-4 text-sm text-slate-600">
-            <span>Phí giao hàng{quote ? ` (${quote.distance_km} km)` : ""}</span>
-            <span className="font-bold text-slate-900">
-              {displayShippingFee === undefined ? "—" : formatCurrencyVnd(displayShippingFee)}
-            </span>
-          </div>
-          <div className="mt-3 flex justify-between gap-4 text-sm text-emerald-800">
-            <span>Giảm từ điểm thưởng{quote?.points_to_use ? ` (${quote.points_to_use} điểm)` : ""}</span>
-            <span className="font-bold">
-              {displayPointsDiscount > 0 ? `−${formatCurrencyVnd(displayPointsDiscount)}` : formatCurrencyVnd(0)}
-            </span>
-          </div>
-          <div className="mt-4 flex justify-between gap-4 border-t border-slate-100 pt-4">
-            <span className="font-extrabold text-slate-900">Tổng thanh toán</span>
-            <span className="font-extrabold text-emerald-900">
-              {displayTotal === undefined ? "—" : formatCurrencyVnd(displayTotal)}
-            </span>
-          </div>
-          <p className="mt-4 text-xs leading-relaxed text-slate-500">
-            Số tiền và tồn kho được kiểm tra lại ở máy chủ khi tạo đơn. Giỏ hàng chỉ bị xóa sau khi tạo đơn thành công.
-          </p>
-          <button
-            type="submit"
-            disabled={!canSubmit || (!pendingOrderId && cartItems.length === 0)}
-            className="mt-5 w-full whitespace-nowrap rounded-xl bg-emerald-800 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            {submitting
-              ? "Đang xử lý..."
-              : pendingOrderId
-                ? "Lấy lại liên kết"
-                : paymentMethod === "COD" ? "Đặt hàng" : "Đặt hàng & thanh toán"}
-          </button>
-          <Link to="/cart" className="mt-4 block text-center text-sm font-semibold text-emerald-800 hover:underline">
-            Quay lại giỏ hàng
-          </Link>
-        </aside>
+          <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-24 sm:p-6">
+            <h2 className="text-lg font-extrabold text-slate-900">Tóm tắt thanh toán</h2>
+            <div className="mt-4 flex justify-between gap-4 text-sm text-slate-600">
+              <span>Tạm tính ({checkoutItems.length} món)</span>
+              <span className="font-bold text-slate-900">
+                {displaySubtotal === undefined ? "—" : formatCurrencyVnd(displaySubtotal)}
+              </span>
+            </div>
+            <div className="mt-3 flex justify-between gap-4 text-sm text-slate-600">
+              <span>Phí giao hàng{quote ? ` (${quote.distance_km} km)` : ""}</span>
+              <span className="font-bold text-slate-900">
+                {displayShippingFee === undefined ? "—" : formatCurrencyVnd(displayShippingFee)}
+              </span>
+            </div>
+            <div className="mt-3 flex justify-between gap-4 text-sm text-emerald-800">
+              <span>Giảm từ điểm thưởng{quote?.points_to_use ? ` (${quote.points_to_use} điểm)` : ""}</span>
+              <span className="font-bold">
+                {displayPointsDiscount > 0 ? `−${formatCurrencyVnd(displayPointsDiscount)}` : formatCurrencyVnd(0)}
+              </span>
+            </div>
+            <div className="mt-4 flex justify-between gap-4 border-t border-slate-100 pt-4">
+              <span className="font-extrabold text-slate-900">Tổng thanh toán</span>
+              <span className="text-lg font-extrabold text-emerald-900">
+                {displayTotal === undefined ? "—" : formatCurrencyVnd(displayTotal)}
+              </span>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-slate-500">
+              Số tiền và tồn kho được kiểm tra lại ở máy chủ khi tạo đơn. Giỏ hàng chỉ bị xóa sau khi tạo đơn thành công.
+            </p>
+            <button
+              type="submit"
+              disabled={!canSubmit || (!pendingOrderId && cartItems.length === 0)}
+              className="mt-5 min-h-12 w-full whitespace-nowrap rounded-xl bg-[#0b4524] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {submitting
+                ? "Đang xử lý..."
+                : pendingOrderId
+                  ? "Lấy lại liên kết"
+                  : paymentMethod === "COD" ? "Xác nhận đặt hàng" : "Đặt hàng & thanh toán"}
+            </button>
+            <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs text-slate-500">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+              Bảo mật thanh toán · Cam kết đổi mới hoặc hoàn tiền nếu rau bị dập nát
+            </p>
+          </aside>
+        </div>
       </form>
     </section>
   );

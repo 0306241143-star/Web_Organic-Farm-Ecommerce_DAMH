@@ -1,4 +1,6 @@
 /* Customer-owned delivery address selector for retail checkout. */
+import { MapPin } from "lucide-react";
+
 export default function AddressDistancePicker({
   addresses,
   value,
@@ -10,10 +12,11 @@ export default function AddressDistancePicker({
   const selectedAddress = addresses.find((address) => String(address.id) === String(value));
 
   return (
-    <section aria-label="Địa chỉ giao hàng" className="rounded-2xl border border-slate-200 bg-white p-5">
-      <label htmlFor="delivery-address" className="block text-lg font-extrabold text-slate-900">
-        Địa chỉ giao hàng
-      </label>
+    <section aria-label="Địa chỉ giao hàng" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
+        <MapPin className="h-5 w-5 text-emerald-700" aria-hidden="true" />
+        Thông Tin Nhận Hàng
+      </h2>
       {addresses.length === 0 ? (
         <div className="mt-3">
           <p className="text-sm text-amber-800" role="status">
@@ -36,7 +39,7 @@ export default function AddressDistancePicker({
             onChange={(event) => onChange(event.target.value)}
             required
             disabled={disabled}
-            className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-800 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
+            className="mt-4 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
           >
             <option value="" disabled>Chọn địa chỉ nhận hàng</option>
             {addresses.map((address) => (
@@ -47,7 +50,7 @@ export default function AddressDistancePicker({
             ))}
           </select>
           {selectedAddress && (
-            <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+            <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
               <p className="font-bold text-slate-900">{selectedAddress.recipient_name}</p>
               <p className="mt-1">{selectedAddress.phone}</p>
               <p className="mt-1">{selectedAddress.address}</p>

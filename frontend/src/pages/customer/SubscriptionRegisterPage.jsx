@@ -1,6 +1,7 @@
 /* Registration, ApiPay checkout, and status recovery for recurring vegetable packages. */
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, CalendarDays } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { customerApi } from "../../services/customerApi";
 import { storefrontApi } from "../../services/storefrontApi";
@@ -214,17 +215,39 @@ export default function SubscriptionRegisterPage() {
   };
 
   if (loading) {
-    return <main className="mx-auto max-w-4xl px-4 py-12 text-center text-slate-600">Đang tải thông tin gói rau...</main>;
+    return <main className="mx-auto max-w-7xl px-4 py-12 text-center text-slate-600 sm:px-6" role="status">Đang tải thông tin gói rau...</main>;
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <header className="mb-8">
-        <p className="text-sm font-bold uppercase tracking-wide text-emerald-800">Nông sản sạch · Giao định kỳ</p>
-        <h1 className="mt-2 text-3xl font-black text-slate-950">Đăng ký gói rau định kỳ</h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
-          Chọn gói, địa chỉ và lịch giao hằng tuần. Đăng ký chỉ được kích hoạt sau khi ApiPay xác nhận thanh toán.
-        </p>
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+      <nav aria-label="Điều hướng trang" className="mb-6 flex items-center gap-2 text-sm text-slate-500">
+        <Link to="/" className="hover:text-emerald-800">Trang Chủ</Link>
+        <span aria-hidden="true">›</span>
+        <span className="font-semibold text-emerald-900">Gói Nông Sản Định Kỳ Tuần/Tháng</span>
+      </nav>
+
+      <header className="mb-7 flex flex-wrap items-center justify-between gap-5">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <CalendarDays className="h-7 w-7 text-emerald-700" aria-hidden="true" />
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#15351d] sm:text-4xl">
+              Gói Nông Sản Sạch Định Kỳ
+            </h1>
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800">
+              Giao theo lịch
+            </span>
+          </div>
+          <p className="mt-2 max-w-3xl text-sm text-slate-600 sm:text-base">
+            Không lo chợ búa mỗi sáng · Thu hoạch sương mai và giao tận cửa nhà bằng thùng giữ nhiệt
+          </p>
+        </div>
+        <Link
+          to="/products"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Quay lại cửa hàng
+        </Link>
       </header>
 
       {errorMessage && (
@@ -239,7 +262,7 @@ export default function SubscriptionRegisterPage() {
       )}
 
       {subscriptionId ? (
-        <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+        <section className="mx-auto max-w-4xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <div>
             <h2 className="text-xl font-extrabold text-slate-950">Đăng ký #{subscriptionId} đang chờ thanh toán</h2>
             <p className="mt-2 text-sm text-slate-600">
@@ -252,20 +275,20 @@ export default function SubscriptionRegisterPage() {
             )}
           </div>
           {payment?.pay_url && (
-            <div className="rounded-xl bg-emerald-50 p-4">
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
               <p className="font-bold text-emerald-950">Hoàn tất thanh toán ApiPay</p>
               {payment.qr_url && (
                 <img
                   src={payment.qr_url}
                   alt="Mã QR thanh toán ApiPay"
-                  className="mx-auto mt-4 h-48 w-48 rounded-lg bg-white object-contain p-2"
+                  className="mx-auto mt-4 h-48 w-48 rounded-lg border border-slate-100 bg-white object-contain p-2"
                 />
               )}
               <a
                 href={payment.pay_url}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-800 px-4 py-3 font-bold text-white hover:bg-emerald-700 sm:w-auto"
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#0b4524] px-4 py-3 font-bold text-white transition hover:bg-emerald-800 sm:w-auto"
               >
                 Mở trang thanh toán ApiPay
               </a>
@@ -279,7 +302,7 @@ export default function SubscriptionRegisterPage() {
               type="button"
               onClick={() => startPayment(subscriptionId)}
               disabled={isSubmitting || !bankConfigured}
-              className="min-h-11 rounded-xl border border-emerald-800 px-4 py-2 font-bold text-emerald-900 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-[#0b4524] px-4 py-2 font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? "Đang xử lý..." : payment ? "Lấy lại liên kết thanh toán" : "Tiếp tục thanh toán"}
             </button>
@@ -290,16 +313,16 @@ export default function SubscriptionRegisterPage() {
                 setStatusRefresh((current) => current + 1);
               }}
               disabled={isSubmitting}
-              className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 font-bold text-slate-800 hover:bg-slate-50"
+              className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 py-2 font-bold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800 disabled:opacity-50"
             >
               Kiểm tra trạng thái thanh toán
             </button>
           </div>
         </section>
       ) : packages.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-5 text-slate-700">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-700 shadow-sm">
           Hiện chưa có gói rau định kỳ đang mở bán.
-        </p>
+        </div>
       ) : (
         <SubscriptionScheduleForm
           packages={packages}
