@@ -6,6 +6,7 @@ import StorefrontLayout from "../layouts/StorefrontLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleGuard from "./RoleGuard";
 import CatalogManagePage from "../pages/admin/CatalogManagePage";
+import InventoryWastagePage from "../pages/farm/InventoryWastagePage";
 
 // Lazy-loaded pages for bundle splitting & ultra-fast initial page loads
 const AdminDashboardPage = lazy(() => import("../pages/admin/AdminDashboardPage"));
@@ -61,6 +62,7 @@ export default function AppRouter() {
                 <Route path="subscriptions" element={<SubscriptionRegisterPage />} />
                 <Route path="orders" element={<OrderHistoryPage />} />
                 <Route path="rewards" element={<RewardWalletPage />} />
+                <Route path="profile" element={<RewardWalletPage />} />
               </Route>
             </Route>
           </Route>
@@ -71,6 +73,7 @@ export default function AppRouter() {
                 <Route path="farm/seasons" element={<SeasonManagePage />} />
                 <Route path="farm/batches" element={<BatchHarvestPage />} />
                 <Route path="farm/certificates" element={<CertificateManagePage />} />
+                <Route path="farm/disposals" element={<InventoryWastagePage />} />
               </Route>
               <Route element={<RoleGuard roles={["sales"]} />}>
                 <Route path="sales/orders" element={<SalesOrderPage />} />

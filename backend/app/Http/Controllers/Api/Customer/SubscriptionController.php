@@ -14,6 +14,7 @@ use App\Models\GoiDinhKy;
 use App\Models\LichGiaoDinhKy;
 use App\Models\ThanhToan;
 use App\Services\ApiPayPaymentService;
+use App\Services\GoongGeocodingService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -29,20 +30,187 @@ class SubscriptionController extends Controller
 {
     use ApiResponse;
 
+    public function index(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+        $registrations = DangKyGoi::query()
+            ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
+            ->with([
+                'goi.chiTiets.sanPham',
+                'diaChi',
+                'lichGiao',
+                'donHangs.chiTiets.sanPham',
+            ])
+            ->orderByDesc('Ma_dang_ky')
+            ->paginate((int) ($validated['per_page'] ?? 10));
+
+        return $this->paginatedResponse(
+            $registrations,
+            'Lấy danh sách gói định kỳ thành công.',
+            $registrations->getCollection()
+                ->map(fn (DangKyGoi $registration) => $this->formatRegistration($registration))
+                ->all()
+        );
+    }
+
+    public function pause(Request $request, int $subscriptionId): JsonResponse
+    {
+        return $this->changeStatus($request, $subscriptionId, 'Tam_dung', 'Dang_hoat_dong');
+    }
+
+    public function resume(Request $request, int $subscriptionId): JsonResponse
+    {
+        return $this->changeStatus($request, $subscriptionId, 'Dang_hoat_dong', 'Tam_dung');
+    }
+
+    private function changeStatus(
+        Request $request,
+        int $subscriptionId,
+        string $newStatus,
+        string $expectedStatus
+    ): JsonResponse {
+        $registration = DB::transaction(function () use ($request, $subscriptionId, $newStatus, $expectedStatus) {
+            $registration = DangKyGoi::query()
+                ->where('Ma_dang_ky', $subscriptionId)
+                ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (
+                $registration->Trang_thai !== $expectedStatus
+                || CarbonImmutable::parse($registration->Ngay_ket_thuc)->isBefore(CarbonImmutable::today())
+            ) {
+                throw ValidationException::withMessages([
+                    'subscription_id' => 'Gói không ở trạng thái phù hợp để cập nhật.',
+                ]);
+            }
+
+            $registration->update(['Trang_thai' => $newStatus]);
+            LichGiaoDinhKy::query()
+                ->where('Ma_dang_ky', $registration->Ma_dang_ky)
+                ->update(['Trang_thai' => $newStatus === 'Tam_dung' ? 'Tam_ngung' : 'Hoat_dong']);
+
+            return $registration->refresh();
+        });
+
+        return $this->successResponse(
+            $newStatus === 'Tam_dung' ? 'Tạm ngưng gói định kỳ thành công.' : 'Tiếp tục gói định kỳ thành công.',
+            [
+                'subscription_id' => (int) $registration->Ma_dang_ky,
+                'status' => $registration->Trang_thai,
+            ]
+        );
+    }
+
+    private function formatRegistration(DangKyGoi $registration): array
+    {
+        $address = $registration->diaChi;
+        $package = $registration->goi;
+        $notExpired = ! CarbonImmutable::parse($registration->Ngay_ket_thuc)
+            ->isBefore(CarbonImmutable::today());
+
+        return [
+            'subscription_id' => (int) $registration->Ma_dang_ky,
+            'status' => $registration->Trang_thai,
+            'start_date' => $registration->Ngay_bat_dau,
+            'end_date' => $registration->Ngay_ket_thuc,
+            'can_pause' => $registration->Trang_thai === 'Dang_hoat_dong' && $notExpired,
+            'can_resume' => $registration->Trang_thai === 'Tam_dung'
+                && $notExpired,
+            'package' => $package ? [
+                'id' => (int) $package->Ma_goi,
+                'name' => $package->Ten_goi,
+                'price' => (float) $package->Gia_goi,
+                'duration_months' => (int) $package->Ky_han_thang,
+                'weight_per_delivery' => (float) $package->Khoi_luong_moi_lan,
+                'items' => $package->chiTiets->map(fn ($item) => [
+                    'name' => $item->sanPham?->Ten_san_pham,
+                    'quantity' => (float) $item->So_luong,
+                ])->all(),
+            ] : null,
+            'address' => $address ? implode(', ', array_filter([
+                $address->Dia_chi_chi_tiet,
+                $address->Phuong_xa,
+                $address->Quan_huyen,
+                $address->Tinh_thanh,
+            ])) : null,
+            'delivery_days' => $registration->lichGiao
+                ->map(fn (LichGiaoDinhKy $day) => [
+                    'weekday' => (int) $day->Thu_trong_tuan,
+                    'delivery_window' => $day->Khung_gio_giao,
+                    'status' => $day->Trang_thai,
+                ])
+                ->all(),
+            'deliveries' => $registration->donHangs
+                ->sortByDesc('Ngay_dat')
+                ->map(fn ($order) => [
+                    'order_id' => (int) $order->Ma_don_hang,
+                    'status' => $order->Trang_thai,
+                    'ordered_at' => $order->Ngay_dat,
+                    'total' => (float) $order->Tong_tien,
+                    'items' => $order->chiTiets->map(fn ($item) => [
+                        'name' => $item->sanPham?->Ten_san_pham,
+                        'quantity' => (float) $item->So_luong,
+                    ])->all(),
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
     /**
      * Lưu gói và toàn bộ lịch trong một transaction; đăng ký chỉ hoạt động sau ApiPay webhook.
      */
-    public function store(StoreSubscriptionRequest $request): JsonResponse
+    public function store(StoreSubscriptionRequest $request, GoongGeocodingService $geocoder): JsonResponse
     {
         $validated = $request->validated();
         $userId = (int) $request->user()->getAuthIdentifier();
+        $shippingAddress = $validated['shipping_address'] ?? null;
+        $address = isset($validated['address_id'])
+            ? DiaChiGiaoHang::query()
+                ->where('Ma_dia_chi', $validated['address_id'])
+                ->where('Ma_nguoi_dung', $userId)
+                ->firstOrFail()
+            : null;
+        $coordinates = null;
 
-        $address = DiaChiGiaoHang::query()
-            ->where('Ma_dia_chi', $validated['address_id'])
-            ->where('Ma_nguoi_dung', $userId)
-            ->firstOrFail();
+        if ($shippingAddress !== null) {
+            $existingRegistration = DangKyGoi::query()
+                ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
+                ->first();
 
-        $registration = DB::transaction(function () use ($validated, $userId, $address): DangKyGoi {
+            if ($existingRegistration && (int) $existingRegistration->Ma_nguoi_dung !== $userId) {
+                abort(409, 'Mã yêu cầu đã được sử dụng.');
+            }
+
+            if (! $existingRegistration) {
+                $fullAddress = implode(', ', [
+                    $shippingAddress['street'],
+                    $shippingAddress['ward'],
+                    $shippingAddress['district'],
+                    $shippingAddress['province'],
+                ]);
+
+                try {
+                    $coordinates = $geocoder->geocode($fullAddress);
+                } catch (ConnectionException|RuntimeException $exception) {
+                    Log::warning('Goong could not geocode a customer subscription address.', [
+                        'exception' => $exception::class,
+                    ]);
+
+                    return $this->errorResponse(
+                        message: 'Không thể xác định tọa độ địa chỉ. Vui lòng kiểm tra địa chỉ hoặc liên hệ quản trị viên.',
+                        status: 422,
+                        errorCode: self::ERR_BAD_REQUEST
+                    );
+                }
+            }
+        }
+
+        $registration = DB::transaction(function () use ($validated, $userId, $address, $shippingAddress, $coordinates): DangKyGoi {
             $existing = DangKyGoi::query()
                 ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
                 ->lockForUpdate()
@@ -71,9 +239,16 @@ class SubscriptionController extends Controller
                     ->values()
                     ->all();
 
+                $sameAddress = $shippingAddress === null
+                    ? (int) $existing->Ma_dia_chi === (int) $address->Ma_dia_chi
+                    : $this->addressMatches(
+                        DiaChiGiaoHang::query()->findOrFail($existing->Ma_dia_chi),
+                        $shippingAddress
+                    );
+
                 if (
                     (int) $existing->Ma_goi !== (int) $validated['package_id']
-                    || (int) $existing->Ma_dia_chi !== (int) $address->Ma_dia_chi
+                    || ! $sameAddress
                     || $existing->Ngay_bat_dau !== $validated['start_date']
                     || $existingDays !== $requestedDays
                 ) {
@@ -82,6 +257,21 @@ class SubscriptionController extends Controller
 
                 return $existing;
             }
+
+            $address ??= DiaChiGiaoHang::query()->create([
+                'Ma_nguoi_dung' => $userId,
+                'Ten_nguoi_nhan' => $shippingAddress['recipient_name'],
+                'So_dien_thoai_nguoi_nhan' => $shippingAddress['phone'],
+                'Dia_chi_chi_tiet' => $shippingAddress['street'],
+                'Phuong_xa' => $shippingAddress['ward'],
+                'Quan_huyen' => $shippingAddress['district'],
+                'Tinh_thanh' => $shippingAddress['province'],
+                'Vi_do' => $coordinates['latitude'],
+                'Kinh_do' => $coordinates['longitude'],
+                'La_mac_dinh' => ! DiaChiGiaoHang::query()
+                    ->where('Ma_nguoi_dung', $userId)
+                    ->exists(),
+            ]);
 
             $package = GoiDinhKy::query()
                 ->where('Ma_goi', $validated['package_id'])
@@ -131,6 +321,19 @@ class SubscriptionController extends Controller
     }
 
     /**
+     * Compare user-entered address fields with the saved snapshot for an idempotent retry.
+     */
+    private function addressMatches(DiaChiGiaoHang $address, array $requested): bool
+    {
+        return $address->Ten_nguoi_nhan === $requested['recipient_name']
+            && $address->So_dien_thoai_nguoi_nhan === $requested['phone']
+            && $address->Dia_chi_chi_tiet === $requested['street']
+            && $address->Phuong_xa === $requested['ward']
+            && $address->Quan_huyen === $requested['district']
+            && $address->Tinh_thanh === $requested['province'];
+    }
+
+    /**
      * Tạo hoặc khôi phục yêu cầu ApiPay cho đăng ký đang chờ thanh toán.
      */
     public function checkout(
@@ -138,14 +341,15 @@ class SubscriptionController extends Controller
         int $subscriptionId,
         ApiPayPaymentService $apiPay
     ): JsonResponse {
-        $validated = $request->validate([
-            'bank_public_id' => ['sometimes', 'string', 'max:100'],
-        ]);
-        $bankPublicId = $validated['bank_public_id'] ?? config('services.apipay.bank_public_id');
+        $bankPublicId = config('services.apipay.bank_public_id');
 
-        if (! is_string($bankPublicId) || $bankPublicId === '') {
+        if (
+            ! is_string($bankPublicId)
+            || $bankPublicId === ''
+            || ! $apiPay->configurationStatus()['ready']
+        ) {
             throw ValidationException::withMessages([
-                'bank_public_id' => 'Chưa cấu hình ngân hàng nhận thanh toán ApiPay.',
+                'subscription_id' => 'ApiPay chưa được cấu hình đầy đủ thông tin thanh toán và webhook.',
             ]);
         }
 

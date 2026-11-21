@@ -28,7 +28,7 @@ export const storefrontApi = {
 
   getProduct: async (productId) => {
     const res = await axiosClient.get(`/products/${productId}`);
-    return res.data?.data ?? null;
+    return res.data ?? null;
   },
 
   getActiveFlashSales: async () => {

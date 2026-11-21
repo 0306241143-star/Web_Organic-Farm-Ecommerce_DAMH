@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\NguoiDung;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -22,8 +23,20 @@ class CustomerSubscriptionTest extends TestCase
             'services.apipay.secret_key' => 'test-secret-key',
             'services.apipay.bank_public_id' => 'test-bank',
             'services.apipay.webhook_secret' => 'subscription-test-webhook-secret',
+            'services.apipay.webhook_url' => 'https://example.test/api/webhooks/apipay',
+            'services.goong.api_key' => 'test-goong-key',
         ]);
         Http::fake([
+            'rsapi.goong.io/Geocode*' => Http::response([
+                'results' => [[
+                    'geometry' => [
+                        'location' => [
+                            'lat' => 10.8231,
+                            'lng' => 106.6297,
+                        ],
+                    ],
+                ]],
+            ]),
             'app.apipay.vn/v1/client/payment-requests' => Http::response([
                 'data' => [
                     'publicId' => 'subscription-payment-test',
@@ -109,6 +122,76 @@ class CustomerSubscriptionTest extends TestCase
         $this->assertDatabaseCount('lich_giao_dinh_ky', 2);
     }
 
+    public function test_customer_can_enter_a_new_delivery_address_and_retry_without_creating_duplicates(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+        $payload = $this->validPayload();
+        unset($payload['address_id']);
+        $payload['shipping_address'] = [
+            'recipient_name' => 'Nguyễn Minh An',
+            'phone' => '0912345678',
+            'street' => '12 Nguyễn Trãi',
+            'ward' => 'Phường Bến Thành',
+            'district' => 'Quận 1',
+            'province' => 'Thành phố Hồ Chí Minh',
+        ];
+
+        $created = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/subscriptions', $payload)
+            ->assertCreated();
+        $subscriptionId = $created->json('data.subscription_id');
+        $addressId = DB::table('dang_ky_goi')
+            ->where('Ma_dang_ky', $subscriptionId)
+            ->value('Ma_dia_chi');
+
+        $this->assertDatabaseHas('dia_chi_giao_hang', [
+            'Ma_dia_chi' => $addressId,
+            'Ma_nguoi_dung' => 5,
+            'Ten_nguoi_nhan' => 'Nguyễn Minh An',
+            'So_dien_thoai_nguoi_nhan' => '0912345678',
+            'Dia_chi_chi_tiet' => '12 Nguyễn Trãi',
+            'Phuong_xa' => 'Phường Bến Thành',
+            'Quan_huyen' => 'Quận 1',
+            'Tinh_thanh' => 'Thành phố Hồ Chí Minh',
+            'Vi_do' => 10.8231,
+            'Kinh_do' => 106.6297,
+        ]);
+        $this->assertDatabaseCount('dia_chi_giao_hang', 4);
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/subscriptions', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.subscription_id', $subscriptionId);
+
+        $this->assertDatabaseCount('dia_chi_giao_hang', 4);
+        $this->assertDatabaseCount('dang_ky_goi', 2);
+        Http::assertSentCount(1);
+    }
+
+    public function test_new_address_is_rejected_when_goong_geocoding_is_not_configured(): void
+    {
+        config(['services.goong.api_key' => '']);
+        $customer = NguoiDung::query()->findOrFail(5);
+        $payload = $this->validPayload();
+        unset($payload['address_id']);
+        $payload['shipping_address'] = [
+            'recipient_name' => 'Nguyễn Minh An',
+            'phone' => '0912345678',
+            'street' => '12 Nguyễn Trãi',
+            'ward' => 'Phường Bến Thành',
+            'district' => 'Quận 1',
+            'province' => 'Thành phố Hồ Chí Minh',
+        ];
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/subscriptions', $payload)
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Không thể xác định tọa độ địa chỉ. Vui lòng kiểm tra địa chỉ hoặc liên hệ quản trị viên.');
+
+        $this->assertDatabaseCount('dia_chi_giao_hang', 3);
+        $this->assertDatabaseCount('dang_ky_goi', 1);
+    }
+
     public function test_subscription_payment_is_created_for_owner_and_webhook_activates_it_once(): void
     {
         $customer = NguoiDung::query()->findOrFail(5);
@@ -118,10 +201,17 @@ class CustomerSubscriptionTest extends TestCase
         $subscriptionId = $registrationResponse->json('data.subscription_id');
 
         $this->actingAs($customer, 'sanctum')
-            ->postJson("/api/customer/subscriptions/{$subscriptionId}/checkout")
+            ->postJson("/api/customer/subscriptions/{$subscriptionId}/checkout", [
+                'bank_public_id' => 'attacker-controlled-bank',
+            ])
             ->assertCreated()
             ->assertJsonPath('data.pay_url', 'https://pay.apipay.vn/subscription-test')
             ->assertJsonPath('data.qr_url', 'https://app.apipay.vn/qr/subscription-test');
+
+        Http::assertSent(fn (ClientRequest $request): bool => $request->method() === 'POST'
+            && str_ends_with($request->url(), '/payment-requests')
+            && $request['bankPublicId'] === 'test-bank'
+        );
 
         $payment = DB::table('thanh_toan')
             ->where('Ma_dang_ky_goi', $subscriptionId)
@@ -198,6 +288,50 @@ class CustomerSubscriptionTest extends TestCase
         $this->postJson('/api/customer/subscriptions', $this->validPayload())->assertUnauthorized();
         $this->postJson('/api/customer/subscriptions/1/checkout')->assertUnauthorized();
         $this->getJson('/api/customer/subscriptions/1')->assertUnauthorized();
+    }
+
+    public function test_payment_options_report_when_apipay_configuration_is_incomplete(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson('/api/customer/checkout/options')
+            ->assertOk()
+            ->assertJsonPath('data.bank_configured', true)
+            ->assertJsonPath('data.payment_configured', true)
+            ->assertJsonPath('data.webhook_configured', true)
+            ->assertJsonPath('data.ready', true);
+
+        config(['services.apipay.bank_public_id' => '']);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson('/api/customer/checkout/options')
+            ->assertOk()
+            ->assertJsonPath('data.bank_configured', false)
+            ->assertJsonPath('data.ready', false);
+    }
+
+    public function test_subscription_checkout_is_blocked_when_webhook_is_not_configured(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+        $registration = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/subscriptions', $this->validPayload())
+            ->assertCreated();
+        $subscriptionId = $registration->json('data.subscription_id');
+
+        config([
+            'services.apipay.webhook_secret' => '',
+            'services.apipay.webhook_url' => '',
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson("/api/customer/subscriptions/{$subscriptionId}/checkout")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['subscription_id']);
+
+        $this->assertDatabaseMissing('thanh_toan', [
+            'Ma_dang_ky_goi' => $subscriptionId,
+        ]);
     }
 
     private function validPayload(): array

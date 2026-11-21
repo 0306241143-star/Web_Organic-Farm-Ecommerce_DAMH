@@ -9,6 +9,7 @@ import {
   PackageX,
 } from "lucide-react";
 import { storefrontApi } from "../../services/storefrontApi";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 
 const DEFAULT_PROD_IMAGE =
   "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=600&q=80";
@@ -17,6 +18,7 @@ export default function FeaturedProductsSection({ onAddToCart }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addedId, setAddedId] = useState(null);
+  const [addingIds, setAddingIds] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,13 +47,19 @@ export default function FeaturedProductsSection({ onAddToCart }) {
     };
   }, []);
 
-  const handleQuickAdd = (product) => {
+  const handleQuickAdd = async (product) => {
     if (Number(product.available_stock) <= 0) return;
-    if (onAddToCart) {
-      onAddToCart(product);
+    if (!onAddToCart || addingIds.includes(product.id)) return;
+
+    setAddingIds((current) => [...current, product.id]);
+    try {
+      const added = await onAddToCart(product);
+      if (added === false) return;
+      setAddedId(product.id);
+      setTimeout(() => setAddedId(null), 1500);
+    } finally {
+      setAddingIds((current) => current.filter((id) => id !== product.id));
     }
-    setAddedId(product.id);
-    setTimeout(() => setAddedId(null), 1500);
   };
 
   return (
@@ -106,6 +114,7 @@ export default function FeaturedProductsSection({ onAddToCart }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {products.map((item, idx) => {
             const isAdded = addedId === item.id;
+            const isAdding = addingIds.includes(item.id);
             const outOfStock = Number(item.available_stock) <= 0;
             const displayPrice = Number(item.current_price ?? item.base_price ?? 0);
             const basePrice = Number(item.base_price ?? 0);
@@ -190,11 +199,13 @@ export default function FeaturedProductsSection({ onAddToCart }) {
                 <div className="px-4 pb-4">
                   <button
                     type="button"
-                    onClick={() => handleQuickAdd(item)}
-                    disabled={outOfStock}
+                    onClick={() => void handleQuickAdd(item)}
+                    disabled={outOfStock || isAdding}
                     className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                       outOfStock
                         ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        : isAdding
+                        ? "bg-slate-200 text-slate-600 cursor-wait"
                         : isAdded
                         ? "bg-emerald-600 text-white cursor-pointer"
                         : "bg-[#064e2e] hover:bg-[#043821] text-white cursor-pointer"
@@ -202,6 +213,8 @@ export default function FeaturedProductsSection({ onAddToCart }) {
                   >
                     {outOfStock ? (
                       <span>Tạm Hết Hàng</span>
+                    ) : isAdding ? (
+                      <span role="status">Đang thêm...</span>
                     ) : isAdded ? (
                       <>
                         <Check className="w-4 h-4" />

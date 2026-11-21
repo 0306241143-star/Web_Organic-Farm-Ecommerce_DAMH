@@ -9,7 +9,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-$standardOk = fn (string $message, mixed $data = null) => response()->json([
+$standardOk = fn(string $message, mixed $data = null) => response()->json([
     'success'    => true,
     'message'    => $message,
     'error_code' => null,
@@ -18,7 +18,7 @@ $standardOk = fn (string $message, mixed $data = null) => response()->json([
     'errors'     => null,
 ], 200);
 
-Route::get('/ping', fn () => $standardOk('Kết nối Laravel API thành công.'));
+Route::get('/ping', fn() => $standardOk('Kết nối Laravel API thành công.'));
 
 if (app()->environment(['local', 'testing'])) {
     Route::post('/test/json', function (Request $request) use ($standardOk) {
@@ -56,8 +56,8 @@ if (app()->environment(['local', 'testing'])) {
         ]);
     });
 
-    Route::get('/test/error-401', fn () => abort(401));
-    Route::get('/test/error-403', fn () => abort(403));
+    Route::get('/test/error-401', fn() => abort(401));
+    Route::get('/test/error-403', fn() => abort(403));
     Route::get('/test/error-500', function () {
         throw new \RuntimeException('Giả lập lỗi hệ thống nội bộ 500 để kiểm thử Exception Handler.');
     });
@@ -148,14 +148,30 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::put('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'update'])->whereNumber('productId');
     Route::delete('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'destroy'])->whereNumber('productId');
     Route::get('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'addresses']);
+    Route::post('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'storeAddress']);
+    Route::put('/addresses/{id}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateAddress'])->whereNumber('id');
+    Route::delete('/addresses/{id}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'destroyAddress'])->whereNumber('id');
+    Route::patch('/addresses/{id}/default', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'setDefaultAddress'])->whereNumber('id');
+    Route::post('/change-password', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'changePassword']);
+    Route::put('/profile', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateProfile']);
+    Route::get('/rewards', [\App\Http\Controllers\Api\Customer\RewardPointController::class, 'index']);
+    Route::get('/orders', [\App\Http\Controllers\Api\Customer\OrderController::class, 'index']);
+    Route::get('/orders/{orderId}', [\App\Http\Controllers\Api\Customer\OrderController::class, 'show'])->whereNumber('orderId');
+    Route::get('/claims', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'index']);
+    Route::post('/claims', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'store']);
+    Route::get('/claims/{claimId}', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'show'])->whereNumber('claimId');
     Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
     Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
     Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
+    Route::post('/checkout/orders/{orderId}/cancel', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'cancel'])->whereNumber('orderId');
     Route::get('/checkout/options', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'options']);
     Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
     // Đăng ký/lịch gói định kỳ và thanh toán thuộc riêng tài khoản khách hiện tại.
     Route::post('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'store']);
+    Route::get('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'index']);
     Route::get('/subscriptions/{subscriptionId}', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'show'])->whereNumber('subscriptionId');
+    Route::post('/subscriptions/{subscriptionId}/pause', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'pause'])->whereNumber('subscriptionId');
+    Route::post('/subscriptions/{subscriptionId}/resume', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'resume'])->whereNumber('subscriptionId');
     Route::post('/subscriptions/{subscriptionId}/checkout', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'checkout'])->whereNumber('subscriptionId');
 });
 
@@ -193,6 +209,9 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::post('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'store']);
     Route::put('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'update']);
     Route::delete('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'destroy']);
+
+    Route::post('/batches/{id}/wastage', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'recordWastage'])->whereNumber('id');
+    Route::get('/disposals', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'disposalsList']);
 });
 
 // Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)
