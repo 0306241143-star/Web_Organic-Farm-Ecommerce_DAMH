@@ -8,7 +8,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-$standardOk = fn (string $message, mixed $data = null) => response()->json([
+$standardOk = fn(string $message, mixed $data = null) => response()->json([
     'success'    => true,
     'message'    => $message,
     'error_code' => null,
@@ -17,7 +17,7 @@ $standardOk = fn (string $message, mixed $data = null) => response()->json([
     'errors'     => null,
 ], 200);
 
-Route::get('/ping', fn () => $standardOk('Kết nối Laravel API thành công.'));
+Route::get('/ping', fn() => $standardOk('Kết nối Laravel API thành công.'));
 
 if (app()->environment(['local', 'testing'])) {
     Route::post('/test/json', function (Request $request) use ($standardOk) {
@@ -55,8 +55,8 @@ if (app()->environment(['local', 'testing'])) {
         ]);
     });
 
-    Route::get('/test/error-401', fn () => abort(401));
-    Route::get('/test/error-403', fn () => abort(403));
+    Route::get('/test/error-401', fn() => abort(401));
+    Route::get('/test/error-403', fn() => abort(403));
     Route::get('/test/error-500', function () {
         throw new \RuntimeException('Giả lập lỗi hệ thống nội bộ 500 để kiểm thử Exception Handler.');
     });
@@ -207,6 +207,9 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::post('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'store']);
     Route::put('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'update']);
     Route::delete('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'destroy']);
+
+    Route::post('/batches/{id}/wastage', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'recordWastage'])->whereNumber('id');
+    Route::get('/disposals', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'disposalsList']);
 });
 
 // Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)

@@ -482,27 +482,6 @@ export default function BatchHarvestPage() {
           </span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveMainTab("disposals")}
-          className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-            activeMainTab === "disposals"
-              ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
-              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-          }`}
-        >
-          <ClipboardList className="w-4 h-4" />
-          <span>Kiểm Kho & Sổ Hao Hụt</span>
-          {disposals.length > 0 && (
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                activeMainTab === "disposals" ? "bg-white/25 text-white" : "bg-purple-100 text-purple-700"
-              }`}
-            >
-              {disposals.length}
-            </span>
-          )}
-        </button>
       </div>
 
       {/* TAB 1: Danh sách Lô hàng Thu hoạch (Chọn lô -> Hiện thông tin & bảng điều khiển) */}

@@ -288,7 +288,7 @@ class BatchController extends Controller
         );
     }
 
-    /**
+/**
      * Ghi nhận hao hụt / xuất hủy lô hàng nông sản (CV04.21 / UC18).
      */
     public function recordWastage(Request $request, int $id): JsonResponse
@@ -301,18 +301,24 @@ class BatchController extends Controller
             'reason'   => ['required', 'string', 'max:255'],
         ], [
             'quantity.required' => 'Vui lòng nhập số lượng hao hụt / xuất hủy.',
-            'quantity.max'      => "Số lượng xuất hủy ({$request->input('quantity')}) không được vượt quá số lượng tồn kho còn lại ({$batch->So_luong_con_lai}).",
+            'quantity.min'      => 'Số lượng phải lớn hơn 0.',
+            'quantity.max'      => "Số lượng xuất hủy ({$request->input('quantity')}) không được vượt quá tồn kho còn lại ({$batch->So_luong_con_lai}).",
             'type.in'           => 'Loại biến động kho không hợp lệ.',
             'reason.required'   => 'Vui lòng nhập lý do hao hụt hoặc xuất hủy.',
         ]);
 
-        DB::transaction(function () use ($batch, $validated) {
+        DB::transaction(function () use ($id, $validated) {
+            $lockedBatch = LoHang::lockForUpdate()->findOrFail($id);
             $staffId = Auth::id() ?? 1;
             $qty = (float) $validated['quantity'];
 
+            if ($qty > (float) $lockedBatch->So_luong_con_lai) {
+                abort(422, 'Số lượng xuất hủy vượt quá tồn kho còn lại.');
+            }
+
             // 1. Thêm bản ghi biến động kho
             BienDongKho::create([
-                'Ma_lo_hang'     => $batch->Ma_lo_hang,
+                'Ma_lo_hang'     => $lockedBatch->Ma_lo_hang,
                 'Ma_nhan_vien'   => $staffId,
                 'Loai_bien_dong' => $validated['type'],
                 'So_luong'       => $qty,
@@ -320,22 +326,23 @@ class BatchController extends Controller
                 'Ngay_ghi_nhan'  => now(),
             ]);
 
-            // 2. Trừ trực tiếp số lượng tồn kho của đúng lô hàng đó & kiểm tra ngưỡng cận hạn
-            $newRemaining = max(0, (float) $batch->So_luong_con_lai - $qty);
-            $batch->So_luong_con_lai = $newRemaining;
+            // 2. Trừ trực tiếp số lượng tồn kho & cập nhật trạng thái lô
+            $newRemaining = max(0, round((float) $lockedBatch->So_luong_con_lai - $qty, 2));
+            $lockedBatch->So_luong_con_lai = $newRemaining;
 
-            $daysLeft = Carbon::today()->diffInDays(Carbon::parse($batch->Han_su_dung), false);
+            $daysLeft = Carbon::today()->diffInDays(Carbon::parse($lockedBatch->Han_su_dung), false);
             if ($newRemaining == 0) {
-                $batch->Trang_thai = 'Het_hang';
+                $lockedBatch->Trang_thai = $validated['type'] === 'Xuat_huy' ? 'Da_huy' : 'Het_hang';
             } elseif ($daysLeft <= 2 && $daysLeft >= 0) {
-                $batch->Trang_thai = 'Sap_het_han';
+                $lockedBatch->Trang_thai = 'Sap_het_han';
             }
 
-            $batch->save();
+            $lockedBatch->save();
         });
+
         $this->clearPublicCatalogCache();
 
-        $batch->load([
+        $batch->refresh()->load([
             'loCanhTac.sanPham',
             'loCanhTac.muaVu',
             'nhanVienPhuTrach',
@@ -492,4 +499,8 @@ class BatchController extends Controller
         Cache::forget('public_catalog_products_v1');
         Cache::forget('public_categories_list');
     }
+    /**
+     * Ghi nhận xuất hủy hoặc điều chỉnh hao hụt sau kiểm kho cho một lô hàng.
+     */
+
 }
