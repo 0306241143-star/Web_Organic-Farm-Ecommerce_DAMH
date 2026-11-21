@@ -50,6 +50,7 @@ export default function AppRouter() {
             <Route path="products" element={<ProductCatalogPage />} />
             <Route path="products/:productId" element={<ProductDetailPage />} />
             <Route path="brand" element={<BrandStoryPage />} />
+            <Route path="trace" element={<QrTraceabilityPage />} />
             <Route path="trace/:code" element={<QrTraceabilityPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />

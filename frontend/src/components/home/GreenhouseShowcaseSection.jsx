@@ -26,7 +26,7 @@ export default function GreenhouseShowcaseSection() {
 
           <div className="pt-2">
             <Link
-              to="/trace/DEMO-QR-001"
+              to="/trace"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-emerald-50 text-[#064e2e] font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95"
             >
               <QrCode className="w-4 h-4 text-emerald-700" />

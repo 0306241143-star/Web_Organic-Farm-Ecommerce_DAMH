@@ -130,7 +130,7 @@ export default function StorefrontFooter() {
               </li>
               <li>
                 <Link
-                  to="/trace/QR-LH20261110-A01"
+                  to="/trace"
                   className="inline-flex items-center gap-2 text-[#00450d] hover:underline font-semibold"
                 >
                   <QrCode className="w-3.5 h-3.5" />

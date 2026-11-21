@@ -26,7 +26,10 @@ export default function StorefrontHeader() {
   );
   const { items } = useCart();
   const location = useLocation();
-  const isProductDetailPage = location.pathname.startsWith("/products/");
+  const isCompactStorefrontPage =
+    location.pathname.startsWith("/products/") ||
+    location.pathname === "/trace" ||
+    location.pathname.startsWith("/trace/");
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -89,7 +92,7 @@ export default function StorefrontHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div
           className={`h-20 flex items-center justify-between ${
-            isProductDetailPage ? "gap-2 sm:gap-4" : "gap-4"
+            isCompactStorefrontPage ? "gap-2 sm:gap-4" : "gap-4"
           }`}
         >
           {/* ================= ZONE 1: BRAND LOGO (LEFT) ================= */}
@@ -211,7 +214,7 @@ export default function StorefrontHeader() {
           {/* ================= ZONE 3: ACTIONS & AUTH (RIGHT) ================= */}
           <div
             className={`flex items-center shrink-0 ${
-              isProductDetailPage ? "gap-1 sm:gap-3" : "gap-2 sm:gap-3"
+              isCompactStorefrontPage ? "gap-1 sm:gap-3" : "gap-2 sm:gap-3"
             }`}
           >
             {!isInternalStaff && (
@@ -227,7 +230,7 @@ export default function StorefrontHeader() {
               </Link>
             )}
 
-            <div className={isProductDetailPage ? "hidden sm:block" : ""}>
+            <div className={isCompactStorefrontPage ? "hidden sm:block" : ""}>
               {!user ? (
                 <div className="flex items-center gap-2">
                   <Link
