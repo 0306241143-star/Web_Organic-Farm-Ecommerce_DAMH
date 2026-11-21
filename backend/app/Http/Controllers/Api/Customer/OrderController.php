@@ -35,7 +35,7 @@ class OrderController extends Controller
                 $validated['order_type'] ?? null,
                 fn ($query, string $type) => $query->where('Loai_don', $type)
             )
-            ->with(['chiTiets.sanPham', 'diaChi', 'thanhToans', 'giaoHang', 'dangKyGoi.goi'])
+            ->with(['chiTiets.sanPham', 'diaChi', 'thanhToans', 'giaoHang', 'dangKyGoi.goi', 'khieuNais'])
             ->orderByDesc('Ngay_dat')
             ->orderByDesc('Ma_don_hang')
             ->paginate((int) ($validated['per_page'] ?? 10));
@@ -52,7 +52,7 @@ class OrderController extends Controller
         $order = DonHang::query()
             ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
             ->where('Ma_don_hang', $orderId)
-            ->with(['chiTiets.sanPham', 'diaChi', 'thanhToans', 'giaoHang', 'dangKyGoi.goi'])
+            ->with(['chiTiets.sanPham', 'diaChi', 'thanhToans', 'giaoHang', 'dangKyGoi.goi', 'khieuNais.tepBangChungs'])
             ->firstOrFail();
 
         return $this->successResponse(
@@ -115,6 +115,16 @@ class OrderController extends Controller
                 'subscription_id' => (int) $registration->Ma_dang_ky,
                 'package_name' => $registration->goi?->Ten_goi,
             ] : null,
+            'claims' => $order->khieuNais->map(fn ($claim) => [
+                'claim_id' => (int) $claim->Ma_khieu_nai,
+                'reason' => $claim->Ly_do,
+                'status' => $claim->Trang_thai,
+                'resolution' => $claim->Hinh_thuc_xu_ly,
+                'submitted_at' => $claim->created_at,
+                'resolved_at' => $claim->Ngay_xu_ly,
+            ])->all(),
+            'can_claim' => $order->Trang_thai === 'Hoan_thanh'
+                && $order->khieuNais->isEmpty(),
             'can_cancel' => in_array($order->Trang_thai, ['Cho_thanh_toan', 'Cho_xac_nhan'], true)
                 && ! $order->thanhToans->contains(fn ($payment) => $payment->Trang_thai === 'Thanh_cong'),
         ];

@@ -155,6 +155,9 @@ Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(
     Route::get('/rewards', [\App\Http\Controllers\Api\Customer\RewardPointController::class, 'index']);
     Route::get('/orders', [\App\Http\Controllers\Api\Customer\OrderController::class, 'index']);
     Route::get('/orders/{orderId}', [\App\Http\Controllers\Api\Customer\OrderController::class, 'show'])->whereNumber('orderId');
+    Route::get('/claims', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'index']);
+    Route::post('/claims', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'store']);
+    Route::get('/claims/{claimId}', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'show'])->whereNumber('claimId');
     Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
     Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
     Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');

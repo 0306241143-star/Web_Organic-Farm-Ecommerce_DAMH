@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import EmptyState from "../../components/common/EmptyState";
 import { confirmGlobalDialog, showGlobalToast } from "../../components/GlobalToast";
+import CreateClaimModal from "../../components/customer/modals/CreateClaimModal";
 import { notifyApiErrorToast } from "../../services/axiosClient";
 import { customerApi } from "../../services/customerApi";
 
@@ -38,6 +39,20 @@ const SUBSCRIPTION_STATUS = {
   Da_huy: "Đã hủy",
 };
 
+const CLAIM_STATUS = {
+  Cho_xu_ly: "Chờ xử lý",
+  Dang_xu_ly: "Đang xử lý",
+  Da_giai_quyet: "Đã giải quyết",
+  Tu_choi: "Không được chấp nhận",
+};
+
+const CLAIM_RESOLUTION = {
+  Chua_xac_dinh: "Chưa có kết quả",
+  Hoan_tien: "Hoàn tiền",
+  Giao_bu: "Giao bù",
+  Tu_choi: "Từ chối",
+};
+
 const WEEKDAYS = ["", "Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
 const money = (value) => `${Number(value || 0).toLocaleString("vi-VN")} đ`;
 const dateTime = (value) =>
@@ -45,8 +60,8 @@ const dateTime = (value) =>
 const date = (value) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString("vi-VN") : "—");
 
 function StatusBadge({ status, labels }) {
-  const completed = ["Hoan_thanh", "Dang_hoat_dong"].includes(status);
-  const inactive = ["Da_huy", "Het_han"].includes(status);
+  const completed = ["Hoan_thanh", "Dang_hoat_dong", "Da_giai_quyet"].includes(status);
+  const inactive = ["Da_huy", "Het_han", "Tu_choi"].includes(status);
   return (
     <span
       className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
@@ -68,13 +83,16 @@ export default function OrderHistoryPage() {
   const [orderStatus, setOrderStatus] = useState("");
   const [orders, setOrders] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [claims, setClaims] = useState([]);
   const [ordersMeta, setOrdersMeta] = useState(null);
   const [subscriptionsMeta, setSubscriptionsMeta] = useState(null);
+  const [claimsMeta, setClaimsMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [orderDetails, setOrderDetails] = useState({});
   const [changingSubscriptionId, setChangingSubscriptionId] = useState(null);
+  const [claimOrder, setClaimOrder] = useState(null);
   const [loadError, setLoadError] = useState("");
 
   const loadOrders = useCallback(async (page = 1, status = orderStatus, append = false) => {
@@ -103,30 +121,47 @@ export default function OrderHistoryPage() {
     }
   }, []);
 
+  const loadClaims = useCallback(async (page = 1, append = false) => {
+    try {
+      const response = await customerApi.getClaims({ page, per_page: 10 });
+      setClaims((current) => append ? [...current, ...response.data] : response.data);
+      setClaimsMeta(response.meta);
+      setLoadError("");
+    } catch (error) {
+      setLoadError(error.message || "Không thể tải danh sách khiếu nại.");
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
     setLoadError("");
     const load = activeTab === "orders"
       ? loadOrders(1, orderStatus)
-      : loadSubscriptions(1);
+      : activeTab === "subscriptions"
+        ? loadSubscriptions(1)
+        : loadClaims(1);
     load.finally(() => {
       if (active) setLoading(false);
     });
     return () => {
       active = false;
     };
-  }, [activeTab, orderStatus, loadOrders, loadSubscriptions]);
+  }, [activeTab, orderStatus, loadOrders, loadSubscriptions, loadClaims]);
 
   const loadMore = async () => {
-    const meta = activeTab === "orders" ? ordersMeta : subscriptionsMeta;
+    const meta = activeTab === "orders"
+      ? ordersMeta
+      : activeTab === "subscriptions" ? subscriptionsMeta : claimsMeta;
     if (!meta || meta.current_page >= meta.last_page) return;
     setLoadingMore(true);
     try {
       if (activeTab === "orders") {
         await loadOrders(meta.current_page + 1, orderStatus, true);
-      } else {
+      } else if (activeTab === "subscriptions") {
         await loadSubscriptions(meta.current_page + 1, true);
+      } else {
+        await loadClaims(meta.current_page + 1, true);
       }
     } finally {
       setLoadingMore(false);
@@ -208,8 +243,10 @@ export default function OrderHistoryPage() {
     }
   };
 
-  const currentItems = activeTab === "orders" ? orders : subscriptions;
-  const currentMeta = activeTab === "orders" ? ordersMeta : subscriptionsMeta;
+  const currentItems = activeTab === "orders" ? orders : activeTab === "subscriptions" ? subscriptions : claims;
+  const currentMeta = activeTab === "orders"
+    ? ordersMeta
+    : activeTab === "subscriptions" ? subscriptionsMeta : claimsMeta;
 
   return (
     <main className="min-h-screen bg-[#f5f5f5] py-8 sm:py-10">
@@ -230,6 +267,7 @@ export default function OrderHistoryPage() {
             {[
               ["orders", "Tất cả đơn hàng"],
               ["subscriptions", "Gói định kỳ"],
+              ["claims", "Khiếu nại"],
             ].map(([tab, label]) => (
               <button
                 key={tab}
@@ -249,6 +287,9 @@ export default function OrderHistoryPage() {
             <Link to="/subscriptions" className="pb-2 text-sm font-semibold text-[#006e1c] hover:underline">
               Đăng ký gói mới
             </Link>
+          )}
+          {activeTab === "claims" && (
+            <p className="pb-2 text-sm text-slate-500">Theo dõi tiến độ yêu cầu hỗ trợ</p>
           )}
           {activeTab === "orders" && (
             <label className="pb-2 text-sm text-slate-600">
@@ -277,7 +318,9 @@ export default function OrderHistoryPage() {
             <button
               type="button"
               className="mt-3 font-bold underline"
-              onClick={() => activeTab === "orders" ? loadOrders() : loadSubscriptions()}
+              onClick={() => activeTab === "orders"
+                ? loadOrders()
+                : activeTab === "subscriptions" ? loadSubscriptions() : loadClaims()}
             >
               Thử tải lại
             </button>
@@ -285,16 +328,56 @@ export default function OrderHistoryPage() {
         ) : currentItems.length === 0 ? (
           <EmptyState
             icon={activeTab === "orders" ? Package : CalendarDays}
-            title={activeTab === "orders" ? "Chưa có đơn hàng" : "Chưa đăng ký gói định kỳ"}
+            title={activeTab === "orders"
+              ? "Chưa có đơn hàng"
+              : activeTab === "subscriptions" ? "Chưa đăng ký gói định kỳ" : "Chưa có khiếu nại"}
             message={activeTab === "orders"
-              ? "Các đơn mua lẻ của bạn sẽ hiển thị tại đây."
-              : "Đăng ký một gói để theo dõi lịch giao và trạng thái tại đây."}
-            actionLabel={activeTab === "orders" ? "Khám phá sản phẩm" : "Xem các gói rau"}
+              ? "Các đơn mua của bạn sẽ hiển thị tại đây."
+              : activeTab === "subscriptions"
+                ? "Đăng ký một gói để theo dõi lịch giao và trạng thái tại đây."
+                : "Khiếu nại gửi về đơn hàng đã hoàn thành sẽ được theo dõi tại đây."}
+            actionLabel={activeTab === "orders" ? "Khám phá sản phẩm" : activeTab === "subscriptions" ? "Xem các gói rau" : ""}
             onAction={() => navigate(activeTab === "orders" ? "/products" : "/subscriptions")}
           />
         ) : (
           <div className="space-y-4">
-            {activeTab === "orders" ? orders.map((order) => {
+            {activeTab === "claims" ? claims.map((claim) => (
+              <article key={claim.claim_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-extrabold text-slate-900">
+                      Khiếu nại #{claim.claim_id} · Đơn #{claim.order_id}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Gửi lúc {dateTime(claim.submitted_at)} · {claim.reason}
+                    </p>
+                  </div>
+                  <StatusBadge status={claim.status} labels={CLAIM_STATUS} />
+                </div>
+                <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{claim.description}</p>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                  <p className="text-sm text-slate-600">
+                    Kết quả xử lý:{" "}
+                    <span className="font-semibold">
+                      {CLAIM_RESOLUTION[claim.resolution] || claim.resolution}
+                    </span>
+                    {claim.refund && ` · ${money(claim.refund.amount)} (${claim.refund.status})`}
+                  </p>
+                  <span className="text-xs text-slate-500">
+                    {claim.resolved_at ? `Cập nhật ${dateTime(claim.resolved_at)}` : "Đang chờ nhân viên xử lý"}
+                  </span>
+                </div>
+                {claim.evidence?.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {claim.evidence.map((file) => (
+                      <a key={file.id} href={file.url} target="_blank" rel="noreferrer">
+                        <img src={file.url} alt="Ảnh minh chứng khiếu nại" className="h-16 w-16 rounded-lg border object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </article>
+            )) : activeTab === "orders" ? orders.map((order) => {
               const details = orderDetails[order.order_id];
               const expanded = expandedOrderId === order.order_id;
               return (
@@ -334,6 +417,15 @@ export default function OrderHistoryPage() {
                           : order.address?.detail || "Chưa có thông tin giao hàng"}
                       </span>
                       <div className="flex gap-2">
+                        {order.can_claim && (
+                          <button
+                            type="button"
+                            onClick={() => setClaimOrder(order)}
+                            className="rounded-lg border border-emerald-700 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50"
+                          >
+                            Gửi khiếu nại
+                          </button>
+                        )}
                         {order.can_cancel && (
                           <button
                             type="button"
@@ -352,6 +444,20 @@ export default function OrderHistoryPage() {
                         </button>
                       </div>
                     </div>
+                    {(order.claims || []).map((claim) => (
+                      <div key={claim.claim_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs">
+                        <span className="font-semibold text-amber-900">
+                          Khiếu nại #{claim.claim_id}: {CLAIM_STATUS[claim.status] || claim.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("claims")}
+                          className="font-bold text-emerald-800 underline"
+                        >
+                          Theo dõi
+                        </button>
+                      </div>
+                    ))}
                     {expanded && (
                       <div className="grid gap-4 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
                         {!details ? (
@@ -463,6 +569,17 @@ export default function OrderHistoryPage() {
           </div>
         )}
       </div>
+      {claimOrder && (
+        <CreateClaimModal
+          order={claimOrder}
+          onClose={() => setClaimOrder(null)}
+          onSubmitted={async () => {
+            setClaimOrder(null);
+            showGlobalToast("Đã gửi khiếu nại. Bạn có thể theo dõi tiến độ trong mục Khiếu nại.", "success");
+            await Promise.all([loadOrders(1, orderStatus), loadClaims(1)]);
+          }}
+        />
+      )}
     </main>
   );
 }

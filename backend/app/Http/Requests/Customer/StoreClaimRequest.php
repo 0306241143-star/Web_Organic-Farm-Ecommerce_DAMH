@@ -12,11 +12,17 @@ class StoreClaimRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     public function rules(): array
     {
-        return [];
+        return [
+            'order_id' => ['required', 'integer', 'min:1'],
+            'reason' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string', 'min:10', 'max:5000'],
+            'evidence' => ['nullable', 'array', 'max:5'],
+            'evidence.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ];
     }
 }
