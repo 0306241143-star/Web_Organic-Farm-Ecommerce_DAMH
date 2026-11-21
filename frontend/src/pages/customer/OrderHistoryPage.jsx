@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronUp,
+  CreditCard,
   Package,
   Pause,
   Play,
@@ -92,6 +93,7 @@ export default function OrderHistoryPage() {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [orderDetails, setOrderDetails] = useState({});
   const [changingSubscriptionId, setChangingSubscriptionId] = useState(null);
+  const [continuingPaymentOrderId, setContinuingPaymentOrderId] = useState(null);
   const [claimOrder, setClaimOrder] = useState(null);
   const [loadError, setLoadError] = useState("");
 
@@ -211,6 +213,29 @@ export default function OrderHistoryPage() {
       });
     } catch (error) {
       notifyApiErrorToast(error, "Không thể hủy đơn hàng.");
+    }
+  };
+
+  const continueOrderPayment = async (order) => {
+    if (continuingPaymentOrderId !== null) return;
+
+    setContinuingPaymentOrderId(order.order_id);
+    try {
+      const response = await customerApi.checkout({ order_id: Number(order.order_id) });
+      const paymentUrl = response.data?.pay_url;
+      if (!paymentUrl) {
+        throw new Error("Không nhận được liên kết thanh toán. Vui lòng thử lại sau.");
+      }
+
+      const parsedPaymentUrl = new URL(paymentUrl);
+      if (!["https:", "http:"].includes(parsedPaymentUrl.protocol)) {
+        throw new Error("Liên kết thanh toán không hợp lệ. Vui lòng thử lại sau.");
+      }
+
+      window.location.assign(parsedPaymentUrl.href);
+    } catch (error) {
+      notifyApiErrorToast(error, "Không thể tiếp tục thanh toán đơn hàng.");
+      setContinuingPaymentOrderId(null);
     }
   };
 
@@ -417,6 +442,19 @@ export default function OrderHistoryPage() {
                           : order.address?.detail || "Chưa có thông tin giao hàng"}
                       </span>
                       <div className="flex gap-2">
+                        {order.status === "Cho_thanh_toan" && order.order_type === "Mua_le" && (
+                          <button
+                            type="button"
+                            onClick={() => continueOrderPayment(order)}
+                            disabled={continuingPaymentOrderId !== null}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-700 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            <CreditCard className="h-4 w-4" aria-hidden="true" />
+                            {continuingPaymentOrderId === order.order_id
+                              ? "Đang mở thanh toán..."
+                              : "Thanh toán tiếp"}
+                          </button>
+                        )}
                         {order.can_claim && (
                           <button
                             type="button"
