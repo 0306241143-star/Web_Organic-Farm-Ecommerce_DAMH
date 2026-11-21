@@ -42,7 +42,7 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'min:1'],
-            'quantity' => ['sometimes', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999.99'],
+            'quantity' => ['sometimes', 'integer', 'min:1', 'max:99999999'],
         ]);
 
         $userId = (int) $request->user()->getAuthIdentifier();
@@ -95,7 +95,7 @@ class CartController extends Controller
     public function update(Request $request, int $productId, CartPricingService $pricing): JsonResponse
     {
         $validated = $request->validate([
-            'quantity' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999.99'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:99999999'],
         ]);
 
         $userId = (int) $request->user()->getAuthIdentifier();
