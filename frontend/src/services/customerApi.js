@@ -41,7 +41,13 @@ export const customerApi = {
     axiosClient.post(`/customer/subscriptions/${subscriptionId}/checkout`),
 
   // Lịch sử đơn hàng, ví điểm & khiếu nại
-  getOrders: () => axiosClient.get("/customer/orders"),
-  getRewardPoints: () => axiosClient.get("/customer/rewards"),
+  getOrders: (params) => axiosClient.get("/customer/orders", { params }),
+  getOrder: (orderId) => axiosClient.get(`/customer/orders/${orderId}`),
+  getSubscriptions: (params) => axiosClient.get("/customer/subscriptions", { params }),
+  pauseSubscription: (subscriptionId) =>
+    axiosClient.post(`/customer/subscriptions/${subscriptionId}/pause`),
+  resumeSubscription: (subscriptionId) =>
+    axiosClient.post(`/customer/subscriptions/${subscriptionId}/resume`),
+  getRewardPoints: (params) => axiosClient.get("/customer/rewards", { params }),
   createClaim: (data) => axiosClient.post("/customer/claims", data),
 };

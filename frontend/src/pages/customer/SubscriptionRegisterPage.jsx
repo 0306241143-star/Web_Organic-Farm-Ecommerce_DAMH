@@ -273,32 +273,6 @@ export default function SubscriptionRegisterPage() {
         >
           {notice}
         </p>
-      ) : (
-        <div className="mt-6">
-          <SubscriptionScheduleForm
-            packages={packages}
-            addresses={addresses}
-            addressMode={addressMode}
-            packageId={packageId}
-            addressId={addressId}
-            shippingAddress={shippingAddress}
-            startDate={startDate}
-            minStartDate={minStartDate}
-            deliveryDays={deliveryDays}
-            onPackageChange={setPackageId}
-            onAddressModeChange={setAddressMode}
-            onAddressChange={setAddressId}
-            onShippingAddressChange={(field, value) =>
-              setShippingAddress((current) => ({ ...current, [field]: value }))
-            }
-            onStartDateChange={setStartDate}
-            onToggleDay={toggleDay}
-            onWindowChange={changeWindow}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            apiPayReady={apiPayReady}
-          />
-        </div>
       )}
 
       {subscriptionId ? (
