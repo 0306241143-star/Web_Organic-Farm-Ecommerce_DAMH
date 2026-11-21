@@ -134,6 +134,7 @@ Route::get('/categories', [\App\Http\Controllers\Api\Public\CategoryController::
 Route::get('/products', [\App\Http\Controllers\Api\Public\ProductController::class, 'index']);
 Route::get('/products/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
 Route::get('/public/san-pham/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
+Route::get('/brand-story', [\App\Http\Controllers\Api\Public\BrandStoryController::class, 'index']);
 
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
 Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
