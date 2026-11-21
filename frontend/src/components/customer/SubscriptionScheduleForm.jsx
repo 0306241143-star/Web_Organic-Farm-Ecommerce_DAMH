@@ -281,26 +281,15 @@ export default function SubscriptionScheduleForm({
                   maxLength={255}
                   required
                   disabled={isSubmitting}
-                  placeholder="Số nhà, tên đường, phường, quận..."
+                  placeholder="Số nhà, tên đường, ấp/khu phố..."
                   className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
                 />
               </label>
               <label className="text-sm font-semibold text-slate-700">
-                Phường / xã *
+                Phường / xã mới *
                 <input
                   value={shippingAddress.ward}
                   onChange={(event) => onShippingAddressChange("ward", event.target.value)}
-                  maxLength={100}
-                  required
-                  disabled={isSubmitting}
-                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                />
-              </label>
-              <label className="text-sm font-semibold text-slate-700">
-                Quận / huyện *
-                <input
-                  value={shippingAddress.district}
-                  onChange={(event) => onShippingAddressChange("district", event.target.value)}
                   maxLength={100}
                   required
                   disabled={isSubmitting}
@@ -320,7 +309,7 @@ export default function SubscriptionScheduleForm({
                 />
               </label>
               <p className="text-xs leading-5 text-slate-500 sm:col-span-2">
-                Địa chỉ mới sẽ được lưu vào tài khoản và định vị để hỗ trợ tính toán giao hàng.
+                Dùng phường/xã hiện hành và tỉnh/thành phố; không nhập quận/huyện. Địa chỉ mới sẽ được lưu và định vị để tính giao hàng.
               </p>
             </div>
           )}

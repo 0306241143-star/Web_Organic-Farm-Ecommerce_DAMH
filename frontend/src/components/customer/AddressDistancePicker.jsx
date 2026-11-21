@@ -10,7 +10,6 @@ export default function AddressDistancePicker({
   value,
   onChange,
   onAddAddress,
-  onEditAddress,
   disabled = false,
 }) {
   const selectedAddress = addresses.find((address) => String(address.id) === String(value));
@@ -65,14 +64,6 @@ export default function AddressDistancePicker({
               <p className="mt-1">{selectedAddress.phone}</p>
               <p className="mt-1">{selectedAddress.address}</p>
               <div className="mt-3 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => onEditAddress(selectedAddress)}
-                  disabled={disabled}
-                  className="min-h-10 rounded-lg border border-emerald-800 px-3 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
-                >
-                  Sửa người nhận
-                </button>
                 <button
                   type="button"
                   onClick={onAddAddress}
