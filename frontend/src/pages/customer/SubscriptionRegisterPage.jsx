@@ -59,8 +59,7 @@ export default function SubscriptionRegisterPage() {
     phone: "",
     street: "",
     ward: "",
-    district: "",
-    province: "",
+    province: "TP. Hồ Chí Minh",
   });
   const [startDate, setStartDate] = useState(() => localDateString());
   const [minStartDate] = useState(() => localDateString());

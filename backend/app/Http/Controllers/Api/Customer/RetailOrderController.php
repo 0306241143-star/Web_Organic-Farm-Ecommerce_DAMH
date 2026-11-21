@@ -31,6 +31,10 @@ class RetailOrderController extends Controller
 {
     use ApiResponse;
 
+    private const LEGACY_DEFAULT_LATITUDE = 10.7825400;
+
+    private const LEGACY_DEFAULT_LONGITUDE = 106.6934200;
+
     /**
      * Lấy danh sách địa chỉ giao hàng của khách hàng hiện tại.
      */
@@ -46,7 +50,6 @@ class RetailOrderController extends Controller
                 'So_dien_thoai_nguoi_nhan',
                 'Dia_chi_chi_tiet',
                 'Phuong_xa',
-                'Quan_huyen',
                 'Tinh_thanh',
                 'Vi_do',
                 'Kinh_do',
@@ -58,14 +61,12 @@ class RetailOrderController extends Controller
                 'phone' => $address->So_dien_thoai_nguoi_nhan,
                 'detail_address' => $address->Dia_chi_chi_tiet,
                 'ward' => $address->Phuong_xa,
-                'district' => $address->Quan_huyen,
                 'province' => $address->Tinh_thanh,
                 'latitude' => (float) $address->Vi_do,
                 'longitude' => (float) $address->Kinh_do,
                 'address' => implode(', ', array_filter([
                     $address->Dia_chi_chi_tiet,
                     $address->Phuong_xa,
-                    $address->Quan_huyen,
                     $address->Tinh_thanh,
                 ])),
                 'is_default' => (bool) $address->La_mac_dinh,
@@ -80,7 +81,7 @@ class RetailOrderController extends Controller
     /**
      * Thêm địa chỉ nhận hàng mới cho khách hàng.
      */
-    public function storeAddress(Request $request): JsonResponse
+    public function storeAddress(Request $request, GoongGeocodingService $geocoder): JsonResponse
     {
         $userId = $request->user()->getAuthIdentifier();
 
@@ -89,19 +90,26 @@ class RetailOrderController extends Controller
             'phone'          => ['required', 'string', 'max:15'],
             'detail_address' => ['required', 'string', 'max:255'],
             'ward'           => ['required', 'string', 'max:100'],
-            'district'       => ['required', 'string', 'max:100'],
+            'district'       => ['prohibited'],
             'province'       => ['required', 'string', 'max:100'],
-            'latitude'       => ['nullable', 'numeric'],
-            'longitude'      => ['nullable', 'numeric'],
+            'latitude'       => ['prohibited'],
+            'longitude'      => ['prohibited'],
             'is_default'     => ['nullable', 'boolean'],
         ], [
             'recipient_name.required' => 'Vui lòng nhập tên người nhận.',
             'phone.required'          => 'Vui lòng nhập số điện thoại người nhận.',
             'detail_address.required' => 'Vui lòng nhập số nhà, tên đường chi tiết.',
             'ward.required'           => 'Vui lòng nhập phường/xã.',
-            'district.required'       => 'Vui lòng nhập quận/huyện.',
             'province.required'       => 'Vui lòng nhập tỉnh/thành phố.',
+            'district.prohibited'     => 'Địa chỉ theo đơn vị mới không sử dụng quận/huyện.',
+            'latitude.prohibited'    => 'Tọa độ địa chỉ được hệ thống tự xác định.',
+            'longitude.prohibited'   => 'Tọa độ địa chỉ được hệ thống tự xác định.',
         ]);
+        $coordinates = $this->geocodeAddress([
+            'street' => $validated['detail_address'],
+            'ward' => $validated['ward'],
+            'province' => $validated['province'],
+        ], $geocoder);
 
         $hasExisting = DiaChiGiaoHang::where('Ma_nguoi_dung', $userId)->exists();
         $isDefault = !empty($validated['is_default']) || !$hasExisting;
@@ -116,10 +124,10 @@ class RetailOrderController extends Controller
             'So_dien_thoai_nguoi_nhan' => $validated['phone'],
             'Dia_chi_chi_tiet'         => $validated['detail_address'],
             'Phuong_xa'                => $validated['ward'],
-            'Quan_huyen'               => $validated['district'],
+            'Quan_huyen'               => '',
             'Tinh_thanh'               => $validated['province'],
-            'Vi_do'                    => $validated['latitude'] ?? 10.7825400,
-            'Kinh_do'                  => $validated['longitude'] ?? 106.6934200,
+            'Vi_do'                    => $coordinates['latitude'],
+            'Kinh_do'                  => $coordinates['longitude'],
             'La_mac_dinh'              => $isDefault,
         ]);
 
@@ -131,14 +139,12 @@ class RetailOrderController extends Controller
                 'phone'          => $address->So_dien_thoai_nguoi_nhan,
                 'detail_address' => $address->Dia_chi_chi_tiet,
                 'ward'           => $address->Phuong_xa,
-                'district'       => $address->Quan_huyen,
                 'province'       => $address->Tinh_thanh,
                 'latitude'       => (float) $address->Vi_do,
                 'longitude'      => (float) $address->Kinh_do,
                 'address'        => implode(', ', array_filter([
                     $address->Dia_chi_chi_tiet,
                     $address->Phuong_xa,
-                    $address->Quan_huyen,
                     $address->Tinh_thanh,
                 ])),
                 'is_default'     => (bool) $address->La_mac_dinh,
@@ -149,7 +155,11 @@ class RetailOrderController extends Controller
     /**
      * Cập nhật thông tin địa chỉ giao hàng.
      */
-    public function updateAddress(Request $request, int $id): JsonResponse
+    public function updateAddress(
+        Request $request,
+        int $id,
+        GoongGeocodingService $geocoder
+    ): JsonResponse
     {
         $userId = $request->user()->getAuthIdentifier();
 
@@ -170,12 +180,21 @@ class RetailOrderController extends Controller
             'phone'          => ['required', 'string', 'max:15'],
             'detail_address' => ['required', 'string', 'max:255'],
             'ward'           => ['required', 'string', 'max:100'],
-            'district'       => ['required', 'string', 'max:100'],
+            'district'       => ['prohibited'],
             'province'       => ['required', 'string', 'max:100'],
-            'latitude'       => ['nullable', 'numeric'],
-            'longitude'      => ['nullable', 'numeric'],
+            'latitude'       => ['prohibited'],
+            'longitude'      => ['prohibited'],
             'is_default'     => ['nullable', 'boolean'],
+        ], [
+            'district.prohibited' => 'Địa chỉ theo đơn vị mới không sử dụng quận/huyện.',
+            'latitude.prohibited' => 'Tọa độ địa chỉ được hệ thống tự xác định.',
+            'longitude.prohibited' => 'Tọa độ địa chỉ được hệ thống tự xác định.',
         ]);
+        $coordinates = $this->geocodeAddress([
+            'street' => $validated['detail_address'],
+            'ward' => $validated['ward'],
+            'province' => $validated['province'],
+        ], $geocoder);
 
         $isDefault = !empty($validated['is_default']);
 
@@ -190,10 +209,10 @@ class RetailOrderController extends Controller
             'So_dien_thoai_nguoi_nhan' => $validated['phone'],
             'Dia_chi_chi_tiet'         => $validated['detail_address'],
             'Phuong_xa'                => $validated['ward'],
-            'Quan_huyen'               => $validated['district'],
+            'Quan_huyen'               => '',
             'Tinh_thanh'               => $validated['province'],
-            'Vi_do'                    => $validated['latitude'] ?? $address->Vi_do,
-            'Kinh_do'                  => $validated['longitude'] ?? $address->Kinh_do,
+            'Vi_do'                    => $coordinates['latitude'],
+            'Kinh_do'                  => $coordinates['longitude'],
             'La_mac_dinh'              => $isDefault ? true : $address->La_mac_dinh,
         ]);
 
@@ -205,14 +224,12 @@ class RetailOrderController extends Controller
                 'phone'          => $address->So_dien_thoai_nguoi_nhan,
                 'detail_address' => $address->Dia_chi_chi_tiet,
                 'ward'           => $address->Phuong_xa,
-                'district'       => $address->Quan_huyen,
                 'province'       => $address->Tinh_thanh,
                 'latitude'       => (float) $address->Vi_do,
                 'longitude'      => (float) $address->Kinh_do,
                 'address'        => implode(', ', array_filter([
                     $address->Dia_chi_chi_tiet,
                     $address->Phuong_xa,
-                    $address->Quan_huyen,
                     $address->Tinh_thanh,
                 ])),
                 'is_default'     => (bool) $address->La_mac_dinh,
@@ -499,13 +516,15 @@ class RetailOrderController extends Controller
         Request $request,
         CartPricingService $pricing,
         ShippingDistanceService $shipping,
-        RewardPointService $rewards
+        RewardPointService $rewards,
+        GoongGeocodingService $geocoder
     ): JsonResponse {
         $validated = $request->validate([
             'address_id' => ['required', 'integer', 'min:1'],
             'points_to_use' => ['sometimes', 'integer', 'min:0'],
         ]);
         $address = $this->addressForCustomer((int) $validated['address_id'], $request);
+        $this->refreshLegacyDefaultCoordinates($address, $geocoder);
         $cart = $this->cartForCustomer($request);
         $items = $this->pricedItems($cart, $pricing);
         $delivery = $this->estimateShipping($address, $shipping);
@@ -532,9 +551,11 @@ class RetailOrderController extends Controller
         StoreOrderRequest $request,
         CartPricingService $pricing,
         ShippingDistanceService $shipping,
-        RewardPointService $rewards
+        RewardPointService $rewards,
+        GoongGeocodingService $geocoder
     ): JsonResponse {
         $address = $this->addressForCustomer((int) $request->validated('address_id'), $request);
+        $this->refreshLegacyDefaultCoordinates($address, $geocoder);
         $cart = $this->cartForCustomer($request);
         $delivery = $this->estimateShipping($address, $shipping);
         $userId = (int) $request->user()->getAuthIdentifier();
@@ -641,7 +662,7 @@ class RetailOrderController extends Controller
             'phone' => ['required', 'string', 'regex:/^(?:\+84|0)\d{9,10}$/'],
             'street' => ['required', 'string', 'max:255'],
             'ward' => ['required', 'string', 'max:100'],
-            'district' => ['required', 'string', 'max:100'],
+            'district' => ['prohibited'],
             'province' => ['required', 'string', 'max:100'],
         ];
     }
@@ -654,7 +675,6 @@ class RetailOrderController extends Controller
             'phone' => 'So_dien_thoai_nguoi_nhan',
             'street' => 'Dia_chi_chi_tiet',
             'ward' => 'Phuong_xa',
-            'district' => 'Quan_huyen',
             'province' => 'Tinh_thanh',
         ] as $input => $column) {
             if (array_key_exists($input, $validated)) {
@@ -671,7 +691,6 @@ class RetailOrderController extends Controller
             return $geocoder->geocode(implode(', ', [
                 $address['street'],
                 $address['ward'],
-                $address['district'],
                 $address['province'],
             ]));
         } catch (ConnectionException|RuntimeException $exception) {
@@ -685,6 +704,29 @@ class RetailOrderController extends Controller
         }
     }
 
+    private function refreshLegacyDefaultCoordinates(
+        DiaChiGiaoHang $address,
+        GoongGeocodingService $geocoder
+    ): void {
+        if (
+            abs((float) $address->Vi_do - self::LEGACY_DEFAULT_LATITUDE) > 0.0000001
+            || abs((float) $address->Kinh_do - self::LEGACY_DEFAULT_LONGITUDE) > 0.0000001
+        ) {
+            return;
+        }
+
+        $coordinates = $this->geocodeAddress([
+            'street' => $address->Dia_chi_chi_tiet,
+            'ward' => $address->Phuong_xa,
+            'province' => $address->Tinh_thanh,
+        ], $geocoder);
+
+        $address->update([
+            'Vi_do' => $coordinates['latitude'],
+            'Kinh_do' => $coordinates['longitude'],
+        ]);
+    }
+
     private function formatAddress(DiaChiGiaoHang $address): array
     {
         return [
@@ -693,12 +735,10 @@ class RetailOrderController extends Controller
             'phone' => $address->So_dien_thoai_nguoi_nhan,
             'street' => $address->Dia_chi_chi_tiet,
             'ward' => $address->Phuong_xa,
-            'district' => $address->Quan_huyen,
             'province' => $address->Tinh_thanh,
             'address' => implode(', ', array_filter([
                 $address->Dia_chi_chi_tiet,
                 $address->Phuong_xa,
-                $address->Quan_huyen,
                 $address->Tinh_thanh,
             ])),
             'is_default' => (bool) $address->La_mac_dinh,

@@ -50,11 +50,11 @@ class CustomerCartTest extends TestCase
         );
 
         $updated = $this->actingAs($customer, 'sanctum')
-            ->putJson('/api/customer/cart/items/1', ['quantity' => 2.5])
+            ->putJson('/api/customer/cart/items/1', ['quantity' => 2])
             ->assertOk();
 
         $this->assertSame(
-            2.5,
+            2.0,
             (float) collect($updated->json('data.items'))->firstWhere('id', 1)['quantity']
         );
 
@@ -82,6 +82,29 @@ class CustomerCartTest extends TestCase
         $this->actingAs($farmStaff, 'sanctum')
             ->getJson('/api/customer/cart')
             ->assertForbidden();
+    }
+
+    public function test_cart_only_accepts_positive_integer_quantities(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/cart/items', [
+                'product_id' => 1,
+                'quantity' => 1.5,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['quantity']);
+
+        $this->actingAs($customer, 'sanctum')
+            ->putJson('/api/customer/cart/items/1', ['quantity' => 1.5])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['quantity']);
+
+        $this->actingAs($customer, 'sanctum')
+            ->putJson('/api/customer/cart/items/1', ['quantity' => 0])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['quantity']);
     }
 
     public function test_customer_can_only_view_their_own_cart(): void

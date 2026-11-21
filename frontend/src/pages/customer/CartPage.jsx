@@ -20,9 +20,9 @@ export default function CartPage() {
 
   const handleQuantityUpdate = async (item, rawQuantity) => {
     const quantity = Number(rawQuantity);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
       setQuantities((current) => ({ ...current, [item.id]: String(item.quantity) }));
-      showGlobalToast("Số lượng phải lớn hơn 0.", "warning");
+      showGlobalToast("Số lượng phải là số nguyên dương.", "warning");
       return;
     }
     if (quantity === Number(item.quantity)) return;
@@ -158,20 +158,25 @@ export default function CartPage() {
                       <button
                         type="button"
                         aria-label={`Giảm số lượng ${item.name}`}
-                        disabled={isBusy || Number(item.quantity) <= 0.01}
-                        onClick={() => handleQuantityUpdate(item, Math.max(0.01, Number(item.quantity) - 1))}
+                        disabled={isBusy || Number(item.quantity) <= 1}
+                        onClick={() => handleQuantityUpdate(item, Math.max(1, Math.floor(Number(item.quantity)) - 1))}
                         className="inline-flex min-h-11 min-w-11 items-center justify-center text-slate-700 transition hover:text-emerald-800 disabled:opacity-40"
                       >
                         <Minus className="h-4 w-4" aria-hidden="true" />
                       </button>
                       <input
                         aria-label={`Số lượng ${item.name}`}
-                        type="number"
-                        min="0.01"
-                        step="0.01"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[1-9][0-9]*"
                         value={quantities[item.id] ?? item.quantity}
                         disabled={isBusy}
-                        onChange={(event) => setQuantities((current) => ({ ...current, [item.id]: event.target.value }))}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          if (/^(?:[1-9]\d*)?$/.test(value)) {
+                            setQuantities((current) => ({ ...current, [item.id]: value }));
+                          }
+                        }}
                         onBlur={() => handleQuantityUpdate(item, quantities[item.id] ?? item.quantity)}
                         className="min-h-11 w-20 border-x border-slate-200 px-2 py-2 text-center text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700"
                       />
@@ -179,7 +184,7 @@ export default function CartPage() {
                         type="button"
                         aria-label={`Tăng số lượng ${item.name}`}
                         disabled={isBusy}
-                        onClick={() => handleQuantityUpdate(item, Number(item.quantity) + 1)}
+                        onClick={() => handleQuantityUpdate(item, Math.floor(Number(item.quantity)) + 1)}
                         className="inline-flex min-h-11 min-w-11 items-center justify-center text-slate-700 transition hover:text-emerald-800 disabled:opacity-40"
                       >
                         <Plus className="h-4 w-4" aria-hidden="true" />

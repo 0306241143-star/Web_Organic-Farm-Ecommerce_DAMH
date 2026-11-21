@@ -21,11 +21,11 @@ export default function CheckoutPage() {
     phone: "",
     street: "",
     ward: "",
-    district: "",
     province: "",
   });
   const [savingAddress, setSavingAddress] = useState(false);
   const [addressError, setAddressError] = useState("");
+  const [addressFieldErrors, setAddressFieldErrors] = useState({});
   const [quote, setQuote] = useState(null);
   const [options, setOptions] = useState(null);
   const [pointsAvailable, setPointsAvailable] = useState(0);
@@ -42,6 +42,7 @@ export default function CheckoutPage() {
     return key ? localStorage.getItem(key) || "" : "";
   });
   const [order, setOrder] = useState(null);
+  const [orderItemsLoadResult, setOrderItemsLoadResult] = useState(null);
   const [orderStatus, setOrderStatus] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(false);
@@ -49,6 +50,29 @@ export default function CheckoutPage() {
   const [payment, setPayment] = useState(null);
   const pendingOrderKey = user?.id ? `xanhfarm:pendingRetailOrder:${user.id}` : null;
   const quoteRequest = useRef(0);
+
+  useEffect(() => {
+    if (!pendingOrderId) return undefined;
+
+    let active = true;
+    customerApi.getOrder(pendingOrderId)
+      .then((response) => {
+        if (active) {
+          setOrder(response.data);
+          setOrderItemsLoadResult({ orderId: pendingOrderId, failed: false });
+        }
+      })
+      .catch((requestError) => {
+        if (active) {
+          setOrderItemsLoadResult({ orderId: pendingOrderId, failed: true });
+          notifyApiErrorToast(requestError, "Không thể tải danh sách sản phẩm của đơn hàng.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [pendingOrderId]);
 
   const loadQuote = useCallback((selectedAddressId, pointsToUse = 0) => {
     const requestId = ++quoteRequest.current;
@@ -174,28 +198,15 @@ export default function CheckoutPage() {
     loadQuote(nextAddressId, useRewardPoints ? pointsAvailable : 0);
   };
 
-  const beginAddressEdit = (address) => {
-    setAddressError("");
-    setAddressDraft({
-      recipient_name: address.recipient_name,
-      phone: address.phone,
-      street: address.street,
-      ward: address.ward,
-      district: address.district,
-      province: address.province,
-    });
-    setAddressEditor("edit");
-  };
-
   const beginAddressCreate = () => {
     setAddressError("");
+    setAddressFieldErrors({});
     setAddressDraft({
       recipient_name: user?.name ?? "",
-      phone: "",
+      phone: user?.phone ?? "",
       street: "",
       ward: "",
-      district: "",
-      province: "",
+      province: "TP. Hồ Chí Minh",
     });
     setAddressEditor("create");
   };
@@ -203,28 +214,54 @@ export default function CheckoutPage() {
   const saveAddress = async (event) => {
     event.preventDefault();
     if (savingAddress) return;
+    const requiredFields = ["recipient_name", "phone", "street", "ward", "province"];
+    const validationErrors = {};
+    requiredFields.forEach((field) => {
+      if (!String(addressDraft[field] ?? "").trim()) {
+        validationErrors[field] = "Vui lòng nhập thông tin này.";
+      }
+    });
+    if (
+      addressDraft.phone.trim()
+      && !/^(?:\+84|0)[0-9]{9,10}$/.test(addressDraft.phone.trim())
+    ) {
+      validationErrors.phone = "Nhập số điện thoại Việt Nam, ví dụ 0912345678.";
+    }
+    if (Object.keys(validationErrors).length > 0) {
+      setAddressFieldErrors(validationErrors);
+      setAddressError("");
+      return;
+    }
+
     setSavingAddress(true);
     setAddressError("");
+    setAddressFieldErrors({});
     try {
-      const payload = addressEditor === "edit"
-        ? {
-          recipient_name: addressDraft.recipient_name,
-          phone: addressDraft.phone,
-        }
-        : addressDraft;
-      const response = addressEditor === "edit"
-        ? await customerApi.updateAddress(addressId, payload)
-        : await customerApi.createAddress(payload);
+      const payload = {
+        recipient_name: addressDraft.recipient_name,
+        phone: addressDraft.phone,
+        detail_address: addressDraft.street,
+        ward: addressDraft.ward,
+        province: addressDraft.province,
+      };
+      const response = await customerApi.createAddress(payload);
       const savedAddress = response.data;
       const listResponse = await customerApi.getAddresses();
       const nextAddresses = listResponse.data ?? [];
       setAddresses(nextAddresses);
       setAddressId(String(savedAddress.id));
       setAddressEditor("");
+      setAddressFieldErrors({});
       loadQuote(savedAddress.id, useRewardPoints ? pointsAvailable : 0);
     } catch (requestError) {
-      setAddressError(requestError.message || "Không thể lưu địa chỉ.");
-      notifyApiErrorToast(requestError, "Không thể lưu địa chỉ.");
+      const fieldErrors = requestError.fieldErrors ?? {};
+      const visibleFields = ["recipient_name", "phone", "detail_address", "ward", "province"];
+      const hasVisibleFieldErrors = visibleFields.some((field) => fieldErrors[field]);
+      setAddressFieldErrors(fieldErrors);
+      if (!hasVisibleFieldErrors || Object.keys(fieldErrors).some((field) => !visibleFields.includes(field))) {
+        setAddressError(requestError.message || "Không thể lưu địa chỉ.");
+        notifyApiErrorToast(requestError, "Không thể lưu địa chỉ.");
+      }
     } finally {
       setSavingAddress(false);
     }
@@ -232,7 +269,26 @@ export default function CheckoutPage() {
 
   const changeAddressDraft = (field, value) => {
     setAddressDraft((current) => ({ ...current, [field]: value }));
+    setAddressFieldErrors((current) => {
+      const errorField = field === "street" ? "detail_address" : field;
+      if (!current[errorField]) return current;
+      const next = { ...current };
+      delete next[errorField];
+      return next;
+    });
   };
+
+  const getAddressFieldError = (field) => {
+    const errorField = field === "street" ? "detail_address" : field;
+    return addressFieldErrors[errorField] ?? addressFieldErrors[field];
+  };
+
+  const addressInputClass = (field) =>
+    `mt-1 min-h-11 w-full rounded-xl border px-3 font-normal outline-none focus:ring-2 ${
+      getAddressFieldError(field)
+        ? "border-red-500 focus:border-red-600 focus:ring-red-100"
+        : "border-slate-200 focus:border-emerald-700 focus:ring-emerald-100"
+    }`;
 
   const handleUsePointsChange = (enabled) => {
     setUseRewardPoints(enabled);
@@ -287,12 +343,26 @@ export default function CheckoutPage() {
   const displayTotal = quote?.total ?? order?.total;
   const displayPointsDiscount = quote?.points_discount ?? order?.points_discount ?? 0;
   const selectedAddress = addresses.find((address) => String(address.id) === String(addressId));
-  const checkoutItems = quote?.items?.length
-    ? quote.items.map((quoteItem) => ({
-      ...(cartItems.find((item) => String(item.id) === String(quoteItem.id)) ?? {}),
-      ...quoteItem,
+  const orderItemsLoading = Boolean(
+    pendingOrderId && orderItemsLoadResult?.orderId !== pendingOrderId
+  );
+  const savedOrderItems = pendingOrderId
+    && String(order?.order_id) === pendingOrderId
+    && Array.isArray(order?.items)
+    ? (order?.items || []).map((item) => ({
+      ...item,
+      id: item.id ?? item.product_id,
+      image_url: item.image_url ?? item.image,
     }))
-    : cartItems;
+    : null;
+  const checkoutItems = pendingOrderId
+    ? savedOrderItems || []
+    : quote?.items?.length
+      ? quote.items.map((quoteItem) => ({
+        ...(cartItems.find((item) => String(item.id) === String(quoteItem.id)) ?? {}),
+        ...quoteItem,
+      }))
+      : cartItems;
 
   if (pageLoading) {
     return (
@@ -373,12 +443,55 @@ export default function CheckoutPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="flex items-center gap-2 border-b border-slate-100 pb-4 text-lg font-extrabold text-emerald-900">
               <ShoppingBag className="h-5 w-5 text-emerald-700" aria-hidden="true" />
-              Danh Sách Nông Sản ({checkoutItems.length} mặt hàng)
+              Danh Sách Nông Sản ({pendingOrderId && savedOrderItems === null
+                ? orderItemsLoading ? "đang tải" : "—"
+                : checkoutItems.length} mặt hàng)
             </h2>
             {pendingOrderId ? (
-              <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                Đơn hàng #{pendingOrderId} đã được tạo. Hoàn tất thanh toán hoặc kiểm tra trạng thái đơn hàng ở phía trên.
-              </p>
+              <>
+                <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                  Đơn hàng #{pendingOrderId} đã được tạo. Hoàn tất thanh toán hoặc kiểm tra trạng thái đơn hàng ở phía trên.
+                </p>
+                {savedOrderItems?.length > 0 ? (
+                  <ul className="divide-y divide-slate-100">
+                    {savedOrderItems.map((item, index) => (
+                      <li key={`${item.id}-${index}`} className="flex items-center gap-3 py-4 sm:gap-4">
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-emerald-50 sm:h-20 sm:w-20">
+                          {item.image_url ? (
+                            <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-emerald-700">
+                              <ShoppingBag className="h-7 w-7" aria-hidden="true" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold leading-5 text-slate-900">{item.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Đơn giá: {formatCurrencyVnd(item.unit_price ?? item.price)}/{item.unit || "đơn vị"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Số lượng: {item.quantity} {item.unit || ""}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-right font-extrabold text-slate-900">
+                          {formatCurrencyVnd(item.line_total ?? (item.price * item.quantity))}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-600" role="status">
+                    {savedOrderItems === null && orderItemsLoading
+                      ? "Đang tải các mặt hàng của đơn..."
+                      : orderItemsLoadResult?.orderId === pendingOrderId && orderItemsLoadResult.failed
+                        ? "Không tải được chi tiết mặt hàng. Đơn hàng vẫn được lưu; bạn có thể xem trong Lịch sử đơn hàng."
+                      : savedOrderItems === null
+                        ? "Chưa tải được chi tiết mặt hàng. Đơn hàng vẫn được lưu; bạn có thể xem trong Lịch sử đơn hàng."
+                        : "Đơn hàng không có chi tiết mặt hàng."}
+                  </p>
+                )}
+              </>
             ) : checkoutItems.length > 0 ? (
               <ul className="divide-y divide-slate-100">
                 {checkoutItems.map((item) => (
@@ -455,7 +568,6 @@ export default function CheckoutPage() {
                 value={addressId}
                 onChange={handleAddressChange}
                 onAddAddress={beginAddressCreate}
-                onEditAddress={beginAddressEdit}
                 disabled={submitting}
               />
               {selectedAddress && quote && (
@@ -471,9 +583,7 @@ export default function CheckoutPage() {
               )}
               {addressEditor && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                  <h2 className="text-lg font-extrabold text-slate-900">
-                    {addressEditor === "edit" ? "Sửa người nhận" : "Thêm địa chỉ giao hàng"}
-                  </h2>
+                  <h2 className="text-lg font-extrabold text-slate-900">Thêm địa chỉ giao hàng</h2>
                   {addressError && <p role="alert" className="mt-3 text-sm text-red-700">{addressError}</p>}
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <label className="text-sm font-semibold text-slate-700">
@@ -484,8 +594,15 @@ export default function CheckoutPage() {
                         maxLength={150}
                         required
                         disabled={savingAddress}
-                        className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+                        aria-invalid={Boolean(getAddressFieldError("recipient_name"))}
+                        aria-describedby={getAddressFieldError("recipient_name") ? "address-recipient-name-error" : undefined}
+                        className={addressInputClass("recipient_name")}
                       />
+                      {getAddressFieldError("recipient_name") && (
+                        <p id="address-recipient-name-error" role="alert" className="mt-1 text-xs font-medium text-red-700">
+                          {getAddressFieldError("recipient_name")}
+                        </p>
+                      )}
                     </label>
                     <label className="text-sm font-semibold text-slate-700">
                       Số điện thoại
@@ -498,34 +615,43 @@ export default function CheckoutPage() {
                         maxLength={13}
                         required
                         disabled={savingAddress}
-                        className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
+                        aria-invalid={Boolean(getAddressFieldError("phone"))}
+                        aria-describedby={getAddressFieldError("phone") ? "address-phone-error" : undefined}
+                        className={addressInputClass("phone")}
                       />
-                    </label>
-                    {addressEditor === "create" && (
-                      <>
-                        {[
-                          ["street", "Số nhà, tên đường"],
-                          ["ward", "Phường / xã"],
-                          ["district", "Quận / huyện"],
-                          ["province", "Tỉnh / thành phố"],
-                        ].map(([field, label]) => (
-                          <label key={field} className="text-sm font-semibold text-slate-700">
-                            {label}
-                            <input
-                              value={addressDraft[field]}
-                              onChange={(event) => changeAddressDraft(field, event.target.value)}
-                              maxLength={field === "street" ? 255 : 100}
-                              required
-                              disabled={savingAddress}
-                              className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 font-normal outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
-                            />
-                          </label>
-                        ))}
-                        <p className="text-xs text-slate-500 sm:col-span-2">
-                          Hệ thống sẽ định vị địa chỉ để tính phí giao hàng.
+                      {getAddressFieldError("phone") && (
+                        <p id="address-phone-error" role="alert" className="mt-1 text-xs font-medium text-red-700">
+                          {getAddressFieldError("phone")}
                         </p>
-                      </>
-                    )}
+                      )}
+                    </label>
+                    {[
+                      ["street", "Số nhà, tên đường"],
+                      ["ward", "Phường / xã mới"],
+                      ["province", "Tỉnh / thành phố"],
+                    ].map(([field, label]) => (
+                      <label key={field} className="text-sm font-semibold text-slate-700">
+                        {label}
+                        <input
+                          value={addressDraft[field]}
+                          onChange={(event) => changeAddressDraft(field, event.target.value)}
+                          maxLength={field === "street" ? 255 : 100}
+                          required
+                          disabled={savingAddress}
+                          aria-invalid={Boolean(getAddressFieldError(field))}
+                          aria-describedby={getAddressFieldError(field) ? `address-${field}-error` : undefined}
+                          className={addressInputClass(field)}
+                        />
+                        {getAddressFieldError(field) && (
+                          <p id={`address-${field}-error`} role="alert" className="mt-1 text-xs font-medium text-red-700">
+                            {getAddressFieldError(field)}
+                          </p>
+                        )}
+                      </label>
+                    ))}
+                    <p className="text-xs text-slate-500 sm:col-span-2">
+                      Địa chỉ mới chỉ gồm số nhà/đường, phường/xã và tỉnh/thành phố; không nhập quận/huyện.
+                    </p>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button
@@ -538,7 +664,11 @@ export default function CheckoutPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAddressEditor("")}
+                      onClick={() => {
+                        setAddressEditor("");
+                        setAddressError("");
+                        setAddressFieldErrors({});
+                      }}
                       disabled={savingAddress}
                       className="min-h-11 rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                     >
@@ -640,11 +770,17 @@ export default function CheckoutPage() {
                 Hoàn tất thanh toán tại ApiPay; đơn chỉ được xác nhận sau khi hệ thống nhận webhook hợp lệ.
               </p>
               {payment.qr_url && (
-                <img
-                  src={payment.qr_url}
-                  alt="Mã QR thanh toán ApiPay"
-                  className="mx-auto mt-4 h-48 w-48 rounded-xl border border-emerald-100 bg-white p-2"
-                />
+                <>
+                  <img
+                    src={payment.qr_url}
+                    alt="Mã QR thanh toán do ApiPay cung cấp"
+                    className="mx-auto mt-4 h-48 w-48 rounded-xl border border-emerald-100 bg-white p-2"
+                  />
+                  <p className="mt-3 text-center text-xs leading-5 text-slate-600">
+                    Đây là mã QR do ApiPay cung cấp, không phải mã QR chuyển khoản dùng chung cho mọi ứng dụng ngân hàng.
+                    Nếu ứng dụng báo định dạng không hỗ trợ, hãy mở trang thanh toán ApiPay bên dưới và làm theo hướng dẫn.
+                  </p>
+                </>
               )}
               {orderStatus === "Cho_thanh_toan" && pendingOrderId && (
                 <p className="mt-4 text-xs text-amber-800" role="status">
@@ -657,7 +793,7 @@ export default function CheckoutPage() {
                 rel="noreferrer"
                 className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#0b4524] px-5 py-3 font-bold text-white transition hover:bg-emerald-800"
               >
-                Mở trang thanh toán ApiPay
+                Tiếp tục thanh toán trên ApiPay
               </a>
               {payment.expires_at && (
                 <p className="mt-3 text-center text-xs text-emerald-900">

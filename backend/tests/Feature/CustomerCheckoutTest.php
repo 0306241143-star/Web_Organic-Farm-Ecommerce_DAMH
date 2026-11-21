@@ -211,6 +211,72 @@ class CustomerCheckoutTest extends TestCase
             ->assertJsonValidationErrors(['cart']);
     }
 
+    public function test_new_and_legacy_delivery_addresses_use_geocoded_coordinates(): void
+    {
+        $customer = NguoiDung::query()->findOrFail(5);
+
+        $created = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/addresses', [
+                'recipient_name' => 'Nguyễn Minh An',
+                'phone' => '0912345678',
+                'detail_address' => '80/10B tổ 11 ấp 5',
+                'ward' => 'Xã Bà Điểm',
+                'province' => 'Thành phố Hồ Chí Minh',
+            ])
+            ->assertOk();
+        $newAddressId = $created->json('data.id');
+
+        $this->assertDatabaseHas('dia_chi_giao_hang', [
+            'Ma_dia_chi' => $newAddressId,
+            'Vi_do' => 10.8231,
+            'Kinh_do' => 106.6297,
+        ]);
+
+        $legacyAddress = DiaChiGiaoHang::query()->findOrFail(1);
+        $this->assertSame(10.78254, (float) $legacyAddress->Vi_do);
+        $this->assertSame(106.69342, (float) $legacyAddress->Kinh_do);
+
+        GioHang::query()
+            ->where('Ma_nguoi_dung', $customer->Ma_nguoi_dung)
+            ->firstOrFail()
+            ->chiTiets()
+            ->delete();
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/cart/items', [
+                'product_id' => 1,
+                'quantity' => 1,
+            ])
+            ->assertOk();
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/checkout/quote', ['address_id' => 1])
+            ->assertOk()
+            ->assertJsonPath('data.distance_km', 12.5);
+
+        $this->assertDatabaseHas('dia_chi_giao_hang', [
+            'Ma_dia_chi' => 1,
+            'Vi_do' => 10.8231,
+            'Kinh_do' => 106.6297,
+        ]);
+
+        $this->actingAs($customer, 'sanctum')
+            ->putJson("/api/customer/addresses/{$newAddressId}", [
+                'recipient_name' => 'Nguyễn Minh An',
+                'phone' => '0912345678',
+                'detail_address' => '12 Nguyễn Trãi',
+                'ward' => 'Phường Bến Thành',
+                'province' => 'Thành phố Hồ Chí Minh',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('dia_chi_giao_hang', [
+            'Ma_dia_chi' => $newAddressId,
+            'Dia_chi_chi_tiet' => '12 Nguyễn Trãi',
+            'Vi_do' => 10.8231,
+            'Kinh_do' => 106.6297,
+        ]);
+    }
+
     public function test_apipay_checkout_requires_webhook_configuration(): void
     {
         $customer = NguoiDung::query()->findOrFail(5);
@@ -264,6 +330,26 @@ class CustomerCheckoutTest extends TestCase
 
         $this->assertSame(2500.0, $estimate['price_per_km']);
         $this->assertSame(31250, $estimate['shipping_fee']);
+    }
+
+    public function test_shipping_uses_the_configured_cao_thang_origin_coordinates(): void
+    {
+        config([
+            'services.shipping.origin_name' => 'Nhà C – Trường Cao đẳng Kỹ thuật Cao Thắng',
+            'services.shipping.origin_latitude' => 10.771687,
+            'services.shipping.origin_longitude' => 106.701978,
+        ]);
+
+        $estimate = app(ShippingDistanceService::class)
+            ->estimate(DiaChiGiaoHang::query()->findOrFail(1));
+
+        $this->assertSame('Nhà C – Trường Cao đẳng Kỹ thuật Cao Thắng', $estimate['origin_name']);
+        Http::assertSent(function (ClientRequest $request): bool {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return $request->method() === 'GET'
+                && ($query['origins'] ?? null) === '10.771687,106.701978';
+        });
     }
 
     public function test_customer_can_place_a_cod_order_without_creating_an_apipay_payment(): void

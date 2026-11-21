@@ -134,7 +134,6 @@ class SubscriptionController extends Controller
             'address' => $address ? implode(', ', array_filter([
                 $address->Dia_chi_chi_tiet,
                 $address->Phuong_xa,
-                $address->Quan_huyen,
                 $address->Tinh_thanh,
             ])) : null,
             'delivery_days' => $registration->lichGiao
@@ -190,7 +189,6 @@ class SubscriptionController extends Controller
                 $fullAddress = implode(', ', [
                     $shippingAddress['street'],
                     $shippingAddress['ward'],
-                    $shippingAddress['district'],
                     $shippingAddress['province'],
                 ]);
 
@@ -264,7 +262,7 @@ class SubscriptionController extends Controller
                 'So_dien_thoai_nguoi_nhan' => $shippingAddress['phone'],
                 'Dia_chi_chi_tiet' => $shippingAddress['street'],
                 'Phuong_xa' => $shippingAddress['ward'],
-                'Quan_huyen' => $shippingAddress['district'],
+                'Quan_huyen' => '',
                 'Tinh_thanh' => $shippingAddress['province'],
                 'Vi_do' => $coordinates['latitude'],
                 'Kinh_do' => $coordinates['longitude'],
@@ -329,7 +327,6 @@ class SubscriptionController extends Controller
             && $address->So_dien_thoai_nguoi_nhan === $requested['phone']
             && $address->Dia_chi_chi_tiet === $requested['street']
             && $address->Phuong_xa === $requested['ward']
-            && $address->Quan_huyen === $requested['district']
             && $address->Tinh_thanh === $requested['province'];
     }
 

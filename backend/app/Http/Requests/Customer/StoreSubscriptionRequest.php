@@ -32,7 +32,7 @@ class StoreSubscriptionRequest extends FormRequest
             'shipping_address.phone' => ['required_with:shipping_address', 'string', 'regex:/^(?:\+84|0)\d{9,10}$/'],
             'shipping_address.street' => ['required_with:shipping_address', 'string', 'max:255'],
             'shipping_address.ward' => ['required_with:shipping_address', 'string', 'max:100'],
-            'shipping_address.district' => ['required_with:shipping_address', 'string', 'max:100'],
+            'shipping_address.district' => ['prohibited'],
             'shipping_address.province' => ['required_with:shipping_address', 'string', 'max:100'],
             'start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'delivery_days' => ['required', 'array', 'min:1', 'max:7'],
@@ -55,5 +55,12 @@ class StoreSubscriptionRequest extends FormRequest
                 $validator->errors()->add('address_id', 'Chỉ được chọn địa chỉ đã lưu hoặc nhập địa chỉ mới.');
             }
         });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'shipping_address.district.prohibited' => 'Địa chỉ theo đơn vị mới không sử dụng quận/huyện.',
+        ];
     }
 }

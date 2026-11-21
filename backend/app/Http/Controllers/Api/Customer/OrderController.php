@@ -85,7 +85,6 @@ class OrderController extends Controller
                 'detail' => implode(', ', array_filter([
                     $address->Dia_chi_chi_tiet,
                     $address->Phuong_xa,
-                    $address->Quan_huyen,
                     $address->Tinh_thanh,
                 ])),
             ] : null,

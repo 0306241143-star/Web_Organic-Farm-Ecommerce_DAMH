@@ -200,7 +200,6 @@ export default function RewardWalletPage() {
     phone: "",
     detail_address: "",
     ward: "",
-    district: "",
     province: "TP. Hồ Chí Minh",
     is_default: false,
   });
@@ -231,7 +230,6 @@ export default function RewardWalletPage() {
       phone: user?.phone || "",
       detail_address: "",
       ward: "",
-      district: "",
       province: "TP. Hồ Chí Minh",
       is_default: addresses.length === 0,
     });
@@ -245,7 +243,6 @@ export default function RewardWalletPage() {
       phone: addr.phone || "",
       detail_address: addr.detail_address || "",
       ward: addr.ward || "",
-      district: addr.district || "",
       province: addr.province || "TP. Hồ Chí Minh",
       is_default: Boolean(addr.is_default),
     });
@@ -268,8 +265,8 @@ export default function RewardWalletPage() {
       showGlobalToast("Vui lòng nhập số nhà, tên đường cụ thể.", "warning");
       return;
     }
-    if (!addressForm.ward.trim() || !addressForm.district.trim()) {
-      showGlobalToast("Vui lòng nhập đầy đủ phường/xã và quận/huyện.", "warning");
+    if (!addressForm.ward.trim() || !addressForm.province.trim()) {
+      showGlobalToast("Vui lòng nhập đầy đủ phường/xã và tỉnh/thành phố.", "warning");
       return;
     }
 
@@ -735,7 +732,7 @@ export default function RewardWalletPage() {
                             {addr.detail_address}
                           </p>
                           <p className="text-xs text-[#5a6357]">
-                            {[addr.ward, addr.district, addr.province].filter(Boolean).join(", ")}
+                            {[addr.ward, addr.province].filter(Boolean).join(", ")}
                           </p>
 
                           {addr.is_default && (
@@ -930,7 +927,7 @@ export default function RewardWalletPage() {
                     </div>
 
                     {/* Khung quy tắc tích điểm */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-xl bg-[#f9fafb] border border-slate-200 text-xs">
                         <p className="font-bold text-[#00450d]">
                           1 điểm = {Number(walletData?.conversion_rules?.point_to_vnd || 0).toLocaleString("vi-VN")}đ
@@ -1091,7 +1088,7 @@ export default function RewardWalletPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#5a6357] mb-1">
                     Tỉnh / Thành phố *
@@ -1109,22 +1106,7 @@ export default function RewardWalletPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#5a6357] mb-1">
-                    Quận / Huyện *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={addressForm.district}
-                    onChange={(e) =>
-                      setAddressForm({ ...addressForm, district: e.target.value })
-                    }
-                    placeholder="Quận 1"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-[#00450d]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#5a6357] mb-1">
-                    Phường / Xã *
+                    Phường / Xã mới *
                   </label>
                   <input
                     type="text"
@@ -1154,6 +1136,9 @@ export default function RewardWalletPage() {
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-[#00450d]"
                 />
               </div>
+              <p className="text-[11px] text-slate-500">
+                Dùng phường/xã hiện hành và tỉnh/thành phố; không nhập quận/huyện.
+              </p>
 
               <div className="pt-1">
                 <label className="flex items-center gap-2 cursor-pointer">
