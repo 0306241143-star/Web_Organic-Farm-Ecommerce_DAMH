@@ -7,14 +7,13 @@
 namespace App\Http\Controllers\Api\FarmStaff;
 
 use App\Http\Controllers\Controller;
-use App\Models\LoCanhTac;
 use App\Models\MuaVu;
-use App\Models\NongTrai;
-use App\Models\SanPham;
+use App\Services\CultivationPlotService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class SeasonController extends Controller
 {
@@ -229,134 +228,10 @@ class SeasonController extends Controller
     /**
      * Thêm lô canh tác vào mùa vụ.
      */
-    public function storePlot(Request $request, int $seasonId): JsonResponse
-    {
-        $season = MuaVu::find($seasonId);
-        if (! $season) {
-            return response()->json([
-                'success'    => false,
-                'message'    => 'Không tìm thấy mùa vụ để thêm lô canh tác.',
-                'error_code' => self::ERR_NOT_FOUND,
-                'data'       => null,
-                'meta'       => null,
-                'errors'     => null,
-            ], 404);
-        }
-
-        $validated = $request->validate([
-            'product_id'    => ['required', 'exists:san_pham,Ma_san_pham'],
-            'plot_name'     => ['required', 'string', 'max:150'],
-            'area_m2'       => ['nullable', 'numeric', 'min:1'],
-            'planting_date' => ['required', 'date'],
-            'status'        => ['nullable', 'in:Dang_canh_tac,Da_thu_hoach'],
-        ], [
-            'product_id.required'    => 'Vui lòng chọn loại nông sản giống trồng.',
-            'product_id.exists'      => 'Nông sản đã chọn không tồn tại.',
-            'plot_name.required'     => 'Vui lòng nhập tên lô canh tác (ví dụ: Lô A05).',
-            'planting_date.required' => 'Vui lòng chọn ngày gieo trồng.',
-        ]);
-
-        $plot = LoCanhTac::create([
-            'Ma_mua_vu'       => $season->Ma_mua_vu,
-            'Ma_san_pham'     => $validated['product_id'],
-            'Ten_lo'          => $validated['plot_name'],
-            'Dien_tich'       => $validated['area_m2'] ?? null,
-            'Ngay_gieo_trong' => $validated['planting_date'],
-            'Trang_thai'      => $validated['status'] ?? 'Dang_canh_tac',
-        ]);
-
-        Cache::forget('farm_seasons_all');
-
-        $plot->load('sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien');
-
-        return $this->successResponse(
-            message: 'Thêm lô canh tác vào mùa vụ thành công.',
-            data: [
-                'id'            => $plot->Ma_lo_canh_tac,
-                'season_id'     => $plot->Ma_mua_vu,
-                'product_id'    => $plot->Ma_san_pham,
-                'product_name'  => $plot->sanPham?->Ten_san_pham,
-                'product_unit'  => $plot->sanPham?->Don_vi_tinh,
-                'plot_name'     => $plot->Ten_lo,
-                'area_m2'       => (float) $plot->Dien_tich,
-                'planting_date' => $plot->Ngay_gieo_trong,
-                'status'        => $plot->Trang_thai,
-            ],
-            status: 201
-        );
-    }
-
-    /**
-     * Cập nhật thông tin lô canh tác (điều chỉnh diện tích, tên lô, giống nông sản, ngày gieo, trạng thái).
-     */
-    public function updatePlot(Request $request, int $seasonId, int $plotId): JsonResponse
-    {
-        $plot = LoCanhTac::where('Ma_mua_vu', $seasonId)->where('Ma_lo_canh_tac', $plotId)->first();
-
-        if (! $plot) {
-            return response()->json([
-                'success'    => false,
-                'message'    => 'Không tìm thấy lô canh tác để điều chỉnh.',
-                'error_code' => self::ERR_NOT_FOUND,
-                'data'       => null,
-                'meta'       => null,
-                'errors'     => null,
-            ], 404);
-        }
-
-        $validated = $request->validate([
-            'area_m2'       => ['sometimes', 'required', 'numeric', 'min:0.1'],
-            'plot_name'     => ['sometimes', 'required', 'string', 'max:150'],
-            'product_id'    => ['sometimes', 'required', 'exists:san_pham,Ma_san_pham'],
-            'planting_date' => ['sometimes', 'required', 'date'],
-            'status'        => ['sometimes', 'required', 'in:Dang_canh_tac,Da_thu_hoach'],
-        ], [
-            'area_m2.required'   => 'Vui lòng nhập diện tích canh tác.',
-            'area_m2.numeric'    => 'Diện tích phải là số hợp lệ.',
-            'area_m2.min'        => 'Diện tích tối thiểu phải từ 0.1 m² trở lên.',
-            'plot_name.required' => 'Vui lòng nhập tên lô canh tác.',
-        ]);
-
-        if (array_key_exists('area_m2', $validated)) {
-            $plot->Dien_tich = $validated['area_m2'];
-        }
-        if (isset($validated['plot_name'])) {
-            $plot->Ten_lo = $validated['plot_name'];
-        }
-        if (isset($validated['product_id'])) {
-            $plot->Ma_san_pham = $validated['product_id'];
-        }
-        if (isset($validated['planting_date'])) {
-            $plot->Ngay_gieo_trong = $validated['planting_date'];
-        }
-        if (isset($validated['status'])) {
-            $plot->Trang_thai = $validated['status'];
-        }
-
-        $plot->save();
-        Cache::forget('farm_seasons_all');
-        $plot->load('sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien');
-
-        return $this->successResponse(
-            message: 'Điều chỉnh thông tin diện tích và lô canh tác thành công.',
-            data: [
-                'id'            => $plot->Ma_lo_canh_tac,
-                'season_id'     => $plot->Ma_mua_vu,
-                'product_id'    => $plot->Ma_san_pham,
-                'product_name'  => $plot->sanPham?->Ten_san_pham,
-                'product_unit'  => $plot->sanPham?->Don_vi_tinh,
-                'plot_name'     => $plot->Ten_lo,
-                'area_m2'       => (float) $plot->Dien_tich,
-                'planting_date' => $plot->Ngay_gieo_trong,
-                'status'        => $plot->Trang_thai,
-            ]
-        );
-    }
-
     /**
      * Xóa mùa vụ (kèm dọn dẹp các lô và nhật ký liên quan nếu chưa phát sinh đơn bán hàng).
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(int $id, CultivationPlotService $plots): JsonResponse
     {
         $season = MuaVu::with(['loCanhTacs.nhatKyCanhTacs.tepNhatKys', 'loCanhTacs.loHangs'])->find($id);
 
@@ -373,7 +248,7 @@ class SeasonController extends Controller
 
         // Kiểm tra xem các lô hàng thuộc mùa vụ này đã phát sinh đơn hàng, Flash Sale hoặc biến động kho chưa
         $allBatches = $season->loCanhTacs->flatMap(fn ($plot) => $plot->loHangs);
-        $linkedReason = $this->findLinkedBatchReason($allBatches);
+        $linkedReason = $plots->findLinkedBatchReason($allBatches);
 
         if ($linkedReason) {
             return response()->json([
@@ -386,9 +261,9 @@ class SeasonController extends Controller
             ], 409);
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($season) {
+        DB::transaction(function () use ($season, $plots) {
             foreach ($season->loCanhTacs as $plot) {
-                $this->deletePlotCascade($plot);
+                $plots->deletePlotCascade($plot);
             }
             $season->delete();
         });
@@ -398,183 +273,4 @@ class SeasonController extends Controller
         return $this->successResponse(message: 'Xóa mùa vụ thành công.');
     }
 
-    /**
-     * Xóa lô canh tác trong mùa vụ.
-     */
-    public function destroyPlot(int $seasonId, int $plotId): JsonResponse
-    {
-        $plot = LoCanhTac::with(['nhatKyCanhTacs.tepNhatKys', 'loHangs'])
-            ->where('Ma_mua_vu', $seasonId)
-            ->where('Ma_lo_canh_tac', $plotId)
-            ->first();
-
-        if (! $plot) {
-            return response()->json([
-                'success'    => false,
-                'message'    => 'Không tìm thấy lô canh tác để xóa.',
-                'error_code' => self::ERR_NOT_FOUND,
-                'data'       => null,
-                'meta'       => null,
-                'errors'     => null,
-            ], 404);
-        }
-
-        $linkedReason = $this->findLinkedBatchReason($plot->loHangs);
-        if ($linkedReason) {
-            return response()->json([
-                'success'    => false,
-                'message'    => "Không thể xóa lô canh tác này vì {$linkedReason}.",
-                'error_code' => self::ERR_CONFLICT,
-                'data'       => null,
-                'meta'       => null,
-                'errors'     => null,
-            ], 409);
-        }
-
-        \Illuminate\Support\Facades\DB::transaction(function () use ($plot) {
-            $this->deletePlotCascade($plot);
-        });
-
-        Cache::forget('farm_seasons_all');
-
-        return $this->successResponse(message: 'Xóa lô canh tác thành công.');
-    }
-
-    /**
-     * Kiểm tra các ràng buộc dữ liệu bán hàng / Flash Sale / kho trên danh sách lô hàng thu hoạch.
-     */
-    private function findLinkedBatchReason($batches): ?string
-    {
-        foreach ($batches as $batch) {
-            $batchId = $batch->Ma_lo_hang;
-            if (\Illuminate\Support\Facades\DB::table('phan_bo_lo_hang')->where('Ma_lo_hang', $batchId)->exists()) {
-                return 'lô hàng thu hoạch đã được phân bổ xuất kho (FEFO) cho đơn hàng của khách';
-            }
-            if (\Illuminate\Support\Facades\DB::table('chi_tiet_flash_sale')->where('Ma_lo_hang', $batchId)->exists()) {
-                return 'lô hàng thu hoạch đang được áp dụng trong chương trình Flash Sale';
-            }
-            if (\Illuminate\Support\Facades\DB::table('bien_dong_kho')->where('Ma_lo_hang', $batchId)->exists()) {
-                return 'lô hàng thu hoạch đã có phiếu ghi nhận hao hụt / biến động kho';
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Dọn dẹp an toàn dữ liệu con (nhật ký, tệp đính kèm, QR, chứng nhận, lô hàng) trước khi xóa lô canh tác.
-     */
-    private function deletePlotCascade(LoCanhTac $plot): void
-    {
-        foreach ($plot->nhatKyCanhTacs as $log) {
-            $log->tepNhatKys()->delete();
-            $log->delete();
-        }
-        foreach ($plot->loHangs as $batch) {
-            $batch->maQrTruyXuat()->delete();
-            $batch->bienDongKhos()->delete();
-            // Gỡ liên kết lô hàng trên chứng nhận (hoặc xóa nếu chỉ gắn riêng lô) để không vướng khóa ngoại fk_cn_lo_hang
-            $batch->chungNhans()->whereNotNull('Ma_san_pham')->update(['Ma_lo_hang' => null]);
-            $batch->chungNhans()->whereNull('Ma_san_pham')->delete();
-            $batch->delete();
-        }
-        $plot->delete();
-    }
-
-    /**
-     * Danh sách sản phẩm nông sản có sẵn để chọn giống gieo trồng.
-     */
-    public function getProducts(): JsonResponse
-    {
-        $products = Cache::remember('farm_active_products', 300, function () {
-            return SanPham::select('Ma_san_pham', 'Ten_san_pham', 'Don_vi_tinh', 'Hinh_anh_dai_dien', 'Gia_ban')
-                ->where('Trang_thai', 'Dang_ban')
-                ->orderBy('Ten_san_pham', 'asc')
-                ->get()
-                ->map(function ($p) {
-                    return [
-                        'id'    => $p->Ma_san_pham,
-                        'name'  => $p->Ten_san_pham,
-                        'unit'  => $p->Don_vi_tinh,
-                        'price' => (float) $p->Gia_ban,
-                        'image' => $p->Hinh_anh_dai_dien,
-                    ];
-                });
-        });
-
-        return $this->successResponse(
-            message: 'Lấy danh sách nông sản thành công.',
-            data: $products
-        );
-    }
-
-    /**
-     * Lấy thông tin cơ sở nông trại (tên, địa chỉ) - Cached 1 giờ để đạt < 10ms.
-     */
-    public function getFarmInfo(): JsonResponse
-    {
-        $farmData = Cache::remember('farm_info_singleton', 3600, function () {
-            $farm = NongTrai::first();
-            if (!$farm) {
-                $farm = NongTrai::create([
-                    'Ten_nong_trai' => 'Nông Trại Xanh Củ Chi',
-                    'Dia_chi'       => 'Ấp 3, Xã Nhuận Đức, Huyện Củ Chi, TP. Hồ Chí Minh',
-                    'Vi_do'         => 10.9985000,
-                    'Kinh_do'       => 106.5123000,
-                ]);
-            }
-            return [
-                'id'        => $farm->Ma_nong_trai,
-                'name'      => $farm->Ten_nong_trai,
-                'address'   => $farm->Dia_chi,
-                'latitude'  => (float) $farm->Vi_do,
-                'longitude' => (float) $farm->Kinh_do,
-            ];
-        });
-
-        return $this->successResponse(
-            message: 'Lấy thông tin cơ sở nông trại thành công.',
-            data: $farmData
-        );
-    }
-
-    /**
-     * Cập nhật thông tin cơ sở nông trại (tên, địa chỉ) và xóa cache.
-     */
-    public function updateFarmInfo(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name'    => ['nullable', 'string', 'max:200'],
-            'address' => ['required', 'string', 'max:255'],
-        ], [
-            'address.required' => 'Vui lòng nhập địa chỉ cơ sở nông trại.',
-            'address.max'      => 'Địa chỉ không được vượt quá 255 ký tự.',
-        ]);
-
-        $farm = NongTrai::first();
-        if (!$farm) {
-            $farm = new NongTrai();
-            $farm->Vi_do = 10.9985000;
-            $farm->Kinh_do = 106.5123000;
-        }
-
-        if (!empty($validated['name'])) {
-            $farm->Ten_nong_trai = trim($validated['name']);
-        }
-        $farm->Dia_chi = trim($validated['address']);
-        $farm->save();
-
-        Cache::forget('farm_info_singleton');
-
-        return $this->successResponse(
-            message: 'Cập nhật địa chỉ cơ sở nông trại thành công.',
-            data: [
-                'id'        => $farm->Ma_nong_trai,
-                'name'      => $farm->Ten_nong_trai,
-                'address'   => $farm->Dia_chi,
-                'latitude'  => (float) $farm->Vi_do,
-                'longitude' => (float) $farm->Kinh_do,
-            ]
-        );
-    }
 }

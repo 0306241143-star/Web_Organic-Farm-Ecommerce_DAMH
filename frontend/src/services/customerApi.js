@@ -39,6 +39,9 @@ export const customerApi = {
     axiosClient.get(`/customer/subscriptions/${subscriptionId}`),
   checkoutSubscription: (subscriptionId) =>
     axiosClient.post(`/customer/subscriptions/${subscriptionId}/checkout`),
+  cancelSubscription: (subscriptionId) =>
+    axiosClient.post(`/customer/subscriptions/${subscriptionId}/cancel`),
+  
 
   // Lịch sử đơn hàng, ví điểm & khiếu nại
   getOrders: (params) => axiosClient.get("/customer/orders", { params }),

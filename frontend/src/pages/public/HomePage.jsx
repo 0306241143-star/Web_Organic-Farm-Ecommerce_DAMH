@@ -1,5 +1,4 @@
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import HeroSection from "../../components/home/HeroSection";
 import TrustBadgesSection from "../../components/home/TrustBadgesSection";
 import CategoryGridSection from "../../components/home/CategoryGridSection";
@@ -14,14 +13,12 @@ import { useCart } from "../../context/useCart";
 import { notifyApiErrorToast } from "../../services/axiosClient";
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, openLoginModal } = useAuth();
   const { addItem } = useCart();
-  const location = useLocation();
-  const navigate = useNavigate();
 
   const handleAddToCart = async (product) => {
     if (!user) {
-      navigate("/login", { state: { from: location } });
+      openLoginModal();
       showGlobalToast("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.", "info");
       return false;
     }

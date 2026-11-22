@@ -8,12 +8,14 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreOrderRequest;
-use App\Models\ChiTietDonHang;
 use App\Models\DiaChiGiaoHang;
 use App\Models\DonHang;
 use App\Models\GioHang;
 use App\Services\CartPricingService;
 use App\Services\GoongGeocodingService;
+use App\Services\Order\OrderCancellationService;
+use App\Services\Order\OrderCreationService;
+use App\Services\Order\ShippingEstimationException;
 use App\Services\RewardPointService;
 use App\Services\ShippingDistanceService;
 use App\Traits\ApiResponse;
@@ -410,106 +412,24 @@ class RetailOrderController extends Controller
         );
     }
 
-    public function cancel(
-        Request $request,
-        int $orderId,
-        RewardPointService $rewards
-    ): JsonResponse {
+    public function cancel(Request $request, int $orderId, OrderCancellationService $cancellations): JsonResponse
+    {
         $userId = (int) $request->user()->getAuthIdentifier();
-
-        $result = DB::transaction(function () use ($userId, $orderId, $rewards): array {
-            $rewards->lockCustomer($userId);
-            $payments = DB::table('thanh_toan')
-                ->where('Ma_don_hang', $orderId)
-                ->lockForUpdate()
-                ->get(['Ma_thanh_toan', 'Trang_thai']);
-            $order = DonHang::query()
-                ->where('Ma_don_hang', $orderId)
-                ->where('Ma_nguoi_dung', $userId)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if ($order->Trang_thai === 'Da_huy') {
-                return ['order' => $order, 'points_refunded' => 0];
-            }
-
-            $hasSuccessfulPayment = $payments->contains(
-                fn (object $payment): bool => $payment->Trang_thai === 'Thanh_cong'
-            );
-            if (
-                ! in_array($order->Trang_thai, ['Cho_thanh_toan', 'Cho_xac_nhan'], true)
-                || $hasSuccessfulPayment
-            ) {
-                throw ValidationException::withMessages([
-                    'order_id' => 'Đơn hàng đã được thanh toán hoặc đang xử lý nên không thể hủy tại đây.',
-                ]);
-            }
-
-            $stockRestored = $this->restoreAllocatedStock($order);
-            $order->update(['Trang_thai' => 'Da_huy']);
-            DB::table('thanh_toan')
-                ->whereIn(
-                    'Ma_thanh_toan',
-                    $payments->where('Trang_thai', 'Khoi_tao')->pluck('Ma_thanh_toan')
-                )
-                ->update(['Trang_thai' => 'That_bai']);
-
-            return [
-                'order' => $order->refresh(),
-                'points_refunded' => $rewards->refundOrderPoints($order),
-                'stock_restored' => $stockRestored,
-            ];
-        });
+        $order = DonHang::query()
+            ->where('Ma_don_hang', $orderId)
+            ->where('Ma_nguoi_dung', $userId)
+            ->firstOrFail();
+        $cancelledOrder = $cancellations->cancelOrder($order, 'Khách hàng yêu cầu hủy đơn hàng.');
 
         return $this->successResponse(
             message: 'Hủy đơn hàng thành công.',
             data: [
-                'order_id' => (int) $result['order']->Ma_don_hang,
-                'status' => $result['order']->Trang_thai,
-                'points_refunded' => $result['points_refunded'],
-                'stock_restored' => $result['stock_restored'] ?? 0,
+                'order_id' => (int) $cancelledOrder->Ma_don_hang,
+                'status' => $cancelledOrder->Trang_thai,
+                'points_refunded' => $cancelledOrder->getAttribute('points_refunded'),
+                'stock_restored' => $cancelledOrder->getAttribute('stock_restored'),
             ]
         );
-    }
-
-    private function restoreAllocatedStock(DonHang $order): float
-    {
-        $allocations = DB::table('phan_bo_lo_hang as allocation')
-            ->join('chi_tiet_don_hang as detail', 'detail.Ma_ct_don_hang', '=', 'allocation.Ma_ct_don_hang')
-            ->where('detail.Ma_don_hang', $order->Ma_don_hang)
-            ->lockForUpdate()
-            ->get(['allocation.Ma_lo_hang', 'allocation.So_luong_xuat'])
-            ->groupBy('Ma_lo_hang');
-        $restored = 0.0;
-
-        foreach ($allocations as $batchId => $items) {
-            $batch = DB::table('lo_hang')
-                ->where('Ma_lo_hang', $batchId)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $batch || $batch->Trang_thai === 'Da_huy') {
-                continue;
-            }
-
-            $quantity = (float) $items->sum('So_luong_xuat');
-            DB::table('lo_hang')
-                ->where('Ma_lo_hang', $batchId)
-                ->increment('So_luong_con_lai', $quantity);
-
-            if (
-                $batch->Trang_thai === 'Het_hang'
-                && $batch->Han_su_dung >= now()->toDateString()
-            ) {
-                DB::table('lo_hang')
-                    ->where('Ma_lo_hang', $batchId)
-                    ->update(['Trang_thai' => 'Con_hang']);
-            }
-
-            $restored += $quantity;
-        }
-
-        return $restored;
     }
 
     public function quote(
@@ -549,85 +469,27 @@ class RetailOrderController extends Controller
 
     public function store(
         StoreOrderRequest $request,
-        CartPricingService $pricing,
-        ShippingDistanceService $shipping,
-        RewardPointService $rewards,
-        GoongGeocodingService $geocoder
+        OrderCreationService $orders
     ): JsonResponse {
-        $address = $this->addressForCustomer((int) $request->validated('address_id'), $request);
-        $this->refreshLegacyDefaultCoordinates($address, $geocoder);
-        $cart = $this->cartForCustomer($request);
-        $delivery = $this->estimateShipping($address, $shipping);
         $userId = (int) $request->user()->getAuthIdentifier();
         $paymentMethod = $request->validated('payment_method', 'ApiPay');
-        $requestedPoints = (int) $request->validated('points_to_use', 0);
-
-        $order = DB::transaction(function () use (
-            $cart,
-            $address,
-            $delivery,
-            $pricing,
-            $request,
-            $userId,
-            $paymentMethod,
-            $requestedPoints,
-            $rewards
-        ): DonHang {
-            $rewards->lockCustomer($userId);
-            $availablePoints = max(0, $rewards->balance($userId));
-            $lockedCart = GioHang::query()
-                ->whereKey($cart->Ma_gio_hang)
-                ->where('Ma_nguoi_dung', $userId)
-                ->lockForUpdate()
-                ->firstOrFail();
-            $lockedCart->setRelation(
-                'chiTiets',
-                $lockedCart->chiTiets()->lockForUpdate()->get()->load('sanPham')
-            );
-            $items = $this->pricedItems($lockedCart, $pricing, lockForUpdate: true);
-
-            $subtotal = round((float) collect($items)->sum('line_total'), 2);
-            $redemption = $rewards->calculateRedemption($requestedPoints, $availablePoints, $subtotal);
-            $total = (int) round($subtotal - $redemption['points_discount'] + $delivery['shipping_fee']);
-
-            if ($total < 1 || $total > 300_000_000) {
-                throw ValidationException::withMessages([
-                    'cart' => 'Tổng tiền đơn hàng không hợp lệ để thanh toán trực tuyến.',
-                ]);
-            }
-
-            $createdOrder = DonHang::query()->create([
-                'Ma_nguoi_dung' => $userId,
-                'Ma_dia_chi' => $address->Ma_dia_chi,
-                'Loai_don' => 'Mua_le',
-                'Tien_hang' => $subtotal,
-                'Khoang_cach_km' => $delivery['distance_km'],
-                'Phi_giao_hang' => $delivery['shipping_fee'],
-                'So_diem_su_dung' => $redemption['points_to_use'],
-                'Tien_giam_tu_diem' => $redemption['points_discount'],
-                'Tong_tien' => $total,
-                'Trang_thai' => $paymentMethod === 'COD' ? 'Cho_xac_nhan' : 'Cho_thanh_toan',
-                'Ghi_chu' => $request->validated('note'),
+        try {
+            $result = $orders->createRetailOrder($userId, $request->validated());
+        } catch (ShippingEstimationException $exception) {
+            $cause = $exception->getPrevious();
+            Log::warning('Retail checkout could not estimate shipping.', [
+                'address_id' => $request->validated('address_id'),
+                'exception' => $cause ? $cause::class : $exception::class,
             ]);
 
-            foreach ($items as $item) {
-                ChiTietDonHang::query()->create([
-                    'Ma_don_hang' => $createdOrder->Ma_don_hang,
-                    'Ma_san_pham' => $item['id'],
-                    'Ma_ct_flash_sale' => $item['flash_sale_detail_id'],
-                    'So_luong' => $item['quantity'],
-                    'Don_gia' => $item['price'],
-                    'Thanh_tien' => $item['line_total'],
-                ]);
-            }
+            throw new HttpResponseException($this->errorResponse(
+                message: 'Chưa thể tính khoảng cách giao hàng. Vui lòng thử lại sau.',
+                status: 503,
+                errorCode: self::ERR_SERVER
+            ));
+        }
 
-            $rewards->recordRedemption($userId, $createdOrder, $redemption['points_to_use']);
-
-            // Giỏ chỉ được dọn sau khi đơn và toàn bộ chi tiết đã lưu thành công.
-            $lockedCart->chiTiets()->delete();
-
-            return $createdOrder;
-        });
+        $order = $result['order'];
 
         return $this->successResponse(
             message: $paymentMethod === 'COD'

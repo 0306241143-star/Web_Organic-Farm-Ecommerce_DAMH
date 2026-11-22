@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -26,9 +27,15 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $allProducts = Cache::remember('public_catalog_products_v1', 120, function (): Collection {
+        $allProducts = Cache::remember('public_catalog_products_v2', 120, function (): Collection {
+            $soldCountMap = $this->loadSoldCountMap();
+
             return $this->loadActiveProducts()
-                ->map(fn (SanPham $product) => $this->formatProduct($product))
+                ->map(fn (SanPham $product) => $this->formatProduct(
+                    $product,
+                    false,
+                    (float) ($soldCountMap[$product->Ma_san_pham] ?? 0)
+                ))
                 ->values();
         });
 
@@ -73,21 +80,41 @@ class ProductController extends Controller
             );
         }
 
+        $soldCountMap = $this->loadSoldCountMap();
+
         $related = $this->baseProductQuery()
             ->where('Ma_danh_muc', $product->Ma_danh_muc)
             ->where('Ma_san_pham', '!=', $product->Ma_san_pham)
             ->limit(4)
             ->get()
-            ->map(fn (SanPham $item) => $this->formatProduct($item))
+            ->map(fn (SanPham $item) => $this->formatProduct(
+                $item,
+                false,
+                (float) ($soldCountMap[$item->Ma_san_pham] ?? 0)
+            ))
             ->values();
 
-        $payload = $this->formatProduct($product, true);
+        $payload = $this->formatProduct(
+            $product,
+            true,
+            (float) ($soldCountMap[$product->Ma_san_pham] ?? 0)
+        );
         $payload['related_products'] = $related;
 
         return $this->successResponse(
             message: 'Lấy chi tiết sản phẩm nông sản thành công.',
             data: $payload
         );
+    }
+
+    private function loadSoldCountMap(): array
+    {
+        return DB::table('chi_tiet_don_hang as ctdh')
+            ->join('don_hang as dh', 'ctdh.Ma_don_hang', '=', 'dh.Ma_don_hang')
+            ->where('dh.Trang_thai', '!=', 'Da_huy')
+            ->groupBy('ctdh.Ma_san_pham')
+            ->pluck(DB::raw('COALESCE(SUM(ctdh.So_luong), 0) as total_sold'), 'ctdh.Ma_san_pham')
+            ->toArray();
     }
 
     private function baseProductQuery()
@@ -132,7 +159,7 @@ class ProductController extends Controller
     {
         $filtered = $products;
 
-        // 1. Lọc theo danh mục (hỗ trợ 1 mã hoặc nhiều mã phân cách dấu phẩy)
+        // 1. Lọc theo danh mục
         $rawCategory = $request->query('category_id', $request->query('category'));
         if ($rawCategory !== null && trim((string) $rawCategory) !== '' && strtoupper((string) $rawCategory) !== 'ALL') {
             $categoryIds = collect(explode(',', (string) $rawCategory))
@@ -147,7 +174,7 @@ class ProductController extends Controller
             }
         }
 
-        // 2. Tìm kiếm theo từ khóa (hỗ trợ có dấu & không dấu tiếng Việt)
+        // 2. Tìm kiếm theo từ khóa
         $rawSearch = trim((string) $request->query('search', $request->query('q', '')));
         if ($rawSearch !== '') {
             $needleLower = mb_strtolower($rawSearch);
@@ -171,7 +198,7 @@ class ProductController extends Controller
             });
         }
 
-        // 3. Lọc theo khoảng giá thực tế (ưu tiên giá Flash Sale nếu đang giảm giá)
+        // 3. Lọc theo khoảng giá thực tế
         $minPrice = $request->query('min_price');
         if ($minPrice !== null && $minPrice !== '' && is_numeric($minPrice)) {
             $minVal = max(0, (float) $minPrice);
@@ -184,7 +211,7 @@ class ProductController extends Controller
             $filtered = $filtered->filter(fn (array $item): bool => (float) $item['effective_price'] <= $maxVal);
         }
 
-        // 4. Lọc theo chứng nhận chất lượng (VietGAP, Hữu cơ, GlobalGAP, ...)
+        // 4. Lọc theo chứng nhận chất lượng
         $rawCert = $request->query('certification', $request->query('cert'));
         if ($rawCert !== null && trim((string) $rawCert) !== '') {
             $selectedCerts = collect(explode(',', (string) $rawCert))
@@ -224,6 +251,19 @@ class ProductController extends Controller
     private function applySort(Collection $products, string $sort): Collection
     {
         return match ($sort) {
+            'best_selling' => $products->sort(function (array $a, array $b): int {
+                $soldCmp = ($b['sold_count'] ?? 0) <=> ($a['sold_count'] ?? 0);
+                if ($soldCmp !== 0) {
+                    return $soldCmp;
+                }
+
+                $stockCmp = ($b['in_stock'] ? 1 : 0) <=> ($a['in_stock'] ? 1 : 0);
+                if ($stockCmp !== 0) {
+                    return $stockCmp;
+                }
+
+                return $b['id'] <=> $a['id'];
+            })->values(),
             'price_asc'  => $products->sortBy([['effective_price', 'asc'], ['id', 'desc']])->values(),
             'price_desc' => $products->sortBy([['effective_price', 'desc'], ['id', 'desc']])->values(),
             'name_asc'   => $products->sortBy(fn (array $item) => $this->normalizeText($item['name'] ?? ''))->values(),
@@ -276,14 +316,14 @@ class ProductController extends Controller
         ];
     }
 
-    private function formatProduct(SanPham $product, bool $includeDetail = false): array
+    private function formatProduct(SanPham $product, bool $includeDetail = false, float $soldCount = 0): array
     {
         $allBatches = $product->loCanhTacs
             ->flatMap(fn ($plot) => $plot->loHangs)
             ->values();
 
         $today = now()->toDateString();
-        
+
         // Áp dụng quy tắc FEFO: chỉ tính lô còn hàng / sắp hết hạn, số lượng > 0 và chưa quá hạn
         $fefoBatches = $allBatches
             ->filter(fn ($batch): bool =>
@@ -295,7 +335,8 @@ class ProductController extends Controller
             ->values();
 
         $availableStock = round((float) $fefoBatches->sum(fn ($batch) => (float) $batch->So_luong_con_lai), 2);
-        $nearestExpiry = $fefoBatches->first()?->Han_su_dung;
+        $nearestBatch = $fefoBatches->first();
+        $nearestExpiry = $nearestBatch?->Han_su_dung;
         $latestHarvest = $fefoBatches->sortByDesc('Ngay_thu_hoach')->first()?->Ngay_thu_hoach;
 
         $traceBatch = $fefoBatches->first(fn ($batch) => $batch->maQrTruyXuat !== null)
@@ -341,7 +382,7 @@ class ProductController extends Controller
             ? (int) round((($regularPrice - $effectivePrice) / $regularPrice) * 100)
             : 0;
 
-        // Tổng hợp chứng nhận gắn trực tiếp vào sản phẩm hoặc gắn vào lô hàng của sản phẩm
+        // Tổng hợp chứng nhận gắn trực tiếp vào sản phẩm hoặc gắn vào lô hàng
         $batchCerts = $allBatches->flatMap(fn ($batch) => $batch->chungNhans);
         $mergedCerts = $product->chungNhans
             ->merge($batchCerts)
@@ -386,6 +427,8 @@ class ProductController extends Controller
             'image_url'               => $this->resolveImageUrl($product->Hinh_anh_dai_dien),
             'reward_point_rate'       => (float) $product->Ty_le_tich_diem,
             'status'                  => $product->Trang_thai,
+            'sold_count'              => round($soldCount, 2),
+            'batch_id'                => $nearestBatch ? (int) $nearestBatch->Ma_lo_hang : null,
             'category'                => $product->danhMuc ? [
                 'id'          => (int) $product->danhMuc->Ma_danh_muc,
                 'name'        => $product->danhMuc->Ten_danh_muc,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Minus, PackageX, Plus, ShoppingCart } from "lucide-react";
 import Button from "../../common/Button";
 import { showGlobalToast } from "../../GlobalToast";
@@ -10,8 +10,7 @@ import { formatCurrencyVnd } from "../../../services/publicApi";
 
 export default function ProductPurchasePanel({ product }) {
   const { items, addItem } = useCart();
-  const { user, isLoading, hasRole } = useAuth();
-  const location = useLocation();
+  const { user, isLoading, hasRole, openLoginModal } = useAuth();
   const navigate = useNavigate();
   const availableStock = Math.max(0, Number(product.available_stock) || 0);
   const cartItems = Array.isArray(items) ? items : [];
@@ -45,7 +44,7 @@ export default function ProductPurchasePanel({ product }) {
   const requireCustomer = (guestMessage = "") => {
     if (isLoading) return false;
     if (!user) {
-      navigate("/login", { state: { from: location } });
+      openLoginModal();
       if (guestMessage) showGlobalToast(guestMessage, "info");
       return false;
     }

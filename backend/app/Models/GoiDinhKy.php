@@ -17,4 +17,9 @@ class GoiDinhKy extends Model
     {
         return $this->hasMany(ChiTietGoi::class, 'Ma_goi', 'Ma_goi');
     }
+
+    public function dangKyGois(): HasMany
+    {
+        return $this->hasMany(DangKyGoi::class, 'Ma_goi', 'Ma_goi');
+    }
 }

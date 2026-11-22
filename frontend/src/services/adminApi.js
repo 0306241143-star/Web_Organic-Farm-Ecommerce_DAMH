@@ -50,4 +50,14 @@ export const adminApi = {
   updateProductStatus: (id, status) =>
     axiosClient.patch(`/admin/products/${id}/status`, { Trang_thai: status }),
   deleteProduct: (id) => axiosClient.delete(`/admin/products/${id}`),
+
+
+  // Quản lý gói định kỳ
+  // 3. Quản lý Gói rau định kỳ
+  getSubscriptions: () => axiosClient.get("/admin/subscriptions"),
+  createSubscription: (data) => axiosClient.post("/admin/subscriptions", data),
+  updateSubscription: (id, data) => axiosClient.put(`/admin/subscriptions/${id}`, data),
+  updateSubscriptionStatus: (id, status) =>
+    axiosClient.patch(`/admin/subscriptions/${id}/status`, { Trang_thai: status }),
+  deleteSubscription: (id) => axiosClient.delete(`/admin/subscriptions/${id}`),
 };
