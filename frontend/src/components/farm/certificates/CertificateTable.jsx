@@ -117,30 +117,27 @@ export default function CertificateTable({
                 ? "Chưa có hồ sơ chứng nhận nào"
                 : "Không tìm thấy chứng nhận phù hợp bộ lọc"}
             </h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              Tải lên giấy chứng nhận VietGAP, Hữu cơ hoặc phiếu kiểm nghiệm đất/nước và gắn trực tiếp vào lô hàng thu hoạch.
-            </p>
             <button
               type="button"
               onClick={() => openCreateModal("")}
               className="mt-4 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
-              <span>Tải Chứng Nhận Đầu Tiên</span>
+              <span>Tải Chứng Nhận</span>
             </button>
           </div>
         ) : (
           <>
             {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto max-h-[calc(100vh-270px)] min-h-[460px] overflow-y-auto scrollbar-thin">
               <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    <th className="py-3.5 px-5">Chứng Nhận / Kiểm Định</th>
-                    <th className="py-3.5 px-4">Lô Hàng & Nông Sản Gắn</th>
-                    <th className="py-3.5 px-4">Thời Hạn Hiệu Lực</th>
-                    <th className="py-3.5 px-4">Tệp Bản Scan</th>
-                    <th className="py-3.5 px-5 text-right">Thao Tác</th>
+                <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10 shadow-2xs">
+                  <tr className="bg-slate-50/95 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <th className="py-3 px-5">Chứng Nhận / Kiểm Định</th>
+                    <th className="py-3 px-4">Lô Hàng & Nông Sản Gắn</th>
+                    <th className="py-3 px-4">Thời Hạn Hiệu Lực</th>
+                    <th className="py-3 px-4">Tệp Bản Scan</th>
+                    <th className="py-3 px-5 text-right">Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">

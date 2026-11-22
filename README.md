@@ -90,20 +90,24 @@ nong-san-sach/
 │   │   │   │       │   ├── CategoryController.php  # Lấy danh sách danh mục nông sản
 │   │   │   │       │   ├── ProductController.php   # Danh sách, tìm kiếm, lọc theo giá/chứng nhận & chi tiết SP
 │   │   │   │       │   ├── BrandStoryController.php# Lấy nội dung câu chuyện thương hiệu & hồ sơ nông trại
+│   │   │   │       │   ├── StorefrontController.php# Dữ liệu tổng hợp trang chủ (Flash sale, gói rau, sản phẩm nổi bật)
 │   │   │   │       │   └── QrTraceController.php   # Tra cứu thông tin lô hàng, nhật ký & kiểm định qua mã QR
 │   │   │   │       ├── Customer/                   # Nhóm API Khách hàng (yêu cầu role:customer)
 │   │   │   │       │   ├── CartController.php      # Thêm, sửa số lượng, xóa giỏ hàng & kiểm tra tồn kho
 │   │   │   │       │   ├── CheckoutController.php  # Tạo yêu cầu thanh toán ApiPay cho đơn hàng chờ thanh toán
-│   │   │   │       │   ├── SubscriptionController.php # Đăng ký & quản lý gói rau củ định kỳ theo tháng
 │   │   │   │       │   ├── OrderController.php     # Xem lịch sử đơn hàng & tiến trình giao nhận
+│   │   │   │       │   ├── RetailOrderController.php # Xử lý đặt mua lẻ nông sản & hủy đơn hàng
+│   │   │   │       │   ├── SubscriptionController.php # Đăng ký & quản lý gói rau củ định kỳ theo tháng
 │   │   │   │       │   ├── RewardPointController.php # Xem ví điểm thưởng & quy đổi điểm ưu đãi
 │   │   │   │       │   └── ClaimController.php     # Gửi yêu cầu khiếu nại/hoàn tiền kèm bằng chứng ảnh/video
-│   │   │   │       ├── FarmStaff/                  # Nhóm API Nhân viên Nông trại (chặn doanh thu & thông tin khách)
+│   │   │   │       ├── FarmStaff/                  # Nhóm API Kỹ sư Nông trại (chặn doanh thu & thông tin khách)
 │   │   │   │       │   ├── SeasonController.php    # Quản lý thông tin mùa vụ canh tác
+│   │   │   │       │   ├── CultivationPlotController.php # Quản lý danh sách lô đất, diện tích & tình trạng canh tác
 │   │   │   │       │   ├── FarmingLogController.php# Ghi nhật ký (gieo hạt, bón phân, tưới, thu hoạch) + media R2
 │   │   │   │       │   ├── BatchController.php     # Tạo lô thu hoạch (ngày thu hoạch, người phụ trách, HSD)
 │   │   │   │       │   ├── CertificateController.php # Upload chứng nhận chất lượng & bản scan kiểm định đất/nước
-│   │   │   │       │   └── BatchQrController.php   # Sinh mã QR duy nhất cho lô & xuất dữ liệu in tem nhãn
+│   │   │   │       │   ├── BatchQrController.php   # Sinh mã QR duy nhất cho lô & xuất dữ liệu in tem nhãn
+│   │   │   │       │   └── FarmInfoController.php  # Cập nhật thông tin cơ sở nông trại (tên, địa chỉ)
 │   │   │   │       ├── Sales/                      # Nhóm API Nhân viên Bán hàng & CSKH
 │   │   │   │       │   ├── OrderProcessController.php # Xem & xác nhận đơn mua lẻ và đơn tự sinh từ gói định kỳ
 │   │   │   │       │   ├── InventoryFefoController.php # Quản lý kho theo lô FEFO, ghi nhận hao hụt & xuất hủy
@@ -111,6 +115,9 @@ nong-san-sach/
 │   │   │   │       │   ├── DeliveryController.php  # Cấu hình điều phối giao hàng & cập nhật trạng thái vận chuyển
 │   │   │   │       │   └── ClaimResolveController.php # Xem bằng chứng khiếu nại, duyệt hoàn tiền hoặc tạo đơn giao bù
 │   │   │   │       ├── Admin/                      # Nhóm API Quản trị viên
+│   │   │   │       │   ├── CategoryController.php  # Quản lý danh mục sản phẩm (thêm, sửa, trạng thái)
+│   │   │   │       │   ├── ProductController.php   # Quản trị danh sách nông sản & bảng giá
+│   │   │   │       │   ├── SubscriptionPackageController.php # Quản lý gói nông sản định kỳ theo tháng
 │   │   │   │       │   ├── UserRoleController.php  # Quản lý tài khoản & gán vai trò/quyền hạn (RBAC)
 │   │   │   │       │   ├── SystemSettingController.php # Cấu hình đơn giá ship/km, tỷ lệ điểm thưởng, cảnh báo HSD
 │   │   │   │       │   └── ReportController.php    # Thống kê doanh thu, số đơn, tỷ lệ hao hụt & tỷ lệ mua lại
@@ -138,8 +145,15 @@ nong-san-sach/
 │   │       ├── FefoStockService.php                # Thuật toán chọn lô có HSD gần nhất & trừ tồn kho tự động
 │   │       ├── ApiPayPaymentService.php             # Gọi API ApiPay để tạo và tra cứu yêu cầu thanh toán
 │   │       ├── QrCodeGeneratorService.php          # Sinh mã QR định danh truy xuất nguồn gốc từng lô hàng
-│   │       ├── ShippingDistanceService.php         # Điểm tích hợp dự kiến cho Goong Maps (triển khai ở Giai đoạn 4)
-│   │       └── SubscriptionGeneratorService.php    # Logic tự động khởi tạo đơn hàng khi đến kỳ giao gói tháng
+│   │       ├── CultivationPlotService.php          # Tính toán tình trạng sử dụng và sản lượng lô đất
+│   │       ├── CartPricingService.php              # Tính toán tổng tiền giỏ hàng, ưu đãi và tồn kho khả dụng
+│   │       ├── RewardPointService.php              # Xử lý cộng/trừ và lịch sử biến động điểm thưởng
+│   │       ├── R2StorageService.php                # Quản lý tải lên, sinh URL ký tạm thời lưu trữ media R2
+│   │       ├── ShippingDistanceService.php         # Tính toán khoảng cách địa lý và ước tính phí giao hàng
+│   │       ├── GoongGeocodingService.php           # Tích hợp dịch vụ bản đồ Goong Maps định vị tọa độ
+│   │       ├── SubscriptionGeneratorService.php    # Logic tự động khởi tạo đơn hàng khi đến kỳ giao gói tháng
+│   │       ├── Catalog/ProductCatalogService.php   # Xử lý nghiệp vụ lọc, tìm kiếm và phân loại sản phẩm
+│   │       └── Order/                              # OrderCreationService, OrderCancellationService
 │   ├── bootstrap/
 │   │   └── app.php                                 # Khai báo routing, alias middleware RBAC & chuẩn hóa JSON lỗi
 │   ├── config/
@@ -155,6 +169,7 @@ nong-san-sach/
 │   │       └── sql/seed_nong_san_sach.sql          # Dữ liệu mẫu vai trò, quyền hạn, tài khoản, nông trại & đơn hàng
 │   ├── routes/
 │   │   ├── api.php                                 # Định tuyến toàn bộ RESTful API chia theo 5 nhóm quyền & Auth
+│   │   ├── api/                                    # Tách tuyến API theo vai trò (admin, farm, customer, sales, public)
 │   │   └── console.php                             # Khai báo lịch chạy Cronjob tự động sinh đơn định kỳ
 │   ├── .env.example                                # Tệp mẫu các biến môi trường cần cấu hình
 │   └── composer.json                               # Danh sách các gói thư viện PHP/Laravel của dự án
@@ -163,31 +178,80 @@ nong-san-sach/
     ├── src/
     │   ├── components/
     │   │   ├── admin/                              # Thành phần giao diện dành cho Quản trị viên
+    │   │   │   ├── catalog/                        # Quản lý danh mục, nông sản & gói tháng định kỳ
+    │   │   │   │   ├── AdminCategoryListTab.jsx, AdminProductListTab.jsx, AdminSubscriptionListTab.jsx
+    │   │   │   │   ├── CategoryFormModal.jsx, ProductFormModal.jsx, SubscriptionPackageFormModal.jsx
+    │   │   │   │   └── CategoryDropdown.jsx
     │   │   │   ├── modals/UserPermissionModal.jsx  # Hộp thoại cấp tài khoản & thiết lập phân quyền vai trò
     │   │   │   ├── KpiStatCards.jsx                # Thẻ hiển thị chỉ số doanh thu, số đơn, hao hụt, mua lại
     │   │   │   └── RevenueAndWastageCharts.jsx     # Biểu đồ thống kê doanh thu & tỷ lệ hao hụt kho
+    │   │   ├── auth/                               # Thành phần đăng nhập & đăng ký
+    │   │   │   ├── LoginModal.jsx                  # Hộp thoại đăng nhập nhanh
+    │   │   │   └── RegisterModal.jsx               # Hộp thoại đăng ký tài khoản khách hàng
     │   │   ├── common/                             # Các thành phần UI tái sử dụng toàn hệ thống
     │   │   │   ├── Badge.jsx, Button.jsx, EmptyState.jsx, Pagination.jsx
     │   │   │   ├── FileUploader.jsx                # Thành phần tải lên nhiều ảnh/video/PDF
     │   │   │   └── MediaViewer.jsx                 # Trình xem trước hình ảnh, video & tài liệu kiểm định
     │   │   ├── customer/                           # Thành phần giao diện dành cho Khách hàng
+    │   │   │   ├── checkout/                       # Quy trình thanh toán đơn hàng (giỏ hàng, giao hàng, tóm tắt)
+    │   │   │   │   ├── CheckoutDeliveryAndPayment.jsx, CheckoutItemList.jsx
+    │   │   │   │   └── CheckoutPendingPayment.jsx, CheckoutSummaryCard.jsx
+    │   │   │   ├── orders/                         # Lịch sử đơn hàng, gói định kỳ & khiếu nại
+    │   │   │   │   ├── OrderHistoryCard.jsx, SubscriptionHistoryCard.jsx, ClaimHistoryCard.jsx
+    │   │   │   │   └── orderHistoryUtils.jsx
+    │   │   │   ├── profile/                        # Sổ địa chỉ, thông tin cá nhân & lịch sử điểm thưởng
+    │   │   │   │   └── AddressBookTab.jsx, ProfileInfoTab.jsx, RewardHistoryTab.jsx
     │   │   │   ├── modals/CreateClaimModal.jsx     # Hộp thoại gửi khiếu nại kèm tải lên bằng chứng ảnh/video
     │   │   │   ├── AddressDistancePicker.jsx       # Nhập địa chỉ & hiển thị khoảng cách km tính phí ship
     │   │   │   ├── CartSummaryBox.jsx              # Bảng tóm tắt giỏ hàng & kiểm tra tồn kho khả dụng
     │   │   │   └── SubscriptionScheduleForm.jsx    # Biểu mẫu chọn gói rau tháng & ngày giao trong tuần
-    │   │   ├── farm/                               # Thành phần giao diện dành cho Nhân viên Nông trại
-    │   │   │   ├── modals/AddFarmingLogModal.jsx   # Hộp thoại ghi mốc nhật ký canh tác & upload media
-    │   │   │   ├── modals/CreateBatchModal.jsx     # Hộp thoại tạo lô thu hoạch (ngày thu hoạch, HSD, phụ trách)
-    │   │   │   ├── modals/QrPrintPreviewModal.jsx  # Hộp thoại xem trước & xuất in tem mã QR dán bao bì
+    │   │   ├── farm/                               # Thành phần giao diện dành cho Kỹ sư Nông trại
+    │   │   │   ├── batches/                        # Quản lý lô thu hoạch, bảng dữ liệu & bảng chi tiết
+    │   │   │   │   ├── BatchTable.jsx              # Bảng danh sách lô hàng thu hoạch & trạng thái FEFO
+    │   │   │   │   ├── BatchDetailPanel.jsx        # Bảng chi tiết lô hàng Master-Detail (nhật ký, hao hụt, chứng nhận)
+    │   │   │   │   ├── BatchStatCards.jsx          # Thẻ chỉ số KPI sản lượng & tồn kho lô hàng
+    │   │   │   │   ├── BatchFilterBar.jsx          # Thanh lọc & tìm kiếm lô thu hoạch
+    │   │   │   │   ├── BatchWastageModal.jsx       # Hộp thoại ghi nhận hao hụt từ lô thu hoạch
+    │   │   │   │   └── BatchTraceModal.jsx         # Hộp thoại xem nhanh thông tin truy xuất nguồn gốc
+    │   │   │   ├── certificates/                   # Quản lý chứng nhận VietGAP & hồ sơ kiểm định
+    │   │   │   │   ├── CertificateTable.jsx        # Bảng danh sách chứng nhận & bộ lọc trạng thái hiệu lực
+    │   │   │   │   ├── CertificateStatCards.jsx    # Thẻ thống kê chứng nhận còn hạn, cận hạn & hết hạn
+    │   │   │   │   ├── CertificateFormModal.jsx    # Hộp thoại tải lên và cập nhật chứng nhận/hồ sơ kiểm nghiệm
+    │   │   │   │   ├── CertificatePreviewModal.jsx # Hộp thoại xem trước file PDF/ảnh chứng nhận
+    │   │   │   │   ├── CertificateDeleteModal.jsx  # Hộp thoại xác nhận xóa/thu hồi chứng nhận
+    │   │   │   │   └── InspectionResultModal.jsx   # Hộp thoại chi tiết chỉ số kiểm định mẫu đất/nước
+    │   │   │   ├── modals/                         # Hộp thoại tác vụ nông trại
+    │   │   │   │   ├── AddFarmingLogModal.jsx      # Hộp thoại ghi mốc nhật ký canh tác & upload media R2
+    │   │   │   │   ├── CreateBatchModal.jsx        # Hộp thoại tạo lô thu hoạch, HSD, phụ trách & tự sinh QR
+    │   │   │   │   └── QrPrintPreviewModal.jsx     # Hộp thoại xem trước & xuất in tem mã QR dán bao bì
+    │   │   │   ├── seasons/                        # Quản lý mùa vụ, lô đất & dòng thời gian canh tác
+    │   │   │   │   ├── SeasonListSection.jsx       # Danh sách mùa vụ canh tác & bộ lọc
+    │   │   │   │   ├── SeasonFormModal.jsx         # Hộp thoại tạo mới & cập nhật mùa vụ
+    │   │   │   │   ├── PlotListSection.jsx         # Danh sách lô đất canh tác & loại đất
+    │   │   │   │   ├── PlotFormModal.jsx           # Hộp thoại thêm mới/chỉnh sửa lô canh tác
+    │   │   │   │   ├── PlotTimelinePanel.jsx       # Panel hiển thị dòng thời gian nhật ký lô đang chọn
+    │   │   │   │   └── FarmInfoModal.jsx           # Hộp thoại cập nhật tên & địa chỉ cơ sở nông trại
+    │   │   │   ├── wastage/                        # Kiểm kê kho & xử lý hao hụt
+    │   │   │   │   ├── InventoryAuditTab.jsx       # Tab kiểm kho thực tế theo lô & cảnh báo cận hạn
+    │   │   │   │   ├── WastageHistoryTab.jsx       # Tab sổ lịch sử biến động & lý do xuất hủy
+    │   │   │   │   ├── WastageStatCards.jsx        # Thẻ chỉ số tổng tồn kho, cận hạn & xuất hủy
+    │   │   │   │   └── RecordWastageModal.jsx      # Hộp thoại ghi phiếu xuất hủy/hao hụt kiểm kho
     │   │   │   └── FarmingLogTimeline.jsx          # Dòng thời gian hiển thị các mốc chăm sóc mùa vụ
+    │   │   ├── home/                               # Các khối giao diện trang chủ
+    │   │   │   ├── HeroSection.jsx, FeaturedProductsSection.jsx, FlashSaleSection.jsx
+    │   │   │   ├── SubscriptionPackagesSection.jsx, FarmJourneySection.jsx, GreenhouseShowcaseSection.jsx
+    │   │   │   └── CategoryGridSection.jsx, TrustBadgesSection.jsx
     │   │   ├── navigation/                         # Thành phần điều hướng chính của 2 Layout
     │   │   │   ├── StorefrontHeader.jsx            # Header khu vực mua sắm (tự đổi trạng thái khi đăng nhập)
     │   │   │   ├── StorefrontFooter.jsx            # Chân trang thông tin nông trại & chứng nhận chất lượng
-    │   │   │   └── DynamicSidebar.jsx              # Thanh menu bên trái tự động ẩn/hiện mục theo quyền RBAC
+    │   │   │   ├── DynamicSidebar.jsx              # Thanh menu bên trái tự động ẩn/hiện mục theo quyền RBAC
+    │   │   │   └── header/                         # HeaderUserMenu.jsx, MobileNavDrawer.jsx
     │   │   ├── public/                             # Thành phần giao diện khu vực Công khai
     │   │   │   ├── ProductCard.jsx                 # Thẻ hiển thị thông tin tóm tắt sản phẩm nông sản
     │   │   │   ├── ProductFilterSidebar.jsx        # Bộ lọc tìm kiếm theo khoảng giá & chứng nhận an toàn
-    │   │   │   └── QrTraceTimeline.jsx             # Hiển thị chi tiết nguồn gốc lô & nhật ký khi quét QR
+    │   │   │   ├── QrTraceTimeline.jsx             # Hiển thị chi tiết nguồn gốc lô & nhật ký khi quét QR
+    │   │   │   ├── QrCodeScanner.jsx               # Trình quét mã QR trực tiếp trên trình duyệt
+    │   │   │   └── product-detail/                 # ProductDetailGallery.jsx, ProductPurchasePanel.jsx, ProductQualityDetails.jsx
     │   │   └── sales/                              # Thành phần giao diện dành cho Nhân viên Sales / CSKH
     │   │       ├── modals/DispatchOrderModal.jsx   # Hộp thoại cấu hình điều phối vận chuyển đơn hàng
     │   │       ├── modals/RecordWastageModal.jsx   # Hộp thoại ghi nhận số lượng dập nát/hao hụt hoặc xuất hủy
@@ -204,9 +268,10 @@ nong-san-sach/
     │   │   ├── auth/                               # LoginPage, RegisterPage, ForgotPasswordPage
     │   │   ├── public/                             # HomePage, ProductCatalogPage, ProductDetailPage, BrandStoryPage, QrTraceabilityPage
     │   │   ├── customer/                           # CartPage, CheckoutPage, SubscriptionRegisterPage, OrderHistoryPage, RewardWalletPage
-    │   │   ├── farm/                               # SeasonManagePage, BatchHarvestPage, CertificateManagePage
+    │   │   ├── farm/                               # SeasonManagePage, BatchHarvestPage, CertificateManagePage, InventoryWastagePage
     │   │   ├── sales/                              # SalesOrderPage, InventoryFefoPage, FlashSalePage, CustomerClaimPage
-    │   │   └── admin/                              # AdminDashboardPage, UserManagementPage, SystemSettingsPage
+    │   │   ├── admin/                              # AdminDashboardPage, CatalogManagePage, SystemSettingsPage, UserManagementPage
+    │   │   └── ApiTestPage.jsx                     # Trang kiểm thử kết nối API nội bộ
     │   ├── routes/                                 # Cấu hình định tuyến & bảo vệ truy cập trang
     │   │   ├── AppRouter.jsx                       # Khai báo toàn bộ đường dẫn URL của ứng dụng
     │   │   ├── ProtectedRoute.jsx                  # Chặn người dùng chưa đăng nhập vào trang nội bộ/cá nhân

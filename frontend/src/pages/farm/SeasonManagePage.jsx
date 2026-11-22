@@ -2,11 +2,13 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Sprout,
+  ClipboardList,
+  MapPin,
+  Pencil,
   Plus,
   FileText,
-  Pencil,
-  MapPin,
-  ClipboardList,
+  Calendar,
+  Layers,
 } from "lucide-react";
 import { farmApi } from "../../services/farmApi";
 import { showGlobalToast, confirmGlobalDialog } from "../../components/GlobalToast";
@@ -24,6 +26,9 @@ import FarmInfoModal from "../../components/farm/seasons/FarmInfoModal";
 import PlotTimelinePanel from "../../components/farm/seasons/PlotTimelinePanel";
 
 export default function SeasonManagePage() {
+  // =========================================================================
+  // 1. STATE QUẢN LÝ DỮ LIỆU & CACHE (MÙA VỤ, NHẬT KÝ, NÔNG SẢN)
+  // =========================================================================
   const [seasons, setSeasons] = useState(() => {
     return farmApi.getCachedSeasons() || [];
   });
@@ -38,13 +43,15 @@ export default function SeasonManagePage() {
   const [selectedPlot, setSelectedPlot] = useState(null);
   const [mobileTab, setMobileTab] = useState("plots"); // "plots" | "timeline"
 
-  // Modals state
+  // =========================================================================
+  // 2. STATE HỘP THOẠI (MODALS)
+  // =========================================================================
   const [isAddLogOpen, setIsAddLogOpen] = useState(false);
   const [isAddSeasonOpen, setIsAddSeasonOpen] = useState(false);
   const [isAddPlotOpen, setIsAddPlotOpen] = useState(false);
   const [activeSeasonForPlot, setActiveSeasonForPlot] = useState(null);
 
-  // Batch Harvest Modal state
+  // Modal tạo lô thu hoạch liên kết từ nhật ký
   const [isCreateBatchOpen, setIsCreateBatchOpen] = useState(false);
   const [batchInitialPlot, setBatchInitialPlot] = useState(null);
   const [batchInitialDate, setBatchInitialDate] = useState(null);
@@ -109,12 +116,14 @@ export default function SeasonManagePage() {
   const [farmSubmitting, setFarmSubmitting] = useState(false);
   const [farmError, setFarmError] = useState("");
 
+  // =========================================================================
+  // 3. API HANDLERS & TẢI DỮ LIỆU
+  // =========================================================================
   // Thông báo nổi dùng chung toàn hệ thống (top-center)
   const showToast = (msg, type = "success") => {
     showGlobalToast(msg, type);
   };
 
-  // Avoid duplicate API error toasts when the response interceptor already notified.
   const showApiErrorToast = (fallbackPrefix, err) => {
     notifyApiErrorToast(err, `${fallbackPrefix}: Đã xảy ra lỗi. Vui lòng thử lại.`);
   };
@@ -178,7 +187,7 @@ export default function SeasonManagePage() {
     }
   }, []);
 
-  // Khởi tạo: Chỉ tải danh sách mùa vụ, sản phẩm và thông tin cơ sở. Không tải nhật ký toàn cục khi chưa chọn lô.
+  // Khởi tạo: Chỉ tải danh sách mùa vụ, sản phẩm và thông tin cơ sở
   useEffect(() => {
     fetchSeasons();
     fetchProducts();
@@ -198,7 +207,7 @@ export default function SeasonManagePage() {
     }))
   );
 
-  // Tự động đồng bộ selectedPlot khi allPlots cập nhật (ví dụ sau khi tạo lô thu hoạch, trạng thái đổi sang Da_thu_hoach)
+  // Tự động đồng bộ selectedPlot khi allPlots cập nhật
   useEffect(() => {
     if (selectedPlot) {
       const freshPlot = allPlots.find((p) => String(p.id) === String(selectedPlot.id));
@@ -208,6 +217,9 @@ export default function SeasonManagePage() {
     }
   }, [allPlots, selectedPlot]);
 
+  // =========================================================================
+  // 4. EVENT HANDLERS: MÙA VỤ CANH TÁC (TẠO, ĐỔI TRẠNG THÁI, XÓA)
+  // =========================================================================
   // Xử lý tạo Mùa vụ mới
   const handleCreateSeason = async (e) => {
     e.preventDefault();
@@ -249,6 +261,67 @@ export default function SeasonManagePage() {
     }
   };
 
+  // Đổi trạng thái mùa vụ (Đang diễn ra <-> Đã kết thúc)
+  const handleToggleSeasonStatus = async (season) => {
+    const nextStatus = season.status === "Dang_dien_ra" ? "Da_ket_thuc" : "Dang_dien_ra";
+    const label = nextStatus === "Da_ket_thuc" ? "kết thúc mùa vụ" : "kích hoạt lại mùa vụ";
+
+    const confirmed = await confirmGlobalDialog({
+      title: nextStatus === "Da_ket_thuc" ? "Kết thúc mùa vụ?" : "Kích hoạt lại mùa vụ?",
+      message: `Bạn có chắc chắn muốn ${label} "${season.name}"?`,
+      confirmLabel: nextStatus === "Da_ket_thuc" ? "Kết Thúc Vụ" : "Kích Hoạt Lại",
+      variant: nextStatus === "Da_ket_thuc" ? "warning" : "primary",
+    });
+    if (!confirmed) return;
+
+    try {
+      await farmApi.updateSeason(season.id, { status: nextStatus });
+      showToast(`Đã ${label} thành công!`);
+      setSeasons((prev) =>
+        prev.map((item) =>
+          String(item.id) === String(season.id)
+            ? { ...item, status: nextStatus }
+            : item
+        )
+      );
+    } catch (err) {
+      showApiErrorToast("Không thể cập nhật trạng thái mùa vụ", err);
+    }
+  };
+
+  // Xóa mùa vụ
+  const handleDeleteSeason = async (season) => {
+    const confirmText =
+      season.plots && season.plots.length > 0
+        ? `Mùa vụ "${season.name}" hiện đang có ${season.plots.length} lô canh tác. Bạn có chắc chắn muốn xóa toàn bộ không?`
+        : `Bạn có chắc chắn muốn xóa mùa vụ "${season.name}" không?`;
+
+    const confirmed = await confirmGlobalDialog({
+      title: "Xóa mùa vụ canh tác?",
+      message: confirmText,
+      confirmLabel: "Xóa Mùa Vụ",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    try {
+      await farmApi.deleteSeason(season.id);
+      showToast(`Đã xóa mùa vụ "${season.name}" thành công.`);
+      setSeasons((prev) =>
+        prev.filter((item) => String(item.id) !== String(season.id))
+      );
+      if (selectedPlot?.season_id === season.id) {
+        setSelectedPlot(null);
+        setLogs([]);
+      }
+    } catch (err) {
+      showApiErrorToast("Không thể xóa mùa vụ", err);
+    }
+  };
+
+  // =========================================================================
+  // 5. EVENT HANDLERS: LÔ CANH TÁC & NHẬT KÝ (TẠO, SỬA, XÓA, CHỌN)
+  // =========================================================================
   // Xử lý tạo Lô canh tác mới
   const handleCreatePlot = async (e) => {
     e.preventDefault();
@@ -316,192 +389,6 @@ export default function SeasonManagePage() {
       }
     } finally {
       setPlotSubmitting(false);
-    }
-  };
-
-  // Xử lý khi chọn xem nhật ký 1 lô cụ thể
-  const handleSelectPlot = (plot) => {
-    if (selectedPlot?.id === plot.id) {
-      setSelectedPlot(null);
-      setLogs([]);
-    } else {
-      setSelectedPlot(plot);
-      fetchLogs(plot.id);
-      setMobileTab("timeline"); // Chuyển sang xem timeline tức thì trên di động/tablet
-    }
-  };
-
-  // Cập nhật thông tin cơ sở nông trại
-  const handleUpdateFarmInfo = async (e) => {
-    e.preventDefault();
-    if (!farmForm.address.trim()) {
-      setFarmError("Vui lòng nhập địa chỉ cơ sở nông trại.");
-      return;
-    }
-    setFarmSubmitting(true);
-    setFarmError("");
-    try {
-      const res = await farmApi.updateFarmInfo({
-        name: farmForm.name.trim(),
-        address: farmForm.address.trim(),
-      });
-      const updated = res.data?.data || farmForm;
-      setFarmInfo(updated);
-      showToast("Đã cập nhật địa chỉ cơ sở nông trại thành công!");
-      setIsEditFarmModalOpen(false);
-      window.dispatchEvent(new CustomEvent("farm-info-updated", { detail: updated }));
-    } catch (err) {
-      if (isApiValidationError(err)) {
-        setFarmError(getApiValidationMessage(err));
-      } else {
-        notifyApiErrorToast(err, "Không thể cập nhật địa chỉ cơ sở.");
-      }
-    } finally {
-      setFarmSubmitting(false);
-    }
-  };
-
-  // Xóa nhật ký canh tác
-  const handleDeleteLog = async (id) => {
-    const confirmed = await confirmGlobalDialog({
-      title: "Xóa bản ghi nhật ký?",
-      message: "Bạn có chắc chắn muốn xóa bản ghi nhật ký canh tác này? Thao tác này không thể hoàn tác.",
-      confirmLabel: "Xóa Nhật Ký",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-
-    try {
-      await farmApi.deleteFarmingLog(id);
-      showToast("Đã xóa nhật ký canh tác.");
-      if (selectedPlot?.id) {
-        fetchLogs(selectedPlot.id);
-      }
-    } catch (err) {
-      showApiErrorToast("Không thể xóa nhật ký", err);
-    }
-  };
-
-  // Xóa mùa vụ
-  const handleDeleteSeason = async (season) => {
-    const confirmText =
-      season.plots && season.plots.length > 0
-        ? `Mùa vụ "${season.name}" hiện đang có ${season.plots.length} lô canh tác. Bạn có chắc chắn muốn xóa toàn bộ không?`
-        : `Bạn có chắc chắn muốn xóa mùa vụ "${season.name}" không?`;
-
-    const confirmed = await confirmGlobalDialog({
-      title: "Xóa mùa vụ canh tác?",
-      message: confirmText,
-      confirmLabel: "Xóa Mùa Vụ",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-
-    try {
-      await farmApi.deleteSeason(season.id);
-      showToast(`Đã xóa mùa vụ "${season.name}" thành công.`);
-      setSeasons((prev) =>
-        prev.filter((item) => String(item.id) !== String(season.id))
-      );
-      if (selectedPlot?.season_id === season.id) {
-        setSelectedPlot(null);
-        setLogs([]);
-      }
-    } catch (err) {
-      showApiErrorToast("Không thể xóa mùa vụ", err);
-    }
-  };
-
-  // Đổi trạng thái mùa vụ (Đang diễn ra <-> Đã kết thúc)
-  const handleToggleSeasonStatus = async (season) => {
-    const nextStatus = season.status === "Dang_dien_ra" ? "Da_ket_thuc" : "Dang_dien_ra";
-    const label = nextStatus === "Da_ket_thuc" ? "kết thúc mùa vụ" : "kích hoạt lại mùa vụ";
-
-    const confirmed = await confirmGlobalDialog({
-      title: nextStatus === "Da_ket_thuc" ? "Kết thúc mùa vụ?" : "Kích hoạt lại mùa vụ?",
-      message: `Bạn có chắc chắn muốn ${label} "${season.name}"?`,
-      confirmLabel: nextStatus === "Da_ket_thuc" ? "Kết Thúc Vụ" : "Kích Hoạt Lại",
-      variant: nextStatus === "Da_ket_thuc" ? "warning" : "primary",
-    });
-    if (!confirmed) return;
-
-    try {
-      await farmApi.updateSeason(season.id, { status: nextStatus });
-      showToast(`Đã ${label} thành công!`);
-      setSeasons((prev) =>
-        prev.map((item) =>
-          String(item.id) === String(season.id)
-            ? { ...item, status: nextStatus }
-            : item
-        )
-      );
-    } catch (err) {
-      showApiErrorToast("Không thể cập nhật trạng thái mùa vụ", err);
-    }
-  };
-
-  // Xóa lô canh tác trong mùa vụ
-  const handleDeletePlot = async (seasonId, plot) => {
-    const confirmed = await confirmGlobalDialog({
-      title: "Xóa lô canh tác?",
-      message: `Bạn có chắc chắn muốn xóa lô "${plot.plot_name}"? Dữ liệu nhật ký và lô liên quan sẽ bị gỡ bỏ.`,
-      confirmLabel: "Xóa Lô Đất",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-
-    try {
-      await farmApi.deletePlot(seasonId, plot.id);
-      showToast(`Đã xóa lô "${plot.plot_name}".`);
-      setSeasons((prev) =>
-        prev.map((season) => {
-          if (String(season.id) !== String(seasonId)) return season;
-
-          const plots = Array.isArray(season.plots) ? season.plots : [];
-          const removedPlot = plots.find((item) => String(item.id) === String(plot.id));
-          if (!removedPlot) return season;
-
-          const nextPlots = plots.filter((item) => String(item.id) !== String(plot.id));
-          const activeCount = Number.isFinite(Number(season.active_plots_count))
-            ? Number(season.active_plots_count)
-            : plots.filter((item) => item.status === "Dang_canh_tac").length;
-          const harvestedCount = Number.isFinite(Number(season.harvested_plots_count))
-            ? Number(season.harvested_plots_count)
-            : plots.filter((item) => item.status === "Da_thu_hoach").length;
-          const totalArea = Number.isFinite(Number(season.total_area_m2))
-            ? Number(season.total_area_m2)
-            : plots.reduce((sum, item) => sum + (Number(item.area_m2) || 0), 0);
-
-          return {
-            ...season,
-            plots: nextPlots,
-            total_plots: Math.max(
-              0,
-              (Number.isFinite(Number(season.total_plots))
-                ? Number(season.total_plots)
-                : plots.length) - 1
-            ),
-            active_plots_count: Math.max(
-              0,
-              activeCount - (removedPlot.status === "Dang_canh_tac" ? 1 : 0)
-            ),
-            harvested_plots_count: Math.max(
-              0,
-              harvestedCount - (removedPlot.status === "Da_thu_hoach" ? 1 : 0)
-            ),
-            total_area_m2: Math.max(
-              0,
-              totalArea - (Number(removedPlot.area_m2) || 0)
-            ),
-          };
-        })
-      );
-      if (selectedPlot?.id === plot.id) {
-        setSelectedPlot(null);
-        setLogs([]);
-      }
-    } catch (err) {
-      showApiErrorToast("Không thể xóa lô canh tác", err);
     }
   };
 
@@ -598,100 +485,264 @@ export default function SeasonManagePage() {
     }
   };
 
-  // Thống kê nhanh
+  // Xóa lô canh tác trong mùa vụ
+  const handleDeletePlot = async (seasonId, plot) => {
+    const confirmed = await confirmGlobalDialog({
+      title: "Xóa lô canh tác?",
+      message: `Bạn có chắc chắn muốn xóa lô "${plot.plot_name}"? Dữ liệu nhật ký và lô liên quan sẽ bị gỡ bỏ.`,
+      confirmLabel: "Xóa Lô Đất",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    try {
+      await farmApi.deletePlot(seasonId, plot.id);
+      showToast(`Đã xóa lô "${plot.plot_name}".`);
+      setSeasons((prev) =>
+        prev.map((season) => {
+          if (String(season.id) !== String(seasonId)) return season;
+
+          const plots = Array.isArray(season.plots) ? season.plots : [];
+          const removedPlot = plots.find((item) => String(item.id) === String(plot.id));
+          if (!removedPlot) return season;
+
+          const nextPlots = plots.filter((item) => String(item.id) !== String(plot.id));
+          const activeCount = Number.isFinite(Number(season.active_plots_count))
+            ? Number(season.active_plots_count)
+            : plots.filter((item) => item.status === "Dang_canh_tac").length;
+          const harvestedCount = Number.isFinite(Number(season.harvested_plots_count))
+            ? Number(season.harvested_plots_count)
+            : plots.filter((item) => item.status === "Da_thu_hoach").length;
+          const totalArea = Number.isFinite(Number(season.total_area_m2))
+            ? Number(season.total_area_m2)
+            : plots.reduce((sum, item) => sum + (Number(item.area_m2) || 0), 0);
+
+          return {
+            ...season,
+            plots: nextPlots,
+            total_plots: Math.max(
+              0,
+              (Number.isFinite(Number(season.total_plots))
+                ? Number(season.total_plots)
+                : plots.length) - 1
+            ),
+            active_plots_count: Math.max(
+              0,
+              activeCount - (removedPlot.status === "Dang_canh_tac" ? 1 : 0)
+            ),
+            harvested_plots_count: Math.max(
+              0,
+              harvestedCount - (removedPlot.status === "Da_thu_hoach" ? 1 : 0)
+            ),
+            total_area_m2: Math.max(
+              0,
+              totalArea - (Number(removedPlot.area_m2) || 0)
+            ),
+          };
+        })
+      );
+      if (selectedPlot?.id === plot.id) {
+        setSelectedPlot(null);
+        setLogs([]);
+      }
+    } catch (err) {
+      showApiErrorToast("Không thể xóa lô canh tác", err);
+    }
+  };
+
+  // Chọn xem nhật ký 1 lô cụ thể
+  const handleSelectPlot = (plot) => {
+    if (selectedPlot?.id === plot.id) {
+      setSelectedPlot(null);
+      setLogs([]);
+    } else {
+      setSelectedPlot(plot);
+      fetchLogs(plot.id);
+      setMobileTab("timeline"); // Chuyển sang xem timeline tức thì trên di động/tablet
+    }
+  };
+
+  // Xóa nhật ký canh tác
+  const handleDeleteLog = async (id) => {
+    const confirmed = await confirmGlobalDialog({
+      title: "Xóa bản ghi nhật ký?",
+      message: "Bạn có chắc chắn muốn xóa bản ghi nhật ký canh tác này? Thao tác này không thể hoàn tác.",
+      confirmLabel: "Xóa Nhật Ký",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    try {
+      await farmApi.deleteFarmingLog(id);
+      showToast("Đã xóa nhật ký canh tác.");
+      if (selectedPlot?.id) {
+        fetchLogs(selectedPlot.id);
+      }
+    } catch (err) {
+      showApiErrorToast("Không thể xóa nhật ký", err);
+    }
+  };
+
+  // Cập nhật thông tin cơ sở nông trại
+  const handleUpdateFarmInfo = async (e) => {
+    e.preventDefault();
+    if (!farmForm.address.trim()) {
+      setFarmError("Vui lòng nhập địa chỉ cơ sở nông trại.");
+      return;
+    }
+    setFarmSubmitting(true);
+    setFarmError("");
+    try {
+      const res = await farmApi.updateFarmInfo({
+        name: farmForm.name.trim(),
+        address: farmForm.address.trim(),
+      });
+      const updated = res.data?.data || farmForm;
+      setFarmInfo(updated);
+      showToast("Đã cập nhật địa chỉ cơ sở nông trại thành công!");
+      setIsEditFarmModalOpen(false);
+      window.dispatchEvent(new CustomEvent("farm-info-updated", { detail: updated }));
+    } catch (err) {
+      if (isApiValidationError(err)) {
+        setFarmError(getApiValidationMessage(err));
+      } else {
+        notifyApiErrorToast(err, "Không thể cập nhật địa chỉ cơ sở.");
+      }
+    } finally {
+      setFarmSubmitting(false);
+    }
+  };
+
+  // =========================================================================
+  // 6. GIAO DIỆN (UI RENDER)
+  // =========================================================================
   const totalActivePlots = seasons.reduce((acc, s) => acc + (s.active_plots_count || 0), 0);
   const totalArea = seasons.reduce((acc, s) => acc + (s.total_area_m2 || 0), 0);
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Top Banner & Quick Stats */}
-      <div className="bg-[#064e2e] rounded-3xl p-6 sm:p-7 text-white shadow-sm border border-[#0a5c37] relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setFarmForm({
-                    name: farmInfo.name || "Nông Trại Xanh Củ Chi",
-                    address: farmInfo.address || "Ấp 3, Xã Nhuận Đức, Huyện Củ Chi, TP. Hồ Chí Minh",
-                  });
-                  setIsEditFarmModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#043821] hover:bg-[#032e1b] border border-[#0e633c] rounded-full text-xs font-semibold text-emerald-200 transition-colors group cursor-pointer"
-                title="Nhấp để cập nhật tên & địa chỉ cơ sở nông trại"
-              >
-                <MapPin className="w-3.5 h-3.5 text-[#86efac] shrink-0" />
-                <span className="truncate max-w-[280px]">
-                  {farmInfo.address || "Cơ sở #1 • Củ Chi, TP.HCM"}
-                </span>
-                <Pencil className="w-3 h-3 text-emerald-400 opacity-70 group-hover:opacity-100 ml-1 shrink-0" />
-              </button>
+      {/* 6.1 Top Banner Tiêu Chuẩn Phân Hệ Nông Trại */}
+      <div className="bg-gradient-to-br from-white via-[#fcfdfa] to-emerald-50/30 rounded-2xl p-4 sm:p-5 shadow-xs border border-emerald-900/10 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setFarmForm({
+                  name: farmInfo.name || "Nông Trại Xanh Củ Chi",
+                  address: farmInfo.address || "Ấp 3, Xã Nhuận Đức, Huyện Củ Chi, TP. Hồ Chí Minh",
+                });
+                setIsEditFarmModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 rounded-full text-[10.5px] font-bold text-emerald-800 transition-colors group cursor-pointer"
+              title="Nhấp để cập nhật tên & địa chỉ cơ sở nông trại"
+            >
+              <MapPin className="w-3 h-3 text-emerald-700 shrink-0" />
+              <span className="truncate max-w-[240px]">
+                {farmInfo?.address || "Cơ sở #1 • Củ Chi, TP.HCM"}
+              </span>
+              <Pencil className="w-2.5 h-2.5 text-emerald-500 opacity-70 group-hover:opacity-100 ml-0.5 shrink-0" />
+            </button>
 
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#043821]/80 rounded-full text-[11px] font-semibold text-emerald-300 border border-[#0e633c]/60">
-                <Sprout className="w-3.5 h-3.5 text-[#86efac]" />
-                Khu Vực Kỹ Thuật & Vận Hành
-              </div>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50/70 rounded-full text-[10.5px] font-bold text-emerald-700 border border-emerald-200/60">
+              <Sprout className="w-3 h-3 text-emerald-600" />
+              <span>Phân Hệ Nông Trại</span>
             </div>
-
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Quản Lý Mùa Vụ & Nhật Ký Canh Tác
-            </h1>
-            <p className="text-emerald-100/80 text-xs sm:text-sm max-w-2xl mt-1.5 leading-relaxed">
-              Kiểm soát chu kỳ gieo trồng, diện tích canh tác từng lô và ghi nhận mốc nhật ký thực địa (ảnh, video) minh bạch theo tiêu chuẩn VietGAP & Hữu cơ TCVN 11041.
-            </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
-            <button
-              type="button"
-              onClick={() => setIsAddSeasonOpen(true)}
-              className="w-full sm:w-auto px-4 py-2.5 bg-[#86efac] hover:bg-[#6ee7b7] text-[#064e2e] font-extrabold text-xs rounded-xl shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 shrink-0" />
-              <span>Thêm Mùa Vụ Mới</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAddLogOpen(true)}
-              className="w-full sm:w-auto px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <FileText className="w-4 h-4 text-[#86efac] shrink-0" />
-              <span>Ghi Nhật Ký Canh Tác</span>
-            </button>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Quản Lý Mùa Vụ & Canh Tác
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsAddSeasonOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-2xs hover:shadow active:scale-[0.98] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span>Thêm Mùa Vụ</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAddLogOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
+          >
+            <FileText className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+            <span>Ghi Nhật Ký</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 6.2 Thẻ thống kê chỉ số KPI mùa vụ & canh tác */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        {/* Mùa vụ đang chạy */}
+        <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500">Mùa Vụ Đang Chạy</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200/60">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight tabular-nums">
+            {seasons.filter((s) => s.status === "Dang_dien_ra").length}{" "}
+            <span className="text-xs font-semibold text-slate-500">vụ</span>
           </div>
         </div>
 
-        {/* Quick Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 mt-6 pt-5 border-t border-[#0f6b41]/60">
-          <div className="bg-[#043821]/80 backdrop-blur-xs p-3 sm:p-3.5 rounded-2xl border border-[#0e633c]/70 min-w-0">
-            <span className="text-[10.5px] sm:text-[11px] font-medium text-emerald-300 truncate block">Mùa vụ đang chạy</span>
-            <div className="text-lg sm:text-2xl font-extrabold mt-0.5 text-white truncate">
-              {seasons.filter((s) => s.status === "Dang_dien_ra").length} vụ
+        {/* Lô đang canh tác */}
+        <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-emerald-800">Lô Đang Canh Tác</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200/60">
+              <Sprout className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="bg-[#043821]/80 backdrop-blur-xs p-3 sm:p-3.5 rounded-2xl border border-[#0e633c]/70 min-w-0">
-            <span className="text-[10.5px] sm:text-[11px] font-medium text-emerald-300 truncate block">Lô đang canh tác</span>
-            <div className="text-lg sm:text-2xl font-extrabold mt-0.5 text-white truncate">{totalActivePlots} lô</div>
+          <div className="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight tabular-nums">
+            {totalActivePlots}{" "}
+            <span className="text-xs font-semibold text-slate-500">lô</span>
           </div>
-          <div className="bg-[#043821]/80 backdrop-blur-xs p-3 sm:p-3.5 rounded-2xl border border-[#0e633c]/70 min-w-0">
-            <span className="text-[10.5px] sm:text-[11px] font-medium text-emerald-300 truncate block">Tổng diện tích</span>
-            <div className="text-lg sm:text-2xl font-extrabold mt-0.5 text-white truncate">
-              {totalArea.toLocaleString()} m²
+        </div>
+
+        {/* Tổng diện tích */}
+        <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500">Tổng Diện Tích</span>
+            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+              <Layers className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="bg-[#043821]/80 backdrop-blur-xs p-3 sm:p-3.5 rounded-2xl border border-[#0e633c]/70 min-w-0">
-            <span className="text-[10.5px] sm:text-[11px] font-medium text-emerald-300 truncate block">
-              {selectedPlot ? "Lô đang chọn" : "Tổng số lô đất"}
+          <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight tabular-nums">
+            {totalArea.toLocaleString()}{" "}
+            <span className="text-xs font-semibold text-slate-500">m²</span>
+          </div>
+        </div>
+
+        {/* Lô đang chọn */}
+        <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all">
+          <div className="flex items-center justify-between text-slate-500 mb-1.5">
+            <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
+              {selectedPlot ? "Lô Đang Chọn" : "Tổng Số Lô Đất"}
             </span>
-            <div className="text-xs sm:text-sm font-bold mt-1 text-[#86efac] truncate">
-              {selectedPlot ? `${selectedPlot.plot_name} • ${selectedPlot.product_name || "Nông sản"}` : `${allPlots.length} lô`}
+            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+              <MapPin className="w-3.5 h-3.5" />
             </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
+            {selectedPlot ? (
+              <span className="text-emerald-700 text-lg sm:text-xl">{selectedPlot.plot_name}</span>
+            ) : (
+              <span>
+                {allPlots.length}{" "}
+                <span className="text-xs font-semibold text-slate-500">lô</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Mobile Segmented Switcher (Visible only below lg) */}
+      {/* 6.3 Bộ chuyển đổi chế độ xem trên di động (Mobile Segmented Switcher) */}
       <div className="lg:hidden flex items-center p-1 bg-slate-200/80 rounded-2xl border border-slate-300/60 shadow-inner">
         <button
           type="button"
@@ -725,7 +776,7 @@ export default function SeasonManagePage() {
         </button>
       </div>
 
-      {/* Main Content Layout */}
+      {/* 6.4 Bố cục 2 cột chính: Danh sách mùa vụ (trái) và Dòng thời gian nhật ký (phải) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <SeasonListSection
           loading={loading}
@@ -761,6 +812,7 @@ export default function SeasonManagePage() {
         />
       </div>
 
+      {/* 6.5 Hộp thoại: Thêm Nhật Ký Canh Tác Mới */}
       <AddFarmingLogModal
         isOpen={isAddLogOpen}
         onClose={() => setIsAddLogOpen(false)}
@@ -773,7 +825,7 @@ export default function SeasonManagePage() {
         defaultPlotId={selectedPlot?.id || null}
       />
 
-      {/* Modal: Tạo Lô Hàng Thu Hoạch (CreateBatchModal - Trỏ từ mốc Thu hoạch ) */}
+      {/* 6.6 Hộp thoại: Tạo Lô Hàng Thu Hoạch (Từ mốc thu hoạch) */}
       <CreateBatchModal
         isOpen={isCreateBatchOpen}
         onClose={() => setIsCreateBatchOpen(false)}
@@ -788,6 +840,7 @@ export default function SeasonManagePage() {
         plots={allPlots}
       />
 
+      {/* 6.7 Hộp thoại: Thêm Mùa Vụ Canh Tác Mới */}
       <SeasonFormModal
         isAddSeasonOpen={isAddSeasonOpen}
         setIsAddSeasonOpen={setIsAddSeasonOpen}
@@ -798,6 +851,7 @@ export default function SeasonManagePage() {
         seasonSubmitting={seasonSubmitting}
       />
 
+      {/* 6.8 Hộp thoại: Thêm & Chỉnh Sửa Lô Canh Tác */}
       <PlotFormModal
         isAddPlotOpen={isAddPlotOpen}
         setIsAddPlotOpen={setIsAddPlotOpen}
@@ -818,7 +872,7 @@ export default function SeasonManagePage() {
         editPlotSubmitting={editPlotSubmitting}
       />
 
-      {/* Modal: Cập Nhật Thông Tin & Địa Chỉ Cơ Sở Nông Trại */}
+      {/* 6.9 Hộp thoại: Cập Nhật Địa Chỉ Cơ Sở Nông Trại */}
       <FarmInfoModal
         isOpen={isEditFarmModalOpen}
         farmForm={farmForm}

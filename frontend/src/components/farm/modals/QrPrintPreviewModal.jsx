@@ -266,9 +266,6 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
               <h3 className="text-base sm:text-lg font-bold text-slate-800 truncate">
                 In Tem Mã QR Lô Hàng
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
-                Tem in nhiệt định danh dán bao bì truy xuất nguồn gốc minh chứng
-              </p>
             </div>
           </div>
           <button
@@ -287,7 +284,7 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
           <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70 text-xs">
             <div className="flex items-center gap-1.5 font-bold text-slate-700">
               <Layers className="w-4 h-4 text-purple-600" />
-              <span>Khổ Tem In:</span>
+              <span>Khổ in:</span>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {[
@@ -325,10 +322,7 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between text-xs px-1">
                     <span className="font-bold text-slate-700">
-                      Bản xem trước trang A4 ({A4_LABEL_COUNT} tem · lưới 4 cột × 6 hàng)
-                    </span>
-                    <span className="text-[11px] text-purple-700 font-semibold">
-                      Tự căn vừa 1 trang A4 khi in
+                      Bản xem trước A4 ({A4_LABEL_COUNT} tem)
                     </span>
                   </div>
                   <div
@@ -409,7 +403,7 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
               className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
             >
               <Printer className="w-4 h-4" />
-              <span>{isA4Mode ? "In 24 Tem (A4)" : "In Tem Ngay"}</span>
+              <span>{isA4Mode ? "In 24 Tem (A4)" : "In Tem"}</span>
             </button>
           </div>
         </div>
