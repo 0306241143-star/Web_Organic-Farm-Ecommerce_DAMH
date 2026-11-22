@@ -27,6 +27,7 @@ export default function OrderHistoryPage() {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [orderDetails, setOrderDetails] = useState({});
   const [changingSubscriptionId, setChangingSubscriptionId] = useState(null);
+  const [continuingPaymentOrderId, setContinuingPaymentOrderId] = useState(null);
   const [claimOrder, setClaimOrder] = useState(null);
   const [loadError, setLoadError] = useState("");
 
@@ -153,6 +154,29 @@ export default function OrderHistoryPage() {
       });
     } catch (error) {
       notifyApiErrorToast(error, "Không thể hủy đơn hàng.");
+    }
+  };
+
+  const continueOrderPayment = async (order) => {
+    if (continuingPaymentOrderId !== null) return;
+
+    setContinuingPaymentOrderId(order.order_id);
+    try {
+      const response = await customerApi.checkout({ order_id: Number(order.order_id) });
+      const paymentUrl = response.data?.pay_url;
+      if (!paymentUrl) {
+        throw new Error("Không nhận được liên kết thanh toán. Vui lòng thử lại sau.");
+      }
+
+      const parsedPaymentUrl = new URL(paymentUrl);
+      if (!["https:", "http:"].includes(parsedPaymentUrl.protocol)) {
+        throw new Error("Liên kết thanh toán không hợp lệ. Vui lòng thử lại sau.");
+      }
+
+      window.location.assign(parsedPaymentUrl.href);
+    } catch (error) {
+      notifyApiErrorToast(error, "Không thể tiếp tục thanh toán đơn hàng.");
+      setContinuingPaymentOrderId(null);
     }
   };
 
