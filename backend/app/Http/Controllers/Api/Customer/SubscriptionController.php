@@ -9,12 +9,12 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customer\StoreSubscriptionRequest;
 use App\Models\DangKyGoi;
-use App\Models\DiaChiGiaoHang;
 use App\Models\GoiDinhKy;
 use App\Models\LichGiaoDinhKy;
 use App\Models\ThanhToan;
 use App\Services\ApiPayPaymentService;
-use App\Services\GoongGeocodingService;
+use App\Services\SubscriptionAddressGeocodingException;
+use App\Services\SubscriptionGeneratorService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -163,147 +163,21 @@ class SubscriptionController extends Controller
     /**
      * Lưu gói và toàn bộ lịch trong một transaction; đăng ký chỉ hoạt động sau ApiPay webhook.
      */
-    public function store(StoreSubscriptionRequest $request, GoongGeocodingService $geocoder): JsonResponse
+    public function store(
+        StoreSubscriptionRequest $request,
+        SubscriptionGeneratorService $subscriptions
+    ): JsonResponse
     {
-        $validated = $request->validated();
         $userId = (int) $request->user()->getAuthIdentifier();
-        $shippingAddress = $validated['shipping_address'] ?? null;
-        $address = isset($validated['address_id'])
-            ? DiaChiGiaoHang::query()
-                ->where('Ma_dia_chi', $validated['address_id'])
-                ->where('Ma_nguoi_dung', $userId)
-                ->firstOrFail()
-            : null;
-        $coordinates = null;
-
-        if ($shippingAddress !== null) {
-            $existingRegistration = DangKyGoi::query()
-                ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
-                ->first();
-
-            if ($existingRegistration && (int) $existingRegistration->Ma_nguoi_dung !== $userId) {
-                abort(409, 'Mã yêu cầu đã được sử dụng.');
-            }
-
-            if (! $existingRegistration) {
-                $fullAddress = implode(', ', [
-                    $shippingAddress['street'],
-                    $shippingAddress['ward'],
-                    $shippingAddress['province'],
-                ]);
-
-                try {
-                    $coordinates = $geocoder->geocode($fullAddress);
-                } catch (ConnectionException|RuntimeException $exception) {
-                    Log::warning('Goong could not geocode a customer subscription address.', [
-                        'exception' => $exception::class,
-                    ]);
-
-                    return $this->errorResponse(
-                        message: 'Không thể xác định tọa độ địa chỉ. Vui lòng kiểm tra địa chỉ hoặc liên hệ quản trị viên.',
-                        status: 422,
-                        errorCode: self::ERR_BAD_REQUEST
-                    );
-                }
-            }
+        try {
+            $registration = $subscriptions->registerSubscription($userId, $request->validated());
+        } catch (SubscriptionAddressGeocodingException) {
+            return $this->errorResponse(
+                message: 'Không thể xác định tọa độ địa chỉ. Vui lòng kiểm tra địa chỉ hoặc liên hệ quản trị viên.',
+                status: 422,
+                errorCode: self::ERR_BAD_REQUEST
+            );
         }
-
-        $registration = DB::transaction(function () use ($validated, $userId, $address, $shippingAddress, $coordinates): DangKyGoi {
-            $existing = DangKyGoi::query()
-                ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
-                ->lockForUpdate()
-                ->first();
-
-            if ($existing) {
-                if ((int) $existing->Ma_nguoi_dung !== $userId) {
-                    abort(409, 'Mã yêu cầu đã được sử dụng.');
-                }
-
-                $existingDays = LichGiaoDinhKy::query()
-                    ->where('Ma_dang_ky', $existing->Ma_dang_ky)
-                    ->orderBy('Thu_trong_tuan')
-                    ->get(['Thu_trong_tuan', 'Khung_gio_giao'])
-                    ->map(fn (LichGiaoDinhKy $day) => [
-                        'weekday' => (int) $day->Thu_trong_tuan,
-                        'delivery_window' => $day->Khung_gio_giao,
-                    ])
-                    ->all();
-                $requestedDays = collect($validated['delivery_days'])
-                    ->map(fn (array $day) => [
-                        'weekday' => (int) $day['weekday'],
-                        'delivery_window' => $day['delivery_window'] ?? null,
-                    ])
-                    ->sortBy('weekday')
-                    ->values()
-                    ->all();
-
-                $sameAddress = $shippingAddress === null
-                    ? (int) $existing->Ma_dia_chi === (int) $address->Ma_dia_chi
-                    : $this->addressMatches(
-                        DiaChiGiaoHang::query()->findOrFail($existing->Ma_dia_chi),
-                        $shippingAddress
-                    );
-
-                if (
-                    (int) $existing->Ma_goi !== (int) $validated['package_id']
-                    || ! $sameAddress
-                    || $existing->Ngay_bat_dau !== $validated['start_date']
-                    || $existingDays !== $requestedDays
-                ) {
-                    abort(409, 'Mã yêu cầu đã được dùng cho một nội dung đăng ký khác.');
-                }
-
-                return $existing;
-            }
-
-            $address ??= DiaChiGiaoHang::query()->create([
-                'Ma_nguoi_dung' => $userId,
-                'Ten_nguoi_nhan' => $shippingAddress['recipient_name'],
-                'So_dien_thoai_nguoi_nhan' => $shippingAddress['phone'],
-                'Dia_chi_chi_tiet' => $shippingAddress['street'],
-                'Phuong_xa' => $shippingAddress['ward'],
-                'Quan_huyen' => '',
-                'Tinh_thanh' => $shippingAddress['province'],
-                'Vi_do' => $coordinates['latitude'],
-                'Kinh_do' => $coordinates['longitude'],
-                'La_mac_dinh' => ! DiaChiGiaoHang::query()
-                    ->where('Ma_nguoi_dung', $userId)
-                    ->exists(),
-            ]);
-
-            $package = GoiDinhKy::query()
-                ->where('Ma_goi', $validated['package_id'])
-                ->where('Trang_thai', 'Dang_mo')
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $startDate = CarbonImmutable::createFromFormat('!Y-m-d', $validated['start_date']);
-            $endDate = $startDate
-                ->addMonthsNoOverflow((int) $package->Ky_han_thang)
-                ->subDay();
-
-            $created = DangKyGoi::query()->create([
-                'Ma_nguoi_dung' => $userId,
-                'Ma_goi' => $package->Ma_goi,
-                'Ma_dia_chi' => $address->Ma_dia_chi,
-                'Ngay_bat_dau' => $startDate->toDateString(),
-                'Ngay_ket_thuc' => $endDate->toDateString(),
-                'Trang_thai' => 'Cho_thanh_toan',
-                'Yeu_cau_idempotency' => $validated['idempotency_key'],
-            ]);
-
-            foreach ($validated['delivery_days'] as $day) {
-                LichGiaoDinhKy::query()->create([
-                    'Ma_dang_ky' => $created->Ma_dang_ky,
-                    // Quy ước MySQL DAYOFWEEK: Chủ Nhật = 1, Thứ Bảy = 7.
-                    'Thu_trong_tuan' => $day['weekday'],
-                    'Khung_gio_giao' => $day['delivery_window'] ?? null,
-                    'Trang_thai' => 'Hoat_dong',
-                ]);
-            }
-
-            return $created;
-        });
 
         return $this->successResponse(
             message: 'Tạo đăng ký gói thành công. Vui lòng thanh toán để kích hoạt gói.',
@@ -316,18 +190,6 @@ class SubscriptionController extends Controller
             ],
             status: 201
         );
-    }
-
-    /**
-     * Compare user-entered address fields with the saved snapshot for an idempotent retry.
-     */
-    private function addressMatches(DiaChiGiaoHang $address, array $requested): bool
-    {
-        return $address->Ten_nguoi_nhan === $requested['recipient_name']
-            && $address->So_dien_thoai_nguoi_nhan === $requested['phone']
-            && $address->Dia_chi_chi_tiet === $requested['street']
-            && $address->Phuong_xa === $requested['ward']
-            && $address->Tinh_thanh === $requested['province'];
     }
 
     /**
@@ -501,6 +363,49 @@ class SubscriptionController extends Controller
                 'expires_at' => $remote['expires_at'] ?? $remote['expiresAt'] ?? null,
             ],
             status: $status
+        );
+    }
+
+
+
+    /**
+     * Hủy đăng ký gói định kỳ đang ở trạng thái chờ thanh toán.
+     */
+    public function cancel(Request $request, int $subscriptionId): JsonResponse
+    {
+        $registration = DB::transaction(function () use ($request, $subscriptionId): DangKyGoi {
+            $registration = DangKyGoi::query()
+                ->where('Ma_dang_ky', $subscriptionId)
+                ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($registration->Trang_thai !== 'Cho_thanh_toan') {
+                throw ValidationException::withMessages([
+                    'subscription_id' => 'Chỉ có thể hủy đăng ký gói đang ở trạng thái chờ thanh toán.',
+                ]);
+            }
+
+            $registration->update(['Trang_thai' => 'Da_huy']);
+
+            LichGiaoDinhKy::query()
+                ->where('Ma_dang_ky', $registration->Ma_dang_ky)
+                ->update(['Trang_thai' => 'Tam_ngung']);
+
+            ThanhToan::query()
+                ->where('Ma_dang_ky_goi', $registration->Ma_dang_ky)
+                ->where('Trang_thai', 'Khoi_tao')
+                ->update(['Trang_thai' => 'That_bai']);
+
+            return $registration->refresh();
+        });
+
+        return $this->successResponse(
+            message: 'Đã hủy đăng ký gói định kỳ thành công.',
+            data: [
+                'subscription_id' => (int) $registration->Ma_dang_ky,
+                'status' => $registration->Trang_thai,
+            ]
         );
     }
 }

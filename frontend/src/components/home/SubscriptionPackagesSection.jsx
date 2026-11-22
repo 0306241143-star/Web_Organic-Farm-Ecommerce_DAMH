@@ -4,6 +4,7 @@ import {
   CalendarCheck2,
   CheckCircle2,
   ArrowRight,
+  ArrowUpRight,
   Package,
   Sparkles,
   Scale,
@@ -13,9 +14,10 @@ import { storefrontApi } from "../../services/storefrontApi";
 import { useAuth } from "../../context/useAuth";
 
 export default function SubscriptionPackagesSection() {
-  const { user } = useAuth();
-  const isInternalStaff = Boolean(
-    user && ["admin", "farm_staff", "sales"].includes(user.role)
+  const { user, openLoginModal } = useAuth();
+  const isAdminPreview = user?.role === "admin";
+  const isRestrictedStaff = Boolean(
+    user && ["farm_staff", "sales"].includes(user.role)
   );
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function SubscriptionPackagesSection() {
           </p>
         </div>
 
-        {!isInternalStaff && (
+        {!isRestrictedStaff && (
           <Link
             to="/subscriptions"
             className="self-start md:self-auto px-4 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-bold text-[#064e2e] inline-flex items-center gap-1.5 transition-colors shadow-xs"
@@ -178,32 +180,63 @@ export default function SubscriptionPackagesSection() {
                       <span>Thành phần tiêu chuẩn mỗi đợt giao:</span>
                     </div>
 
-                    {Array.isArray(pkg.items) && pkg.items.length > 0 ? (
+{Array.isArray(pkg.items) && pkg.items.length > 0 ? (
                       <ul className="space-y-2">
-                        {pkg.items.map((item) => (
-                          <li
-                            key={item.product_id}
-                            className="flex items-center justify-between text-xs"
-                          >
-                            <span className="inline-flex items-center gap-2 font-medium">
-                              <CheckCircle2
-                                className={`w-4 h-4 shrink-0 ${
-                                  isFeatured ? "text-[#86efac]" : "text-emerald-600"
+                        {pkg.items.map((item) => {
+                          const hasProductLink = Number(item.product_id) > 0;
+                          const itemBody = (
+                            <>
+                              <span className="inline-flex items-center gap-2 font-medium min-w-0">
+                                <CheckCircle2
+                                  className={`w-4 h-4 shrink-0 ${
+                                    isFeatured ? "text-[#86efac]" : "text-emerald-600"
+                                  }`}
+                                />
+                                <span className="truncate group-hover/homeprod:underline">
+                                  {item.product_name}
+                                </span>
+                                {hasProductLink && (
+                                  <ArrowUpRight
+                                    className={`w-3.5 h-3.5 shrink-0 opacity-70 group-hover/homeprod:opacity-100 transition-opacity ${
+                                      isFeatured ? "text-[#86efac]" : "text-emerald-700"
+                                    }`}
+                                  />
+                                )}
+                              </span>
+                              <span
+                                className={`font-bold px-2 py-0.5 rounded-md shrink-0 tabular-nums ${
+                                  isFeatured
+                                    ? "bg-white/10 text-white"
+                                    : "bg-slate-100 text-slate-700"
                                 }`}
-                              />
-                              <span>{item.product_name}</span>
-                            </span>
-                            <span
-                              className={`font-bold px-2 py-0.5 rounded-md ${
-                                isFeatured
-                                  ? "bg-white/10 text-white"
-                                  : "bg-slate-100 text-slate-700"
-                              }`}
-                            >
-                              {Number(item.quantity)} {item.unit}
-                            </span>
-                          </li>
-                        ))}
+                              >
+                                {Number(item.quantity)} {item.unit}
+                              </span>
+                            </>
+                          );
+
+                          return (
+                            <li key={item.product_id}>
+                              {hasProductLink ? (
+                                <Link
+                                  to={`/products/${item.product_id}`}
+                                  title={`Xem chi tiết ${item.product_name}`}
+                                  className={`group/homeprod flex items-center justify-between gap-2 text-xs rounded-lg px-2 py-1 -mx-2 transition-colors ${
+                                    isFeatured
+                                      ? "hover:bg-white/10"
+                                      : "hover:bg-emerald-50/80"
+                                  }`}
+                                >
+                                  {itemBody}
+                                </Link>
+                              ) : (
+                                <div className="flex items-center justify-between gap-2 text-xs">
+                                  {itemBody}
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
                       </ul>
                     ) : (
                       <p
@@ -233,7 +266,7 @@ export default function SubscriptionPackagesSection() {
 
                 {/* CTA */}
                 <div className="mt-6 pt-2">
-                  {isInternalStaff ? (
+                  {isRestrictedStaff ? (
                     <button
                       type="button"
                       disabled
@@ -245,7 +278,7 @@ export default function SubscriptionPackagesSection() {
                     >
                       <span>Chỉ xem (Tài khoản nội bộ)</span>
                     </button>
-                  ) : (
+                  ) : isAdminPreview ? (
                     <Link
                       to={`/subscriptions?package_id=${pkg.id}`}
                       className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${
@@ -254,9 +287,38 @@ export default function SubscriptionPackagesSection() {
                           : "bg-[#064e2e] hover:bg-[#043821] text-white"
                       }`}
                     >
-                      <span>Đăng Ký Gói Định Kỳ Này</span>
+                      <span>Xem Trang Đăng Ký (Admin)</span>
                       <ArrowRight className="w-4 h-4" />
                     </Link>
+                  ) : (
+                    user ? (
+                      <Link
+                        to={`/subscriptions?package_id=${pkg.id}`}
+                        className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                          isFeatured
+                            ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
+                            : "bg-[#064e2e] hover:bg-[#043821] text-white"
+                        }`}
+                      >
+                        <span>Đăng Ký Gói Định Kỳ Này</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openLoginModal(`/subscriptions?package_id=${pkg.id}`)
+                        }
+                        className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${
+                          isFeatured
+                            ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
+                            : "bg-[#064e2e] hover:bg-[#043821] text-white"
+                        }`}
+                      >
+                        <span>Đăng Ký Gói Định Kỳ Này</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )
                   )}
                 </div>
               </div>

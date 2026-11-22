@@ -106,6 +106,25 @@ class CustomerCheckoutTest extends TestCase
             ->assertJsonPath('data.total', 95000);
 
         $this->assertSame(1, count($quote->json('data.items')));
+        $eligibleBatches = DB::table('lo_hang as batch')
+            ->join('lo_canh_tac as plot', 'plot.Ma_lo_canh_tac', '=', 'batch.Ma_lo_canh_tac')
+            ->where('plot.Ma_san_pham', 1)
+            ->whereIn('batch.Trang_thai', ['Con_hang', 'Sap_het_han'])
+            ->where('batch.So_luong_con_lai', '>', 0)
+            ->whereDate('batch.Han_su_dung', '>=', now()->toDateString())
+            ->orderBy('batch.Han_su_dung')
+            ->orderBy('batch.Ma_lo_hang')
+            ->get(['batch.Ma_lo_hang', 'batch.So_luong_con_lai']);
+        $expectedAllocations = [];
+        $quantityToAllocate = 2.0;
+        foreach ($eligibleBatches as $batch) {
+            $allocated = min((float) $batch->So_luong_con_lai, $quantityToAllocate);
+            $expectedAllocations[] = [(int) $batch->Ma_lo_hang, $allocated];
+            $quantityToAllocate = round($quantityToAllocate - $allocated, 2);
+            if ($quantityToAllocate <= 0) {
+                break;
+            }
+        }
 
         $created = $this->actingAs($customer, 'sanctum')
             ->postJson('/api/customer/checkout/orders', [
@@ -136,6 +155,28 @@ class CustomerCheckoutTest extends TestCase
             'Don_gia' => 35000,
             'Thanh_tien' => 70000,
         ]);
+        $actualAllocations = DB::table('phan_bo_lo_hang as allocation')
+            ->join('chi_tiet_don_hang as detail', 'detail.Ma_ct_don_hang', '=', 'allocation.Ma_ct_don_hang')
+            ->where('detail.Ma_don_hang', $orderId)
+            ->orderBy('allocation.Ma_phan_bo')
+            ->get(['allocation.Ma_lo_hang', 'allocation.So_luong_xuat'])
+            ->map(fn (object $allocation) => [
+                (int) $allocation->Ma_lo_hang,
+                (float) $allocation->So_luong_xuat,
+            ])
+            ->all();
+        $this->assertSame(0.0, $quantityToAllocate);
+        $this->assertNotEmpty($expectedAllocations);
+        $this->assertEquals($expectedAllocations, $actualAllocations);
+        foreach ($expectedAllocations as [$batchId, $allocated]) {
+            $initialQuantity = (float) $eligibleBatches
+                ->firstWhere('Ma_lo_hang', $batchId)
+                ->So_luong_con_lai;
+            $this->assertEquals(
+                round($initialQuantity - $allocated, 2),
+                (float) DB::table('lo_hang')->where('Ma_lo_hang', $batchId)->value('So_luong_con_lai')
+            );
+        }
         $this->assertDatabaseMissing('chi_tiet_gio_hang', ['Ma_gio_hang' => 1]);
 
         $this->actingAs($customer, 'sanctum')

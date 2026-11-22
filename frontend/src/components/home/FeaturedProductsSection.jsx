@@ -1,18 +1,99 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  ShoppingCart,
-  QrCode,
-  Flame,
+  Apple,
   ArrowRight,
+  Carrot,
   Check,
+  Flame,
+  Leaf,
   PackageX,
+  QrCode,
+  ShoppingCart,
+  Sprout,
 } from "lucide-react";
 import { storefrontApi } from "../../services/storefrontApi";
-import { notifyApiErrorToast } from "../../services/axiosClient";
 
-const DEFAULT_PROD_IMAGE =
-  "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=600&q=80";
+function pickCategoryVisual(categoryName = "") {
+  const normalized = String(categoryName).toLowerCase();
+  if (normalized.includes("trái cây") || normalized.includes("quả")) {
+    return {
+      Icon: Apple,
+      accent: "from-emerald-50 via-lime-50/70 to-emerald-100/50 text-[#006e1c]",
+    };
+  }
+  if (normalized.includes("củ")) {
+    return {
+      Icon: Carrot,
+      accent: "from-amber-50/80 via-emerald-50/50 to-lime-50/60 text-[#00450d]",
+    };
+  }
+  if (normalized.includes("gia vị") || normalized.includes("thảo mộc")) {
+    return {
+      Icon: Sprout,
+      accent: "from-teal-50/70 via-emerald-50/70 to-lime-50/50 text-[#006e1c]",
+    };
+  }
+  return {
+    Icon: Leaf,
+    accent: "from-[#f2f4f2] via-emerald-50/80 to-lime-50/50 text-[#00450d]",
+  };
+}
+
+function FeaturedProductMedia({ item, rankIndex, qrCode, certLabel }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const imageSrc = item.image_url || item.image || "";
+  const showImage = Boolean(imageSrc) && !imgFailed;
+  const categoryName = item.category?.name || item.category_name || "Nông sản hữu cơ";
+  const { Icon: FallbackIcon, accent } = pickCategoryVisual(categoryName);
+
+  return (
+    <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+      <Link to={`/products/${item.id}`} className="block w-full h-full">
+        {showImage ? (
+          <img
+            src={imageSrc}
+            alt={item.name}
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div
+            className={`w-full h-full bg-gradient-to-br ${accent} flex flex-col items-center justify-center p-4 text-center group-hover:scale-[1.03] transition-transform duration-300`}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-white/90 border border-[#c0c9bb]/40 shadow-2xs flex items-center justify-center mb-2">
+              <FallbackIcon className="w-6 h-6" aria-hidden="true" />
+            </div>
+            <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#41493e]/80 line-clamp-1">
+              {categoryName}
+            </span>
+          </div>
+        )}
+      </Link>
+
+      <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-extrabold uppercase tracking-wide inline-flex items-center gap-1 shadow-xs">
+        <Flame className="w-3 h-3" />
+        Bán chạy #{rankIndex + 1}
+      </span>
+
+      {qrCode ? (
+        <Link
+          to={`/trace/${encodeURIComponent(qrCode)}`}
+          title="Quét QR truy xuất nguồn gốc lô hàng"
+          className="absolute top-2.5 right-2.5 px-2 py-1 rounded-lg bg-white/95 hover:bg-emerald-50 text-[#064e2e] text-[10px] font-bold inline-flex items-center gap-1 shadow-xs border border-slate-200/70"
+        >
+          <QrCode className="w-3 h-3 text-emerald-700 shrink-0" />
+          <span className="max-w-[95px] truncate">{certLabel}</span>
+        </Link>
+      ) : (
+        <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-lg bg-white/95 text-[#064e2e] text-[10px] font-bold shadow-xs max-w-[115px] truncate">
+          {certLabel}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function FeaturedProductsSection({ onAddToCart }) {
   const [products, setProducts] = useState([]);
@@ -116,9 +197,29 @@ export default function FeaturedProductsSection({ onAddToCart }) {
             const isAdded = addedId === item.id;
             const isAdding = addingIds.includes(item.id);
             const outOfStock = Number(item.available_stock) <= 0;
-            const displayPrice = Number(item.current_price ?? item.base_price ?? 0);
-            const basePrice = Number(item.base_price ?? 0);
-            const hasDiscount = displayPrice < basePrice;
+
+            const displayPrice = Number(
+              item.effective_price ?? item.current_price ?? item.price ?? item.base_price ?? 0
+            );
+            const regularPrice = Number(item.price ?? item.base_price ?? displayPrice);
+            const hasDiscount = regularPrice > displayPrice && displayPrice > 0;
+
+            const certLabel =
+              item.certification_standards?.[0] ||
+              item.certifications?.[0]?.standard ||
+              item.certification ||
+              "VietGAP";
+            const qrCode = item.trace_qr_code || item.qr_code || "";
+            const originLabel =
+              item.farm?.name ||
+              item.origin ||
+              item.category?.name ||
+              item.category_name ||
+              "Nông Trại Xanh";
+            const soldCount = Number(item.sold_count || 0);
+            const formattedSold = Number.isInteger(soldCount)
+              ? soldCount.toLocaleString("vi-VN")
+              : soldCount.toLocaleString("vi-VN", { maximumFractionDigits: 1 });
 
             return (
               <div
@@ -126,40 +227,12 @@ export default function FeaturedProductsSection({ onAddToCart }) {
                 className="group bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-md hover:border-emerald-400 transition-all flex flex-col justify-between"
               >
                 <div>
-                  {/* Image & Badges */}
-                  <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                    <Link to={`/products/${item.id}`}>
-                      <img
-                        src={item.image || DEFAULT_PROD_IMAGE}
-                        alt={item.name}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_PROD_IMAGE;
-                        }}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </Link>
-
-                    <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-extrabold uppercase tracking-wide inline-flex items-center gap-1 shadow-xs">
-                      <Flame className="w-3 h-3" />
-                      Bán chạy #{idx + 1}
-                    </span>
-
-                    {item.qr_code ? (
-                      <Link
-                        to={`/trace/${item.qr_code}`}
-                        title="Quét QR truy xuất nguồn gốc lô hàng"
-                        className="absolute top-2.5 right-2.5 px-2 py-1 rounded-lg bg-white/95 hover:bg-emerald-50 text-[#064e2e] text-[10px] font-bold inline-flex items-center gap-1 shadow-xs border border-slate-200/70"
-                      >
-                        <QrCode className="w-3 h-3 text-emerald-700" />
-                        <span>{item.certification || "VietGAP"}</span>
-                      </Link>
-                    ) : (
-                      <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-lg bg-white/95 text-[#064e2e] text-[10px] font-bold shadow-xs">
-                        {item.certification || "VietGAP"}
-                      </span>
-                    )}
-                  </div>
+                  <FeaturedProductMedia
+                    item={item}
+                    rankIndex={idx}
+                    qrCode={qrCode}
+                    certLabel={certLabel}
+                  />
 
                   {/* Info */}
                   <div className="p-4">
@@ -170,26 +243,26 @@ export default function FeaturedProductsSection({ onAddToCart }) {
                       {item.name}
                     </Link>
                     <p className="text-[11px] text-slate-500 mt-1 truncate">
-                      {item.origin || item.category_name}
+                      {originLabel}
                       {item.batch_id ? ` • Lô #${item.batch_id}` : ""}
                     </p>
 
-                    <div className="flex items-baseline justify-between mt-3 pt-3 border-t border-slate-100">
+                    <div className="flex items-baseline justify-between mt-3 pt-3 border-t border-slate-100 tabular-nums">
                       <div>
                         <span className="text-base font-black text-[#064e2e]">
                           {displayPrice.toLocaleString("vi-VN")}đ
                         </span>
                         <span className="text-[11px] text-slate-400 ml-1">
-                          / {item.unit}
+                          / {item.unit || "kg"}
                         </span>
                         {hasDiscount && (
                           <span className="block text-[10.5px] text-slate-400 line-through">
-                            {basePrice.toLocaleString("vi-VN")}đ
+                            {regularPrice.toLocaleString("vi-VN")}đ
                           </span>
                         )}
                       </div>
                       <span className="text-[11px] font-semibold text-slate-500">
-                        Đã bán {Number(item.sold_count || 0)}
+                        Đã bán {formattedSold}
                       </span>
                     </div>
                   </div>
@@ -237,7 +310,7 @@ export default function FeaturedProductsSection({ onAddToCart }) {
       {/* Bottom Explore Button */}
       <div className="mt-7 text-center">
         <Link
-          to="/products"
+          to="/products?sort=best_selling"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-xs transition-colors"
         >
           <span>Khám Phá Toàn Bộ Nông Sản Hữu Cơ</span>

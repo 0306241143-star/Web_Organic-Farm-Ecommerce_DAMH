@@ -4,6 +4,31 @@ import AuthContext from "./authStateContext";
 import { authApi } from "../services/authApi";
 
 export function AuthProvider({ children }) {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginRedirectTo, setLoginRedirectTo] = useState(null);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [registerRedirectTo, setRegisterRedirectTo] = useState(null);
+
+  const openLoginModal = useCallback((redirectTo = null) => {
+    setIsRegisterModalOpen(false);
+    setRegisterRedirectTo(null);
+    setLoginRedirectTo(redirectTo);
+    setIsLoginModalOpen(true);
+  }, []);
+  const closeLoginModal = useCallback(() => {
+    setIsLoginModalOpen(false);
+    setLoginRedirectTo(null);
+  }, []);
+  const openRegisterModal = useCallback((redirectTo = null) => {
+    setIsLoginModalOpen(false);
+    setLoginRedirectTo(null);
+    setRegisterRedirectTo(redirectTo);
+    setIsRegisterModalOpen(true);
+  }, []);
+  const closeRegisterModal = useCallback(() => {
+    setIsRegisterModalOpen(false);
+    setRegisterRedirectTo(null);
+  }, []);
   const [user, setUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem("user");
@@ -101,6 +126,14 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       isLoading,
+      isLoginModalOpen,
+      loginRedirectTo,
+      openLoginModal,
+      closeLoginModal,
+      isRegisterModalOpen,
+      registerRedirectTo,
+      openRegisterModal,
+      closeRegisterModal,
       login,
       logout,
       setUser,
@@ -111,7 +144,22 @@ export function AuthProvider({ children }) {
       isSales: user?.role === "sales",
       isAdmin: user?.role === "admin",
     }),
-    [user, isLoading, login, logout, hasRole, hasPermission],
+    [
+      user,
+      isLoading,
+      isLoginModalOpen,
+      loginRedirectTo,
+      openLoginModal,
+      closeLoginModal,
+      isRegisterModalOpen,
+      registerRedirectTo,
+      openRegisterModal,
+      closeRegisterModal,
+      login,
+      logout,
+      hasRole,
+      hasPermission,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
