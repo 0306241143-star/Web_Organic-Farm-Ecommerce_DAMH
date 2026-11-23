@@ -23,6 +23,9 @@ class CartPricingService
             ->filter(fn ($item) => $item->sanPham !== null)
             ->values();
         $productIds = $cartItems->pluck('Ma_san_pham')->map(fn ($id) => (int) $id)->all();
+        $requestedQuantities = $cartItems->mapWithKeys(
+            fn ($item) => [(int) $item->Ma_san_pham => (float) $item->So_luong]
+        );
 
         if ($productIds === []) {
             return [];
@@ -58,13 +61,28 @@ class CartPricingService
             ->where('lh.So_luong_con_lai', '>', 0)
             ->whereColumn('ctfs.Gia_giam', '<', 'sp.Gia_ban')
             ->orderBy('ctfs.Gia_giam')
-            ->select(['sp.Ma_san_pham', 'ctfs.Ma_ct_flash_sale', 'ctfs.Gia_giam']);
+            ->select([
+                'sp.Ma_san_pham',
+                'ctfs.Ma_ct_flash_sale',
+                'lh.So_luong_con_lai as flash_sale_batch_stock',
+                'ctfs.Gia_giam',
+                'ctfs.So_luong_gioi_han',
+                'ctfs.So_luong_da_ban',
+            ]);
 
         if ($lockForUpdate) {
             $saleQuery->lockForUpdate();
         }
 
-        $sales = $saleQuery->get()->unique('Ma_san_pham')->keyBy('Ma_san_pham');
+        $sales = $saleQuery->get()
+            ->filter(fn ($sale) => (
+                (float) $sale->So_luong_gioi_han - (float) $sale->So_luong_da_ban
+            ) >= (float) $requestedQuantities->get((int) $sale->Ma_san_pham, 0))
+            ->filter(fn ($sale) => (
+                (float) $sale->flash_sale_batch_stock
+            ) >= (float) $requestedQuantities->get((int) $sale->Ma_san_pham, 0))
+            ->unique('Ma_san_pham')
+            ->keyBy('Ma_san_pham');
 
         return $cartItems->map(function ($item) use ($stocks, $sales): array {
             $product = $item->sanPham;

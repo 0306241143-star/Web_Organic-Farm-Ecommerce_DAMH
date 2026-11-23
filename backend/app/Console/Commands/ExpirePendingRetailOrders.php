@@ -3,17 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Models\DonHang;
-use App\Services\RewardPointService;
+use App\Services\Order\OrderCancellationService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class ExpirePendingRetailOrders extends Command
 {
     protected $signature = 'orders:expire-pending-payments';
 
-    protected $description = 'Cancel overdue ApiPay orders and refund any redeemed reward points.';
+    protected $description = 'Cancel overdue ApiPay orders and restore reserved inventory and rewards.';
 
-    public function handle(RewardPointService $rewards): int
+    public function handle(OrderCancellationService $cancellations): int
     {
         $timeoutMinutes = max(
             1,
@@ -33,38 +32,9 @@ class ExpirePendingRetailOrders extends Command
                     ->where('thanh_toan.Trang_thai', 'Khoi_tao');
             })
             ->orderBy('Ma_don_hang')
-            ->chunkById(100, function ($orders) use ($rewards, &$expiredCount): void {
+            ->chunkById(100, function ($orders) use ($cancellations, &$expiredCount): void {
                 foreach ($orders as $candidate) {
-                    $expired = DB::transaction(function () use ($candidate, $rewards): bool {
-                        $rewards->lockCustomer((int) $candidate->Ma_nguoi_dung);
-                        $pendingPayment = DB::table('thanh_toan')
-                            ->where('Ma_don_hang', $candidate->Ma_don_hang)
-                            ->where('Phuong_thuc', 'ApiPay')
-                            ->where('Trang_thai', 'Khoi_tao')
-                            ->lockForUpdate()
-                            ->first();
-                        if (! $pendingPayment) {
-                            return false;
-                        }
-
-                        $order = DonHang::query()
-                            ->whereKey($candidate->Ma_don_hang)
-                            ->lockForUpdate()
-                            ->first();
-
-                        if (! $order || $order->Trang_thai !== 'Cho_thanh_toan') {
-                            return false;
-                        }
-
-                        $order->update(['Trang_thai' => 'Da_huy']);
-                        DB::table('thanh_toan')
-                            ->where('Ma_thanh_toan', $pendingPayment->Ma_thanh_toan)
-                            ->where('Trang_thai', 'Khoi_tao')
-                            ->update(['Trang_thai' => 'That_bai']);
-                        $rewards->refundOrderPoints($order);
-
-                        return true;
-                    });
+                    $expired = $cancellations->expirePendingPayment($candidate);
 
                     if ($expired) {
                         $expiredCount++;

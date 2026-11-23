@@ -7,6 +7,7 @@ use App\Models\GioHang;
 use App\Models\NguoiDung;
 use App\Models\NongTrai;
 use App\Services\ShippingDistanceService;
+use Carbon\Carbon;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class CustomerCheckoutTest extends TestCase
     {
         parent::setUp();
 
+        Carbon::setTestNow('2026-11-16 12:00:00');
         Artisan::call('migrate:fresh', ['--seed' => true]);
         config([
             'services.goong.api_key' => 'test-goong-key',
@@ -74,6 +76,12 @@ class CustomerCheckoutTest extends TestCase
 
             return Http::response([], 404);
         });
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_customer_can_quote_create_order_and_start_apipay_from_cart(): void
@@ -393,7 +401,7 @@ class CustomerCheckoutTest extends TestCase
         });
     }
 
-    public function test_customer_can_place_a_cod_order_without_creating_an_apipay_payment(): void
+    public function test_customer_can_place_a_cod_order_with_a_pending_cash_payment(): void
     {
         $customer = NguoiDung::query()->findOrFail(5);
         GioHang::query()
@@ -418,8 +426,175 @@ class CustomerCheckoutTest extends TestCase
             ->assertJsonPath('data.status', 'Cho_xac_nhan');
 
         $orderId = $response->json('data.order_id');
-        $this->assertDatabaseMissing('thanh_toan', ['Ma_don_hang' => $orderId]);
+        $this->assertDatabaseHas('thanh_toan', [
+            'Ma_don_hang' => $orderId,
+            'Phuong_thuc' => 'COD',
+            'Trang_thai' => 'Khoi_tao',
+        ]);
+        $this->assertDatabaseMissing('thanh_toan', [
+            'Ma_don_hang' => $orderId,
+            'Phuong_thuc' => 'ApiPay',
+        ]);
         $this->assertDatabaseMissing('chi_tiet_gio_hang', ['Ma_gio_hang' => 1]);
+    }
+
+    public function test_flash_sale_quota_is_reserved_on_order_and_restored_when_order_is_cancelled(): void
+    {
+        $productId = 1;
+        $plotId = DB::table('lo_canh_tac')->where('Ma_san_pham', $productId)->value('Ma_lo_canh_tac');
+        $saleStaffId = NguoiDung::query()->where('Ma_vai_tro', 2)->value('Ma_nguoi_dung');
+        $productPrice = (float) DB::table('san_pham')->where('Ma_san_pham', $productId)->value('Gia_ban');
+        $this->assertNotNull($plotId);
+        $this->assertNotNull($saleStaffId);
+
+        DB::table('lo_hang')->insert([
+            'Ma_lo_canh_tac' => $plotId,
+            'Ma_nhan_vien_phu_trach' => $saleStaffId,
+            'Ngay_thu_hoach' => now()->subDays(2)->toDateString(),
+            'Han_su_dung' => now()->addDay()->toDateString(),
+            'So_luong_thu_hoach' => 5,
+            'So_luong_con_lai' => 5,
+            'Trang_thai' => 'Con_hang',
+        ]);
+        $saleBatchId = DB::table('lo_hang')->insertGetId([
+            'Ma_lo_canh_tac' => $plotId,
+            'Ma_nhan_vien_phu_trach' => $saleStaffId,
+            'Ngay_thu_hoach' => now()->subDays(2)->toDateString(),
+            'Han_su_dung' => now()->addDays(2)->toDateString(),
+            'So_luong_thu_hoach' => 2,
+            'So_luong_con_lai' => 2,
+            'Trang_thai' => 'Con_hang',
+        ], 'Ma_lo_hang');
+
+        $campaignId = DB::table('chuong_trinh_flash_sale')->insertGetId([
+            'Ma_sales_tao' => 2,
+            'Ten_chuong_trinh' => 'Quota kiểm thử',
+            'Thoi_gian_bat_dau' => now()->subMinute(),
+            'Thoi_gian_ket_thuc' => now()->addHour(),
+            'Trang_thai' => 'Dang_dien_ra',
+        ], 'Ma_flash_sale');
+        $flashSaleItemId = DB::table('chi_tiet_flash_sale')->insertGetId([
+            'Ma_flash_sale' => $campaignId,
+            'Ma_lo_hang' => $saleBatchId,
+            'Gia_giam' => $productPrice * 0.8,
+            'So_luong_gioi_han' => 1,
+            'So_luong_da_ban' => 0,
+        ], 'Ma_ct_flash_sale');
+
+        $customer = NguoiDung::query()->findOrFail(5);
+        GioHang::query()->where('Ma_nguoi_dung', 5)->firstOrFail()->chiTiets()->delete();
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/cart/items', [
+                'product_id' => $productId,
+                'quantity' => 1,
+            ])
+            ->assertOk();
+
+        $flashSaleQuote = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/checkout/quote', ['address_id' => 1])
+            ->assertOk();
+        $this->assertEquals($productPrice * 0.8, $flashSaleQuote->json('data.items.0.unit_price'));
+
+        $created = $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/checkout/orders', [
+                'address_id' => 1,
+                'payment_method' => 'COD',
+            ])
+            ->assertCreated();
+        $orderId = $created->json('data.order_id');
+
+        $this->assertDatabaseHas('chi_tiet_flash_sale', [
+            'Ma_ct_flash_sale' => $flashSaleItemId,
+            'So_luong_da_ban' => 1,
+        ]);
+        $this->assertDatabaseHas('chi_tiet_don_hang', [
+            'Ma_don_hang' => $orderId,
+            'Ma_ct_flash_sale' => $flashSaleItemId,
+        ]);
+        $this->assertDatabaseHas('phan_bo_lo_hang', [
+            'Ma_lo_hang' => $saleBatchId,
+            'So_luong_xuat' => 1,
+        ]);
+        $this->assertSame(
+            1.0,
+            (float) DB::table('lo_hang')->where('Ma_lo_hang', $saleBatchId)->value('So_luong_con_lai')
+        );
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson("/api/customer/checkout/orders/{$orderId}/cancel")
+            ->assertOk();
+
+        $this->assertDatabaseHas('chi_tiet_flash_sale', [
+            'Ma_ct_flash_sale' => $flashSaleItemId,
+            'So_luong_da_ban' => 0,
+        ]);
+        $this->assertSame(
+            2.0,
+            (float) DB::table('lo_hang')->where('Ma_lo_hang', $saleBatchId)->value('So_luong_con_lai')
+        );
+    }
+
+    public function test_expired_apipay_order_restores_reserved_stock_and_flash_sale_quota(): void
+    {
+        $quantity = 0.5;
+        $orderId = DB::table('don_hang')->insertGetId([
+            'Ma_nguoi_dung' => 5,
+            'Ma_dia_chi' => 1,
+            'Loai_don' => 'Mua_le',
+            'Ngay_dat' => now()->subHour(),
+            'Tien_hang' => 12500,
+            'Tong_tien' => 12500,
+            'Trang_thai' => 'Cho_thanh_toan',
+            'created_at' => now()->subHour(),
+            'updated_at' => now()->subHour(),
+        ], 'Ma_don_hang');
+        $detailId = DB::table('chi_tiet_don_hang')->insertGetId([
+            'Ma_don_hang' => $orderId,
+            'Ma_san_pham' => 1,
+            'Ma_ct_flash_sale' => 1,
+            'So_luong' => $quantity,
+            'Don_gia' => 25000,
+            'Thanh_tien' => 12500,
+            'created_at' => now()->subHour(),
+            'updated_at' => now()->subHour(),
+        ], 'Ma_ct_don_hang');
+        DB::table('phan_bo_lo_hang')->insert([
+            'Ma_ct_don_hang' => $detailId,
+            'Ma_lo_hang' => 1,
+            'So_luong_xuat' => $quantity,
+            'Ngay_xuat_kho' => now()->subHour(),
+            'created_at' => now()->subHour(),
+            'updated_at' => now()->subHour(),
+        ]);
+        DB::table('lo_hang')->where('Ma_lo_hang', 1)->decrement('So_luong_con_lai', $quantity);
+        DB::table('chi_tiet_flash_sale')->where('Ma_ct_flash_sale', 1)->update([
+            'So_luong_da_ban' => 2.5,
+        ]);
+        DB::table('thanh_toan')->insert([
+            'Ma_don_hang' => $orderId,
+            'Phuong_thuc' => 'ApiPay',
+            'So_tien' => 12500,
+            'Trang_thai' => 'Khoi_tao',
+        ]);
+
+        Artisan::call('orders:expire-pending-payments');
+
+        $this->assertDatabaseHas('don_hang', [
+            'Ma_don_hang' => $orderId,
+            'Trang_thai' => 'Da_huy',
+        ]);
+        $this->assertDatabaseHas('thanh_toan', [
+            'Ma_don_hang' => $orderId,
+            'Trang_thai' => 'That_bai',
+        ]);
+        $this->assertSame(
+            95.0,
+            (float) DB::table('lo_hang')->where('Ma_lo_hang', 1)->value('So_luong_con_lai')
+        );
+        $this->assertSame(
+            2.0,
+            (float) DB::table('chi_tiet_flash_sale')->where('Ma_ct_flash_sale', 1)->value('So_luong_da_ban')
+        );
     }
 
     public function test_shipping_distance_falls_back_when_goong_is_unconfigured_or_unavailable(): void
