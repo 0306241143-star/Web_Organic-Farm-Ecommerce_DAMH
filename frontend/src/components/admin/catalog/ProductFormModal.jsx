@@ -6,6 +6,9 @@ import {
   Loader2,
   AlertCircle,
   Image as ImageIcon,
+  Plus,
+  Star,
+  Trash2,
 } from "lucide-react";
 import CategoryDropdown from "./CategoryDropdown";
 import { adminApi } from "../../../services/adminApi";
@@ -65,10 +68,11 @@ export default function ProductFormModal({
     Gia_ban: "",
     Ty_le_tich_diem: "1.5",
     Trang_thai: "Dang_ban",
-    image_url: "",
   });
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
+
+  // Danh sách bộ sưu tập ảnh: [{ id, preview, path?, file?, isUrl? }]
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [urlInput, setUrlInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -83,10 +87,26 @@ export default function ProductFormModal({
         Gia_ban: String(editingProduct.price || ""),
         Ty_le_tich_diem: String(editingProduct.reward_point_rate ?? 1),
         Trang_thai: editingProduct.status || "Dang_ban",
-        image_url: editingProduct.image_url || "",
       });
-      setImageFile(null);
-      setImagePreview(editingProduct.image_url || "");
+
+      const existingGallery =
+        Array.isArray(editingProduct.images) && editingProduct.images.length > 0
+          ? editingProduct.images.map((img, idx) => ({
+              id: `existing-${idx}-${img.path || img.url}`,
+              preview: img.url,
+              path: img.path || img.url,
+            }))
+          : editingProduct.image_url
+            ? [
+                {
+                  id: `existing-0-${editingProduct.image_url}`,
+                  preview: editingProduct.image_url,
+                  path: editingProduct.image_path || editingProduct.image_url,
+                },
+              ]
+            : [];
+
+      setGalleryItems(existingGallery);
     } else {
       setForm({
         Ma_danh_muc: categories[0]?.id ? String(categories[0].id) : "",
@@ -96,25 +116,68 @@ export default function ProductFormModal({
         Gia_ban: "",
         Ty_le_tich_diem: "1.5",
         Trang_thai: "Dang_ban",
-        image_url: "",
       });
-      setImageFile(null);
-      setImagePreview("");
+      setGalleryItems([]);
     }
+    setUrlInput("");
     setFormError("");
   }, [isOpen, editingProduct, categories]);
 
   if (!isOpen) return null;
 
-  const handleSelectFile = (file) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setFormError("Vui lòng chọn tệp hình ảnh hợp lệ (JPG, PNG, WEBP).");
+  const handleSelectFiles = (fileList) => {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    const validFiles = files.filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length !== files.length) {
+      setFormError("Chỉ chấp nhận các tệp hình ảnh hợp lệ (JPG, PNG, WEBP).");
+    } else {
+      setFormError("");
+    }
+
+    const availableSlots = Math.max(0, 10 - galleryItems.length);
+    const picked = validFiles.slice(0, availableSlots).map((file, idx) => ({
+      id: `file-${Date.now()}-${idx}-${file.name}`,
+      preview: URL.createObjectURL(file),
+      file,
+    }));
+
+    if (picked.length > 0) {
+      setGalleryItems((prev) => [...prev, ...picked]);
+    }
+  };
+
+  const handleAddUrl = () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) return;
+    if (galleryItems.length >= 10) {
+      setFormError("Mỗi sản phẩm tối đa 10 hình ảnh.");
       return;
     }
     setFormError("");
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    setGalleryItems((prev) => [
+      ...prev,
+      {
+        id: `url-${Date.now()}`,
+        preview: trimmed,
+        path: trimmed,
+        isUrl: true,
+      },
+    ]);
+    setUrlInput("");
+  };
+
+  const handleSetPrimary = (targetId) => {
+    setGalleryItems((prev) => {
+      const target = prev.find((item) => item.id === targetId);
+      if (!target) return prev;
+      return [target, ...prev.filter((item) => item.id !== targetId)];
+    });
+  };
+
+  const handleRemoveImage = (targetId) => {
+    setGalleryItems((prev) => prev.filter((item) => item.id !== targetId));
   };
 
   const handleSubmit = async (e) => {
@@ -145,11 +208,24 @@ export default function ProductFormModal({
       fd.append("Ty_le_tich_diem", form.Ty_le_tich_diem || "1");
       fd.append("Trang_thai", form.Trang_thai);
 
-      if (imageFile) {
-        const compressed = await compressImageClient(imageFile);
-        fd.append("image", compressed);
-      } else if (form.image_url.trim()) {
-        fd.append("image_url", form.image_url.trim());
+      if (editingProduct) {
+        // Gửi rõ mảng retained_images (kể cả khi rỗng nếu Admin xóa hết ảnh cũ)
+        const retained = galleryItems.filter((item) => !item.file && !item.isUrl);
+        if (retained.length === 0) {
+          fd.append("retained_images", "");
+        } else {
+          retained.forEach((item) => fd.append("retained_images[]", item.path));
+        }
+      }
+
+      // Nén & đính kèm các tệp ảnh mới chọn theo đúng thứ tự
+      for (const item of galleryItems) {
+        if (item.file) {
+          const compressed = await compressImageClient(item.file);
+          fd.append("images[]", compressed);
+        } else if (item.isUrl && item.path) {
+          fd.append("gallery_urls[]", item.path);
+        }
       }
 
       if (editingProduct) {
@@ -180,7 +256,7 @@ export default function ProductFormModal({
       className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
       onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
     >
-      <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 to-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#064e2e] text-white flex items-center justify-center">
@@ -191,7 +267,7 @@ export default function ProductFormModal({
                 {editingProduct ? "Cập Nhật Sản Phẩm Nông Sản" : "Thêm Sản Phẩm Nông Sản Mới"}
               </h3>
               <p className="text-xs text-slate-500">
-                Thông tin niêm yết trên danh mục cửa hàng & kết nối lô thu hoạch
+                Thông tin niêm yết trên cửa hàng & bộ sưu tập hình ảnh sản phẩm
               </p>
             </div>
           </div>
@@ -329,43 +405,114 @@ export default function ProductFormModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Hình Ảnh Đại Diện Sản Phẩm
-            </label>
-            <div className="flex items-center gap-3.5">
-              <div className="w-20 h-20 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center shrink-0">
-                {imagePreview ? (
-                  <img src={imagePreview} alt="Xem trước" className="w-full h-full object-cover" />
-                ) : (
-                  <ImageIcon className="w-7 h-7 text-slate-300" />
-                )}
+          {/* Bộ sưu tập nhiều hình ảnh sản phẩm */}
+          <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Thư Viện Hình Ảnh Sản Phẩm ({galleryItems.length}/10)
+                </label>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Ảnh đầu tiên là ảnh đại diện chính. Có thể chọn nhiều ảnh cùng lúc.
+                </p>
               </div>
 
-              <div className="flex-1 space-y-2">
-                <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold cursor-pointer transition-colors">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Tải ảnh lên (Tự động nén WebP)</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => handleSelectFile(e.target.files?.[0])}
-                    className="hidden"
-                  />
-                </label>
+              <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] text-white text-xs font-bold cursor-pointer transition-colors">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Chọn nhiều ảnh</span>
                 <input
-                  type="text"
-                  value={form.image_url}
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => {
-                    setImageFile(null);
-                    setImagePreview(e.target.value);
-                    setForm((prev) => ({ ...prev, image_url: e.target.value }));
+                    handleSelectFiles(e.target.files);
+                    e.target.value = "";
                   }}
-                  placeholder="Hoặc dán đường dẫn URL ảnh trực tiếp..."
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="hidden"
                 />
-              </div>
+              </label>
             </div>
+
+            {/* Thêm qua URL */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddUrl();
+                  }
+                }}
+                placeholder="Hoặc dán URL ảnh sản phẩm rồi bấm Thêm..."
+                className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddUrl}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 text-xs font-bold text-[#064e2e] inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm URL</span>
+              </button>
+            </div>
+
+            {/* Lưới hiển thị các ảnh đã thêm */}
+            {galleryItems.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white py-5 text-center space-y-1">
+                <ImageIcon className="w-7 h-7 text-slate-300 mx-auto" />
+                <p className="text-xs text-slate-500">
+                  Chưa có hình ảnh nào. Hãy tải lên ảnh chụp thực tế của nông sản.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+                {galleryItems.map((item, idx) => {
+                  const isPrimary = idx === 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`group relative aspect-square rounded-2xl overflow-hidden border bg-white ${
+                        isPrimary
+                          ? "border-2 border-[#064e2e] ring-2 ring-emerald-500/20"
+                          : "border-slate-200"
+                      }`}
+                    >
+                      <img
+                        src={item.preview}
+                        alt={`Ảnh ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+
+                      {isPrimary ? (
+                        <span className="absolute left-1.5 top-1.5 px-2 py-0.5 rounded-md bg-[#064e2e] text-white text-[10px] font-extrabold shadow-xs">
+                          Ảnh chính
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetPrimary(item.id)}
+                          title="Đặt làm ảnh đại diện chính"
+                          className="absolute left-1.5 top-1.5 p-1 rounded-lg bg-white/90 hover:bg-[#064e2e] text-slate-700 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                        >
+                          <Star className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(item.id)}
+                        title="Xóa ảnh này"
+                        className="absolute right-1.5 top-1.5 p-1 rounded-lg bg-white/90 hover:bg-rose-600 text-rose-600 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div>

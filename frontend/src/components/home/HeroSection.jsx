@@ -1,196 +1,127 @@
-import React, { useState } from "react";
+/* Hero Banner trang chủ: tối ưu chiều cao vừa khung nhìn trên Mobile và chia lưới 12 cột cân đối trên Desktop. */
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  BadgeCheck,
+  CheckCircle2,
   QrCode,
   ShieldCheck,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle2,
   Sprout,
 } from "lucide-react";
 
-const SLIDES = [
-  {
-    badge: "CANH TÁC HỮU CƠ 100%",
-    subBadge: "Trang trại chuẩn VietGAP & Kiểm định",
-    title: "Nông Trại Sinh Thái",
-    highlight: "Chuẩn VietGAP & USDA",
-    subtitle: "Nguồn Nước Tinh Khiết & Đất Giàu Vi Sinh",
-    description:
-      "Quy trình chăm sóc khép kín không phân bón hóa học, đất và nguồn nước được kiểm định định kỳ, minh bạch 100% qua mã QR truy xuất từng luống rau.",
-    certTitle: "Phiếu Thử Nghiệm Chất Lượng",
-    certSubtitle: "Nước & Đất trồng Củ Chi - Đà Lạt",
-    certBadge: "Đạt chuẩn 100% không tồn dư hóa chất",
-    bgImage:
-      "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1600&q=80",
-  },
-  {
-    badge: "THU HOẠCH MỖI SÁNG",
-    subBadge: "Xuất kho ưu tiên hạn dùng (FEFO)",
-    title: "Rau Củ Tươi Sạch",
-    highlight: "Từ Vườn Tới Bàn Ăn",
-    subtitle: "Giao Hỏa Tốc Nội Thành Trong 2 Giờ",
-    description:
-      "Mỗi lô thu hoạch đều gắn tem QR riêng biệt giúp bạn kiểm tra ngày gieo hạt, bón phân hữu cơ và thời điểm thu hoạch thực tế trước khi đặt mua.",
-    certTitle: "Chứng Nhận Lô Thu Hoạch",
-    certSubtitle: "Kiểm soát vòng đời tươi ngon theo lô",
-    certBadge: "100% xuất kho đúng chuẩn FEFO",
-    bgImage:
-      "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=1600&q=80",
-  },
-];
-
 export default function HeroSection() {
-  const [current, setCurrent] = useState(0);
-  const slide = SLIDES[current];
-
-  const prevSlide = () =>
-    setCurrent((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
-  const nextSlide = () =>
-    setCurrent((prev) => (prev === SLIDES.length - 1 ? 0 : prev + 1));
-
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-      <div className="relative rounded-3xl overflow-hidden bg-[#064e2e] text-white shadow-xl border border-[#0d5932]">
-        {/* Background Image + Dark Green Overlay */}
-        <img
-          src={slide.bgImage}
-          alt={slide.title}
-          className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-luminosity transition-all duration-500"
+      <div className="relative overflow-hidden rounded-3xl sm:rounded-[32px] bg-gradient-to-br from-[#01290b] via-[#00450d] to-[#0a6b1e] text-white shadow-lg border border-[#127a27]/40">
+        {/* Hiệu ứng ánh sáng nền nhẹ */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 sm:h-96 sm:w-96 rounded-full bg-[#91f78e]/12 blur-3xl"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#022c19]/95 via-[#064e2e]/90 to-[#043821]/80" />
 
-        {/* Navigation Arrows */}
-        <button
-          type="button"
-          onClick={prevSlide}
-          aria-label="Slide trước"
-          className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xs items-center justify-center text-white transition-colors cursor-pointer"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={nextSlide}
-          aria-label="Slide tiếp theo"
-          className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xs items-center justify-center text-white transition-colors cursor-pointer"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-
-        {/* Main Content */}
-        <div className="relative z-10 px-6 py-10 sm:px-12 sm:py-14 lg:px-16 lg:py-16 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* Left Column */}
-          <div className="lg:col-span-7 space-y-5">
-            <div className="flex flex-wrap items-center gap-2.5 text-xs">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-[#86efac]/40 text-[#86efac] font-bold tracking-wide">
-                <Sprout className="w-3.5 h-3.5" />
-                {slide.badge}
-              </span>
-              <span className="text-emerald-200/80 font-medium">
-                {slide.subBadge}
-              </span>
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center p-5 sm:p-8 lg:p-12">
+          {/* CỘT TRÁI (7 cột Desktop): Thông điệp chính & Nút CTA */}
+          <div className="lg:col-span-7 space-y-4 sm:space-y-5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/12 border border-white/20 text-[10.5px] sm:text-xs font-extrabold uppercase tracking-wider text-[#91f78e]">
+              <Sprout className="w-3.5 h-3.5 shrink-0" />
+              <span>Canh tác hữu cơ 100% · Chuẩn VietGAP & USDA</span>
             </div>
 
-            <div className="space-y-2">
-              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black tracking-tight leading-[1.15]">
-                {slide.title}
-                <span className="block text-[#86efac] mt-1">{slide.highlight}</span>
-              </h1>
-              <p className="text-base sm:text-lg font-semibold text-emerald-100">
-                {slide.subtitle}
-              </p>
-            </div>
+            <h1
+              className="text-2xl sm:text-4xl lg:text-[42px] font-black tracking-tight text-white leading-[1.18]"
+              style={{ fontFamily: "var(--font-headline)" }}
+            >
+              Nông Trại Sinh Thái{" "}
+              <span className="text-[#91f78e] block sm:inline">
+                Từ Vườn Tới Bàn Ăn
+              </span>
+            </h1>
 
-            <p className="text-xs sm:text-sm text-emerald-100/80 max-w-xl leading-relaxed">
-              {slide.description}
+            <p className="text-xs sm:text-sm lg:text-[15px] text-emerald-100/90 leading-relaxed max-w-xl">
+              Quy trình chăm sóc khép kín không phân bón hóa học, đất và nguồn nước được kiểm
+              định định kỳ, minh bạch 100% qua tem mã QR truy xuất từng luống rau.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
+            {/* Nhóm nút hành động: xếp full-width trên Mobile nhỏ, hàng ngang trên Desktop */}
+            <div className="flex flex-col xs:flex-row sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-1">
               <Link
                 to="/products"
-                className="px-5 py-3 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-950/40 inline-flex items-center gap-2 transition-all active:scale-95"
+                className="min-h-11 sm:min-h-12 px-5 sm:px-6 py-3 rounded-2xl bg-[#91f78e] hover:bg-[#7ce879] text-[#00390a] font-extrabold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-md shadow-black/20 transition-all active:scale-98"
               >
                 <span>Khám Phá Sản Phẩm Tươi</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 shrink-0" />
               </Link>
+
               <Link
                 to="/trace"
-                className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition-all"
+                className="min-h-11 sm:min-h-12 px-5 py-3 rounded-2xl bg-white/12 hover:bg-white/20 text-white border border-white/25 font-bold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors"
               >
-                <QrCode className="w-4 h-4 text-[#86efac]" />
+                <QrCode className="w-4 h-4 text-[#91f78e] shrink-0" />
                 <span>Quét QR Nguồn Gốc</span>
               </Link>
             </div>
 
-            {/* Bottom Metrics */}
-            <div className="grid grid-cols-3 gap-4 pt-5 border-t border-white/15 max-w-md">
+            {/* 3 chỉ số cam kết thu gọn đều nhau trên cả Mobile & Desktop */}
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-4 pt-3 sm:pt-4 border-t border-white/15">
               <div>
-                <div className="text-lg sm:text-2xl font-black text-white">100%</div>
-                <div className="text-[11px] text-emerald-200/80">Hữu cơ tự nhiên</div>
+                <p className="text-base sm:text-2xl font-black text-white tabular-nums">100%</p>
+                <p className="text-[11px] sm:text-xs text-emerald-200/85">Hữu cơ tự nhiên</p>
               </div>
               <div>
-                <div className="text-lg sm:text-2xl font-black text-white">0.00 ppm</div>
-                <div className="text-[11px] text-emerald-200/80">Dư lượng thuốc BVTV</div>
+                <p className="text-base sm:text-2xl font-black text-[#91f78e] tabular-nums">
+                  0.00 ppm
+                </p>
+                <p className="text-[11px] sm:text-xs text-emerald-200/85">Dư lượng thuốc BVTV</p>
               </div>
               <div>
-                <div className="text-lg sm:text-2xl font-black text-white">QR Code</div>
-                <div className="text-[11px] text-emerald-200/80">Nhật ký từng lô</div>
+                <p className="text-base sm:text-2xl font-black text-white">QR Code</p>
+                <p className="text-[11px] sm:text-xs text-emerald-200/85">Nhật ký từng lô</p>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Glass Quality Card */}
+          {/* CỘT PHẢI (5 cột Desktop): Thẻ chứng nhận kiểm định */}
           <div className="lg:col-span-5">
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="inline-flex items-center gap-1.5 text-[#86efac] font-bold">
-                  <ShieldCheck className="w-4 h-4" />
-                  Chứng nhận kiểm định
+            <div className="rounded-2xl sm:rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 p-4 sm:p-6 space-y-4 shadow-xl">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-[#91f78e]/20 border border-[#91f78e]/40 flex items-center justify-center text-[#91f78e] shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#91f78e] block">
+                      Chứng nhận kiểm định
+                    </span>
+                    <h2 className="text-sm sm:text-base font-extrabold text-white">
+                      Phiếu Thử Nghiệm Chất Lượng
+                    </h2>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-black/25 text-[10.5px] font-bold text-emerald-200 shrink-0">
+                  XanhFarm
                 </span>
-                <span className="font-mono text-emerald-200/70">2026 • XanhFarm</span>
               </div>
 
-              <div>
-                <h2 className="text-base sm:text-lg font-extrabold text-white">
-                  {slide.certTitle}
-                </h2>
-                <p className="text-xs text-emerald-200/80 mt-0.5">
-                  {slide.certSubtitle}
-                </p>
-              </div>
+              <p className="text-xs text-emerald-100/85 leading-relaxed">
+                Mẫu nước tưới và đất canh tác tại cơ sở Củ Chi được kiểm nghiệm định kỳ trước mỗi
+                vụ gieo trồng.
+              </p>
 
-              <div className="px-3.5 py-2.5 rounded-xl bg-[#032e1b]/80 border border-emerald-500/30 flex items-center gap-2 text-xs text-[#86efac] font-semibold">
+              <div className="rounded-xl bg-[#003309]/80 border border-[#91f78e]/30 px-3.5 py-2.5 flex items-center gap-2 text-xs font-bold text-[#91f78e]">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{slide.certBadge}</span>
+                <span>Đạt chuẩn 100% không tồn dư hóa chất</span>
               </div>
 
               <Link
                 to="/brand"
-                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-emerald-50 text-[#064e2e] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                className="w-full min-h-10 rounded-xl bg-white hover:bg-emerald-50 text-[#00450d] font-extrabold text-xs inline-flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
               >
+                <BadgeCheck className="w-4 h-4 text-[#006e1c]" />
                 <span>Tra cứu hồ sơ chứng nhận</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
-        </div>
-
-        {/* Dots Indicator */}
-        <div className="relative z-10 pb-4 flex justify-center gap-1.5">
-          {SLIDES.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setCurrent(idx)}
-              aria-label={`Chuyển đến slide ${idx + 1}`}
-              className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                current === idx ? "w-6 bg-[#86efac]" : "w-2 bg-white/30"
-              }`}
-            />
-          ))}
         </div>
       </div>
     </section>

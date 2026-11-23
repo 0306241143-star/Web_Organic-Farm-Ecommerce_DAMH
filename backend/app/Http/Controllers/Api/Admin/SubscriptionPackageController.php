@@ -32,7 +32,7 @@ class SubscriptionPackageController extends Controller
             ->withCount('dangKyGois as registrations_count')
             ->orderByDesc('Ma_goi')
             ->get()
-            ->map(fn (GoiDinhKy $pkg) => $this->formatPackage($pkg))
+            ->map(fn(GoiDinhKy $pkg) => $this->formatPackage($pkg))
             ->values();
 
         return $this->successResponse(
@@ -227,7 +227,7 @@ class SubscriptionPackageController extends Controller
 
     private function formatPackage(GoiDinhKy $pkg): array
     {
-        $items = $pkg->chiTiets->map(fn (ChiTietGoi $ct) => [
+        $items = $pkg->chiTiets->map(fn(ChiTietGoi $ct) => [
             'id'           => (int) $ct->Ma_ct_goi,
             'product_id'   => (int) $ct->Ma_san_pham,
             'product_name' => $ct->sanPham?->Ten_san_pham ?? 'Sản phẩm không còn tồn tại',
@@ -254,5 +254,6 @@ class SubscriptionPackageController extends Controller
     private function clearPublicSubscriptionCache(): void
     {
         Cache::forget('public_subscription_packages_v1');
+        Cache::forget('public_subscription_packages_v2');
     }
 }

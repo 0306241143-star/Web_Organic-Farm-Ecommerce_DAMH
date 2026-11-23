@@ -3,6 +3,7 @@ import LoginModal from "../components/auth/LoginModal";
 import RegisterModal from "../components/auth/RegisterModal";
 import StorefrontFooter from "../components/navigation/StorefrontFooter";
 import StorefrontHeader from "../components/navigation/StorefrontHeader";
+import ForgotPasswordModal from "../components/auth/ForgotPasswordModal";
 import { useAuth } from "../context/useAuth";
 
 export default function StorefrontLayout() {
@@ -14,6 +15,8 @@ export default function StorefrontLayout() {
     isRegisterModalOpen,
     registerRedirectTo,
     closeRegisterModal,
+    isForgotPasswordModalOpen,
+    closeForgotPasswordModal,
   } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,7 +41,14 @@ export default function StorefrontLayout() {
     }
   };
 
-const hideFooter =
+  const handleCloseForgotPasswordModal = () => {
+    closeForgotPasswordModal();
+    if (location.pathname === "/forgot-password") {
+      navigate("/", { replace: true });
+    }
+  };
+
+  const hideFooter =
     location.pathname === "/cart" ||
     location.pathname.startsWith("/cart/") ||
     location.pathname === "/checkout" ||
@@ -61,6 +71,11 @@ const hideFooter =
         isOpen={isRegisterModalOpen}
         redirectTo={registerRedirectTo}
         onClose={handleCloseRegisterModal}
+      />
+
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={handleCloseForgotPasswordModal}
       />
     </div>
   );

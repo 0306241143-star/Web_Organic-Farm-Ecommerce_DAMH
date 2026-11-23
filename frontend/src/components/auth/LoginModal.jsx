@@ -19,7 +19,7 @@ import { authApi } from "../../services/authApi";
 import { showGlobalToast } from "../GlobalToast";
 
 export default function LoginModal({ isOpen, onClose, redirectTo = null }) {
-  const { setUser, login, openRegisterModal } = useAuth();
+  const { setUser, login, openRegisterModal, openForgotPasswordModal } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,7 +62,7 @@ export default function LoginModal({ isOpen, onClose, redirectTo = null }) {
 
   const getRoleRedirectPath = (userData) => {
     const role = userData?.role || userData?.roles?.[0];
-    if (role === "admin") return "/admin/dashboard";
+    if (role === "admin") return "/admin";
     if (role === "farm_staff") return "/farm/seasons";
     if (role === "sales") return "/sales/orders";
     return null; // Khách hàng ở lại trang hiện tại (hoặc về trang trước đó nếu từ /login)
@@ -123,9 +123,9 @@ export default function LoginModal({ isOpen, onClose, redirectTo = null }) {
       const firstFieldError = Object.values(fieldErrors).flat()[0];
       setErrorMessage(
         firstFieldError ||
-          err?.message ||
-          err?.response?.data?.message ||
-          "Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại."
+        err?.message ||
+        err?.response?.data?.message ||
+        "Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại."
       );
     } finally {
       setSubmitting(false);
@@ -211,13 +211,13 @@ export default function LoginModal({ isOpen, onClose, redirectTo = null }) {
               >
                 Mật khẩu *
               </label>
-              <Link
-                to="/forgot-password"
-                onClick={onClose}
-                className="text-[11px] font-semibold text-[#00450d] hover:underline"
+              <button
+                type="button"
+                onClick={() => openForgotPasswordModal()}
+                className="text-[11px] font-semibold text-[#00450d] hover:underline cursor-pointer"
               >
                 Quên mật khẩu?
-              </Link>
+              </button>
             </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />

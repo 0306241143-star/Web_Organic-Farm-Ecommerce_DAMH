@@ -133,9 +133,8 @@ function ProductPriceDisplay({ product }) {
   return (
     <div className="flex items-baseline flex-wrap gap-x-1 gap-y-0.5 tabular-nums">
       <span
-        className={`text-[15px] sm:text-[17px] font-extrabold tracking-tight ${
-          isSale ? "text-orange-600" : "text-[#00450d]"
-        }`}
+        className={`text-[15px] sm:text-[17px] font-extrabold tracking-tight ${isSale ? "text-orange-600" : "text-[#00450d]"
+          }`}
       >
         {formatCurrencyVnd(effectivePrice)}
       </span>
@@ -197,16 +196,15 @@ function ProductStockFooter({ product, onQuickAdd, isInternalStaff, isAdding }) 
             isAdding
               ? `Đang thêm ${product.name} vào giỏ hàng`
               : inStock
-              ? `Thêm ${product.name} vào giỏ hàng`
-              : `${product.name} hiện tạm hết hàng`
+                ? `Thêm ${product.name} vào giỏ hàng`
+                : `${product.name} hiện tạm hết hàng`
           }
-          className={`shrink-0 h-7.5 sm:h-8 px-2 sm:px-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-[12px] font-bold inline-flex items-center justify-center gap-0.5 sm:gap-1 transition-all ${
-            isAdding
+          className={`shrink-0 h-7.5 sm:h-8 px-2 sm:px-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-[12px] font-bold inline-flex items-center justify-center gap-0.5 sm:gap-1 transition-all ${isAdding
               ? "bg-[#eceeec] text-[#5a6357] cursor-wait"
               : inStock
-              ? "bg-[#00450d] hover:bg-[#006e1c] text-white shadow-2xs cursor-pointer"
-              : "bg-[#eceeec] text-[#5a6357] cursor-not-allowed"
-          }`}
+                ? "bg-[#00450d] hover:bg-[#006e1c] text-white shadow-2xs cursor-pointer"
+                : "bg-[#eceeec] text-[#5a6357] cursor-not-allowed"
+            }`}
         >
           {isAdding ? (
             <span role="status">...</span>
@@ -310,9 +308,11 @@ export default function ProductCard({ product, onAddToCart = null }) {
           {product.name}
         </Link>
 
-        <p className="hidden sm:block mt-1 text-[12px] text-[#5a6357] leading-relaxed line-clamp-2 min-h-[36px]">
-          {product.description || "Nông sản sạch đạt chuẩn kiểm định nguồn gốc tại vườn."}
-        </p>
+        {product.description && (
+          <p className="mt-1.5 text-xs text-slate-500 leading-relaxed line-clamp-2 min-h-[2.4rem]">
+            {product.description}
+          </p>
+        )}
 
         <div className="mt-auto pt-2 sm:pt-2.5">
           <ProductPriceDisplay product={product} />
