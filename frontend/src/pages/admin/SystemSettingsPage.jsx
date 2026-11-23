@@ -1,99 +1,113 @@
-/* Admin catalog page orchestrating Page 1 (Products), Page 2 (Categories) and Page 3 (Subscription Packages). */
-import React, { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+/* Admin system settings page orchestrating Page 1 (Shipping & Loyalty) and Page 2 (Farm Profile & Images). */
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
-  CalendarCheck2,
-  ExternalLink,
-  PackageSearch,
-  FolderTree,
-  Plus,
+  Loader2,
   RefreshCw,
+  RotateCcw,
+  Save,
+  Settings,
+  SlidersHorizontal,
   Sprout,
 } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
 import { showGlobalToast, confirmGlobalDialog } from "../../components/GlobalToast";
-import AdminProductListTab from "../../components/admin/catalog/AdminProductListTab";
-import ProductFormModal from "../../components/admin/catalog/ProductFormModal";
-import AdminCategoryListTab from "../../components/admin/catalog/AdminCategoryListTab";
-import CategoryFormModal from "../../components/admin/catalog/CategoryFormModal";
-import AdminSubscriptionListTab from "../../components/admin/catalog/AdminSubscriptionListTab";
-import SubscriptionPackageFormModal from "../../components/admin/catalog/SubscriptionPackageFormModal";
+import ShippingSettingTab from "../../components/admin/settings/ShippingSettingTab";
+import LoyaltySettingTab from "../../components/admin/settings/LoyaltySettingTab";
+import FarmProfileSettingTab from "../../components/admin/settings/FarmProfileSettingTab";
 
-export default function CatalogManagePage() {
+const DEFAULT_SHIPPING_RATE = 2000;
+const DEFAULT_POINT_VALUE = 1000;
+
+export default function SystemSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const activePage =
-    tabParam === "categories"
-      ? "categories"
-      : tabParam === "subscriptions"
-        ? "subscriptions"
-        : "products";
+  const activePage = searchParams.get("tab") === "farm" ? "farm" : "general";
 
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Filter liên kết từ Page 2 -> Page 1
-  const [prodCategoryFilter, setProdCategoryFilter] = useState("ALL");
+  // State cho Page 1 (Phí vận chuyển & Điểm thưởng Loyalty)
+  const [savedValues, setSavedValues] = useState({
+    don_gia_ship_km: String(DEFAULT_SHIPPING_RATE),
+    diem_quy_doi_vnd: String(DEFAULT_POINT_VALUE),
+  });
+  const [form, setForm] = useState({
+    don_gia_ship_km: String(DEFAULT_SHIPPING_RATE),
+    diem_quy_doi_vnd: String(DEFAULT_POINT_VALUE),
+  });
 
-  // Modal & Action states cho Sản phẩm
-  const [isProdModalOpen, setIsProdModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [togglingProdId, setTogglingProdId] = useState(null);
+  // State cho Page 2 (Thông tin & Hình ảnh nông trại)
+  const [savedFarmSnapshot, setSavedFarmSnapshot] = useState("");
+  const [farmForm, setFarmForm] = useState({
+    Ten_nong_trai: "",
+    Dia_chi: "",
+    Vi_do: "10.9985000",
+    Kinh_do: "106.5123000",
+    Cau_chuyen_thuong_hieu: "",
+    Triet_ly_canh_tac: "",
+    Ho_so_nang_luc: "",
+  });
+  const [existingFarmImages, setExistingFarmImages] = useState([]);
+  const [newFarmImageFiles, setNewFarmImageFiles] = useState([]);
+  const [externalFarmImageUrls, setExternalFarmImageUrls] = useState([]);
 
-  // Modal & Action states cho Danh mục
-  const [isCatModalOpen, setIsCatModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [togglingCatId, setTogglingCatId] = useState(null);
+  const buildFarmSnapshot = (fForm, imgs) =>
+    JSON.stringify({
+      ...fForm,
+      images: imgs.map((i) => ({ id: i.id, caption: i.caption || "" })),
+    });
 
-  // Modal & Action states cho Gói định kỳ
-  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
-  const [editingSubscription, setEditingSubscription] = useState(null);
-  const [togglingSubId, setTogglingSubId] = useState(null);
-
-  const fetchAllData = useCallback(async (silent = false) => {
+  const fetchAllSettings = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
 
-    const [catResult, prodResult, subResult] = await Promise.allSettled([
-      adminApi.getCategories(),
-      adminApi.getProducts(),
-      adminApi.getSubscriptions(),
+    const [settingRes, farmRes] = await Promise.allSettled([
+      adminApi.getSettings(),
+      adminApi.getFarmSettings(),
     ]);
 
-    if (catResult.status === "fulfilled") {
-      const catList = catResult.value?.data?.data ?? catResult.value?.data ?? [];
-      setCategories(Array.isArray(catList) ? catList : []);
+    if (settingRes.status === "fulfilled") {
+      const payload = settingRes.value?.data?.data ?? settingRes.value?.data ?? {};
+      const shipRate = String(payload.don_gia_ship_km ?? DEFAULT_SHIPPING_RATE);
+      const pointVal = String(payload.diem_quy_doi_vnd ?? DEFAULT_POINT_VALUE);
+
+      setSavedValues({
+        don_gia_ship_km: shipRate,
+        diem_quy_doi_vnd: pointVal,
+      });
+      setForm({
+        don_gia_ship_km: shipRate,
+        diem_quy_doi_vnd: pointVal,
+      });
     }
 
-    if (prodResult.status === "fulfilled") {
-      const prodList = prodResult.value?.data?.data ?? prodResult.value?.data ?? [];
-      setProducts(Array.isArray(prodList) ? prodList : []);
+    if (farmRes.status === "fulfilled") {
+      const farm = farmRes.value?.data?.data ?? farmRes.value?.data ?? {};
+      const nextFarmForm = {
+        Ten_nong_trai: farm.name || "",
+        Dia_chi: farm.address || "",
+        Vi_do: String(farm.latitude ?? "10.9985000"),
+        Kinh_do: String(farm.longitude ?? "106.5123000"),
+        Cau_chuyen_thuong_hieu: farm.brand_story || "",
+        Triet_ly_canh_tac: farm.farming_philosophy || "",
+        Ho_so_nang_luc: farm.capacity_profile || "",
+      };
+      const imgs = Array.isArray(farm.images) ? farm.images : [];
+      setFarmForm(nextFarmForm);
+      setExistingFarmImages(imgs);
+      setNewFarmImageFiles([]);
+      setExternalFarmImageUrls([]);
+      setSavedFarmSnapshot(buildFarmSnapshot(nextFarmForm, imgs));
     }
 
-    if (subResult.status === "fulfilled") {
-      const subList = subResult.value?.data?.data ?? subResult.value?.data ?? [];
-      setSubscriptions(Array.isArray(subList) ? subList : []);
-    }
-
-    if (
-      catResult.status === "rejected" ||
-      prodResult.status === "rejected" ||
-      subResult.status === "rejected"
-    ) {
-      const errObj =
-        prodResult.status === "rejected"
-          ? prodResult.reason
-          : catResult.status === "rejected"
-            ? catResult.reason
-            : subResult.reason;
-      const detailMsg =
-        errObj?.response?.data?.message ||
-        errObj?.message ||
-        "Không thể tải đầy đủ dữ liệu quản trị.";
-      showGlobalToast(detailMsg, "error");
+    if (settingRes.status === "rejected" || farmRes.status === "rejected") {
+      const err =
+        settingRes.status === "rejected" ? settingRes.reason : farmRes.reason;
+      showGlobalToast(
+        err?.response?.data?.message || "Không thể tải đầy đủ dữ liệu cấu hình.",
+        "error"
+      );
     }
 
     setLoading(false);
@@ -101,469 +115,334 @@ export default function CatalogManagePage() {
   }, []);
 
   useEffect(() => {
-    fetchAllData(false);
-  }, [fetchAllData]);
+    fetchAllSettings(false);
+  }, [fetchAllSettings]);
 
   const switchSubPage = (tab) => {
     const next = new URLSearchParams(searchParams);
-    if (tab === "categories" || tab === "subscriptions") next.set("tab", tab);
+    if (tab === "farm") next.set("tab", "farm");
     else next.delete("tab");
     setSearchParams(next, { replace: true });
   };
 
-  /* --- Handlers cho Sản phẩm (Page 1) --- */
-  const handleProductSaved = (savedItem, isEdit) => {
-    if (!savedItem?.id) return;
-    if (isEdit) {
-      setProducts((prev) => prev.map((p) => (p.id === savedItem.id ? savedItem : p)));
-    } else {
-      setProducts((prev) => [savedItem, ...prev]);
-      setCategories((prev) =>
-        prev.map((c) =>
-          String(c.id) === String(savedItem.category_id)
-            ? {
-                ...c,
-                total_products_count: (c.total_products_count || 0) + 1,
-                active_products_count:
-                  savedItem.status === "Dang_ban"
-                    ? (c.active_products_count || 0) + 1
-                    : c.active_products_count || 0,
-              }
-            : c
-        )
-      );
-    }
-  };
+  const isNumericDirty = useMemo(() => {
+    return (
+      Number(form.don_gia_ship_km) !== Number(savedValues.don_gia_ship_km) ||
+      Number(form.diem_quy_doi_vnd) !== Number(savedValues.diem_quy_doi_vnd)
+    );
+  }, [form, savedValues]);
 
-  const handleToggleProductStatus = async (product) => {
-    const nextStatus = product.status === "Dang_ban" ? "Tam_ngung" : "Dang_ban";
-    setTogglingProdId(product.id);
+  const isFarmDirty = useMemo(() => {
+    if (newFarmImageFiles.length > 0 || externalFarmImageUrls.length > 0) {
+      return true;
+    }
+    return buildFarmSnapshot(farmForm, existingFarmImages) !== savedFarmSnapshot;
+  }, [
+    farmForm,
+    existingFarmImages,
+    newFarmImageFiles.length,
+    externalFarmImageUrls.length,
+    savedFarmSnapshot,
+  ]);
+
+  const isDirty = activePage === "farm" ? isFarmDirty : isNumericDirty;
+
+  const handleSave = async (e) => {
+    if (e) e.preventDefault();
+
+    if (activePage === "farm") {
+      if (!farmForm.Ten_nong_trai.trim() || !farmForm.Dia_chi.trim()) {
+        showGlobalToast("Vui lòng nhập đầy đủ tên và địa chỉ cơ sở nông trại.", "error");
+        return;
+      }
+
+      setSaving(true);
+      try {
+        const fd = new FormData();
+        fd.append("Ten_nong_trai", farmForm.Ten_nong_trai.trim());
+        fd.append("Dia_chi", farmForm.Dia_chi.trim());
+        fd.append("Vi_do", String(farmForm.Vi_do));
+        fd.append("Kinh_do", String(farmForm.Kinh_do));
+        fd.append("Cau_chuyen_thuong_hieu", farmForm.Cau_chuyen_thuong_hieu || "");
+        fd.append("Triet_ly_canh_tac", farmForm.Triet_ly_canh_tac || "");
+        fd.append("Ho_so_nang_luc", farmForm.Ho_so_nang_luc || "");
+
+        existingFarmImages.forEach((img, idx) => {
+          fd.append(`existing_images[${idx}][id]`, String(img.id));
+          fd.append(`existing_images[${idx}][caption]`, img.caption || "");
+        });
+
+        newFarmImageFiles.forEach((item, idx) => {
+          fd.append("images[]", item.file);
+          fd.append(`image_captions[${idx}]`, item.caption || "");
+        });
+
+        externalFarmImageUrls.forEach((url) => {
+          fd.append("image_urls[]", url);
+        });
+
+        const res = await adminApi.updateFarmSettings(fd);
+        const updated = res?.data?.data ?? {};
+        const nextFarmForm = {
+          Ten_nong_trai: updated.name ?? farmForm.Ten_nong_trai,
+          Dia_chi: updated.address ?? farmForm.Dia_chi,
+          Vi_do: String(updated.latitude ?? farmForm.Vi_do),
+          Kinh_do: String(updated.longitude ?? farmForm.Kinh_do),
+          Cau_chuyen_thuong_hieu: updated.brand_story ?? "",
+          Triet_ly_canh_tac: updated.farming_philosophy ?? "",
+          Ho_so_nang_luc: updated.capacity_profile ?? "",
+        };
+        const nextImgs = Array.isArray(updated.images) ? updated.images : existingFarmImages;
+
+        newFarmImageFiles.forEach((item) => {
+          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        });
+
+        setFarmForm(nextFarmForm);
+        setExistingFarmImages(nextImgs);
+        setNewFarmImageFiles([]);
+        setExternalFarmImageUrls([]);
+        setSavedFarmSnapshot(buildFarmSnapshot(nextFarmForm, nextImgs));
+
+        window.dispatchEvent(
+          new CustomEvent("farm-info-updated", { detail: { address: nextFarmForm.Dia_chi } })
+        );
+        showGlobalToast("Đã lưu thông tin và bộ sưu tập hình ảnh nông trại!");
+      } catch (err) {
+        showGlobalToast(
+          err?.response?.data?.message || "Không thể lưu thông tin nông trại.",
+          "error"
+        );
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    // Lưu cấu hình Page 1 (Ship + Điểm thưởng)
+    const shipRate = Number(form.don_gia_ship_km);
+    const pointVal = Number(form.diem_quy_doi_vnd);
+
+    if (!Number.isFinite(shipRate) || shipRate < 1 || shipRate > 10000000) {
+      showGlobalToast("Đơn giá giao hàng/km phải từ 1đ đến 10.000.000đ.", "error");
+      return;
+    }
+    if (!Number.isInteger(pointVal) || pointVal < 1 || pointVal > 10000000) {
+      showGlobalToast("Giá trị quy đổi 1 điểm thưởng phải là số nguyên từ 1đ trở lên.", "error");
+      return;
+    }
+
+    setSaving(true);
     try {
-      const res = await adminApi.updateProductStatus(product.id, nextStatus);
-      const updated = res.data?.data ?? res.data;
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === product.id
-            ? updated || {
-                ...p,
-                status: nextStatus,
-                status_label: nextStatus === "Dang_ban" ? "Đang mở bán" : "Tạm ngưng",
-              }
-            : p
-        )
-      );
-      showGlobalToast(
-        nextStatus === "Dang_ban"
-          ? `Đã mở bán lại "${product.name}".`
-          : `Đã tạm ngưng bán "${product.name}".`
-      );
+      const res = await adminApi.updateSettings({
+        don_gia_ship_km: shipRate,
+        diem_quy_doi_vnd: pointVal,
+      });
+      const updated = res?.data?.data ?? {};
+      const nextShip = String(updated.don_gia_ship_km ?? shipRate);
+      const nextPoint = String(updated.diem_quy_doi_vnd ?? pointVal);
+
+      setSavedValues({
+        don_gia_ship_km: nextShip,
+        diem_quy_doi_vnd: nextPoint,
+      });
+      setForm({
+        don_gia_ship_km: nextShip,
+        diem_quy_doi_vnd: nextPoint,
+      });
+
+      showGlobalToast("Đã lưu cấu hình tham số hệ thống thành công!");
     } catch (err) {
       showGlobalToast(
-        err?.response?.data?.message || "Không thể đổi trạng thái sản phẩm.",
+        err?.response?.data?.message || "Không thể cập nhật cấu hình hệ thống.",
         "error"
       );
     } finally {
-      setTogglingProdId(null);
+      setSaving(false);
     }
   };
 
-  const handleDeleteProduct = async (product) => {
+  const handleResetDefaults = async () => {
     const confirmed = await confirmGlobalDialog({
-      title: "Xóa sản phẩm nông sản?",
-      message: `Bạn có chắc chắn muốn xóa "${product.name}" khỏi hệ thống? Nếu sản phẩm đã có lô thu hoạch hoặc đơn hàng, hệ thống sẽ từ chối xóa để bảo toàn dữ liệu.`,
-      confirmLabel: "Xóa Sản Phẩm",
-      variant: "danger",
+      title: "Khôi phục tham số mặc định?",
+      message: `Đặt lại đơn giá giao hàng về ${DEFAULT_SHIPPING_RATE.toLocaleString("vi-VN")}đ/km và quy đổi điểm thưởng về ${DEFAULT_POINT_VALUE.toLocaleString("vi-VN")}đ/điểm?`,
+      confirmLabel: "Đặt Lại Mặc Định",
+      variant: "warning",
     });
     if (!confirmed) return;
 
-    try {
-      await adminApi.deleteProduct(product.id);
-      setProducts((prev) => prev.filter((p) => p.id !== product.id));
-      setCategories((prev) =>
-        prev.map((c) =>
-          String(c.id) === String(product.category_id)
-            ? {
-                ...c,
-                total_products_count: Math.max(0, (c.total_products_count || 1) - 1),
-                active_products_count:
-                  product.status === "Dang_ban"
-                    ? Math.max(0, (c.active_products_count || 1) - 1)
-                    : c.active_products_count || 0,
-              }
-            : c
-        )
-      );
-      showGlobalToast(`Đã xóa sản phẩm "${product.name}".`);
-    } catch (err) {
-      showGlobalToast(
-        err?.message || err?.response?.data?.message || "Không thể xóa sản phẩm này.",
-        "error"
-      );
-    }
-  };
-
-  /* --- Handlers cho Danh mục (Page 2) --- */
-  const handleCategorySaved = (savedCat, isEdit) => {
-    if (!savedCat?.id) return;
-    if (isEdit) {
-      setCategories((prev) => prev.map((c) => (c.id === savedCat.id ? savedCat : c)));
-      setProducts((prev) =>
-        prev.map((p) =>
-          String(p.category_id) === String(savedCat.id)
-            ? { ...p, category_name: savedCat.name }
-            : p
-        )
-      );
-    } else {
-      setCategories((prev) => [...prev, savedCat]);
-    }
-  };
-
-  const handleToggleCategoryStatus = async (cat) => {
-    const nextStatus = cat.status === "Hoat_dong" ? "Tam_an" : "Hoat_dong";
-    setTogglingCatId(cat.id);
-    try {
-      const res = await adminApi.updateCategoryStatus(cat.id, nextStatus);
-      const updated = res.data?.data ?? res.data;
-      setCategories((prev) =>
-        prev.map((c) =>
-          c.id === cat.id
-            ? updated || {
-                ...c,
-                status: nextStatus,
-                status_label: nextStatus === "Hoat_dong" ? "Hoạt động" : "Tạm ẩn",
-              }
-            : c
-        )
-      );
-      showGlobalToast(
-        nextStatus === "Hoat_dong"
-          ? `Đã kích hoạt hiển thị danh mục "${cat.name}".`
-          : `Đã tạm ẩn danh mục "${cat.name}".`
-      );
-    } catch (err) {
-      showGlobalToast(
-        err?.response?.data?.message || "Không thể cập nhật trạng thái danh mục.",
-        "error"
-      );
-    } finally {
-      setTogglingCatId(null);
-    }
-  };
-
-  const handleDeleteCategory = async (cat) => {
-    const confirmed = await confirmGlobalDialog({
-      title: "Xóa danh mục nông sản?",
-      message: `Bạn có chắc chắn muốn xóa danh mục "${cat.name}"? Chỉ có thể xóa các danh mục chưa chứa sản phẩm nào.`,
-      confirmLabel: "Xóa Danh Mục",
-      variant: "danger",
+    setForm({
+      don_gia_ship_km: String(DEFAULT_SHIPPING_RATE),
+      diem_quy_doi_vnd: String(DEFAULT_POINT_VALUE),
     });
-    if (!confirmed) return;
-
-    try {
-      await adminApi.deleteCategory(cat.id);
-      setCategories((prev) => prev.filter((c) => c.id !== cat.id));
-      showGlobalToast(`Đã xóa danh mục "${cat.name}".`);
-    } catch (err) {
-      showGlobalToast(
-        err?.message || err?.response?.data?.message || "Không thể xóa danh mục này.",
-        "error"
-      );
-    }
-  };
-
-  /* --- Handlers cho Gói định kỳ (Page 3) --- */
-  const handleSubscriptionSaved = (savedPkg, isEdit) => {
-    if (!savedPkg?.id) return;
-    if (isEdit) {
-      setSubscriptions((prev) =>
-        prev.map((pkg) => (pkg.id === savedPkg.id ? savedPkg : pkg))
-      );
-    } else {
-      setSubscriptions((prev) => [savedPkg, ...prev]);
-    }
-  };
-
-  const handleToggleSubscriptionStatus = async (pkg) => {
-    const nextStatus = pkg.status === "Dang_mo" ? "Tam_dung" : "Dang_mo";
-    setTogglingSubId(pkg.id);
-    try {
-      const res = await adminApi.updateSubscriptionStatus(pkg.id, nextStatus);
-      const updated = res.data?.data ?? res.data;
-      setSubscriptions((prev) =>
-        prev.map((item) =>
-          item.id === pkg.id
-            ? updated || {
-                ...item,
-                status: nextStatus,
-                status_label: nextStatus === "Dang_mo" ? "Đang mở bán" : "Tạm dừng",
-              }
-            : item
-        )
-      );
-      showGlobalToast(
-        nextStatus === "Dang_mo"
-          ? `Đã mở bán gói "${pkg.name}".`
-          : `Đã tạm dừng gói "${pkg.name}".`
-      );
-    } catch (err) {
-      showGlobalToast(
-        err?.response?.data?.message || "Không thể đổi trạng thái gói định kỳ.",
-        "error"
-      );
-    } finally {
-      setTogglingSubId(null);
-    }
-  };
-
-  const handleDeleteSubscription = async (pkg) => {
-    const confirmed = await confirmGlobalDialog({
-      title: "Xóa gói rau định kỳ?",
-      message: `Bạn có chắc chắn muốn xóa gói "${pkg.name}"? Nếu gói đã có khách hàng đăng ký, hệ thống sẽ từ chối xóa.`,
-      confirmLabel: "Xóa Gói",
-      variant: "danger",
-    });
-    if (!confirmed) return;
-
-    try {
-      await adminApi.deleteSubscription(pkg.id);
-      setSubscriptions((prev) => prev.filter((item) => item.id !== pkg.id));
-      showGlobalToast(`Đã xóa gói "${pkg.name}".`);
-    } catch (err) {
-      showGlobalToast(
-        err?.message || err?.response?.data?.message || "Không thể xóa gói này.",
-        "error"
-      );
-    }
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header Banner + Chuyển đổi 3 Page */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-200/80 space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">
-              <Sprout className="w-4 h-4" />
-              <span>Quản Trị Danh Mục, Mặt Hàng & Gói Định Kỳ</span>
+    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
+      {/* KHỐI CỐ ĐỊNH SÁT MÉP TRÊN: Tiêu đề + Nút hành động + 2 Page */}
+      <div className="shrink-0 z-20 bg-white border-b border-slate-200/90 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3.5 pb-3 space-y-3">
+          {/* Hàng 1: Tiêu đề & Nút Lưu / Làm mới */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-emerald-700 uppercase tracking-wider">
+                <Settings className="w-3.5 h-3.5 shrink-0" />
+                <span>Thiết Lập Vận Hành & Hồ Sơ Nông Trại</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">
+                  {activePage === "general"
+                    ? "Cấu Hình Phí Vận Chuyển & Điểm Thưởng"
+                    : "Cấu Hình Thông Tin & Hình Ảnh Nông Trại"}
+                </h1>
+                {isDirty && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300/80 text-[10.5px] font-bold shrink-0">
+                    Chưa lưu thay đổi
+                  </span>
+                )}
+              </div>
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-              {activePage === "products"
-                ? "Quản Lý Danh Sách Nông Sản"
-                : activePage === "categories"
-                  ? "Quản Lý Danh Mục Nông Sản"
-                  : "Quản Lý Gói Rau Định Kỳ"}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-              {activePage === "products"
-                ? "Thêm mới nông sản, cập nhật giá bán niêm yết, hình ảnh đại diện, tỷ lệ tích điểm và trạng thái mở bán trên cửa hàng."
-                : activePage === "categories"
-                  ? "Tổ chức phân nhóm danh mục nông sản, cập nhật mô tả và kiểm soát trạng thái hiển thị của từng nhóm hàng."
-                  : "Tạo các gói rau củ giao định kỳ hằng tuần, thiết lập mức giá ưu đãi và thành phần nông sản cho từng đợt giao."}
-            </p>
-          </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => fetchAllData(true)}
-              disabled={refreshing}
-              className="p-2.5 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-              title="Làm mới dữ liệu"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`}
-              />
-            </button>
-
-            {activePage === "products" ? (
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => {
-                  setEditingProduct(null);
-                  setIsProdModalOpen(true);
-                }}
-                className="px-4 py-2.5 rounded-2xl bg-[#064e2e] hover:bg-[#043821] text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-950/15 flex items-center gap-2 transition-all cursor-pointer"
+                onClick={() => fetchAllSettings(true)}
+                disabled={refreshing || saving}
+                className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                title="Tải lại dữ liệu từ máy chủ"
               >
-                <Plus className="w-4 h-4" />
-                <span>Thêm Sản Phẩm Mới</span>
+                <RefreshCw
+                  className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`}
+                />
               </button>
-            ) : activePage === "categories" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingCategory(null);
-                  setIsCatModalOpen(true);
-                }}
-                className="px-4 py-2.5 rounded-2xl bg-[#064e2e] hover:bg-[#043821] text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-950/15 flex items-center gap-2 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Thêm Danh Mục Mới</span>
-              </button>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  to="/subscriptions"
-                  className="px-4 py-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-[#064e2e] font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Xem trang khách hàng</span>
-                </Link>
+
+              {activePage === "general" && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditingSubscription(null);
-                    setIsSubModalOpen(true);
-                  }}
-                  className="px-4 py-2.5 rounded-2xl bg-[#064e2e] hover:bg-[#043821] text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-950/15 flex items-center gap-2 transition-all cursor-pointer"
+                  onClick={handleResetDefaults}
+                  disabled={saving}
+                  className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  title="Đưa các ô nhập về giá trị mặc định"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Thêm Gói Định Kỳ Mới</span>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Mặc định</span>
                 </button>
-              </div>
-            )}
+              )}
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || loading || !isDirty}
+                className="px-4 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{saving ? "Đang lưu..." : "Lưu Cấu Hình"}</span>
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Thanh chuyển đổi 3 Page */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={() => switchSubPage("products")}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activePage === "products"
-                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-            }`}
-          >
-            <PackageSearch className="w-4 h-4" />
-            <span>Page 1: Quản Lý Sản Phẩm</span>
-            <span
-              className={`text-[11px] px-2 py-0.5 rounded-full font-extrabold tabular-nums ${
-                activePage === "products"
-                  ? "bg-white/25 text-white"
-                  : "bg-white text-slate-700 border border-slate-200"
-              }`}
-            >
-              {products.length}
-            </span>
-          </button>
+          {/* Hàng 2: Thanh chuyển 2 Page */}
+          <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => switchSubPage("general")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
+                  activePage === "general"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>Page 1: Phí vận chuyển & Điểm thưởng</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => switchSubPage("categories")}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activePage === "categories"
-                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-            }`}
-          >
-            <FolderTree className="w-4 h-4" />
-            <span>Page 2: Quản Lý Danh Mục</span>
-            <span
-              className={`text-[11px] px-2 py-0.5 rounded-full font-extrabold tabular-nums ${
-                activePage === "categories"
-                  ? "bg-white/25 text-white"
-                  : "bg-white text-slate-700 border border-slate-200"
-              }`}
-            >
-              {categories.length}
-            </span>
-          </button>
+              <button
+                type="button"
+                onClick={() => switchSubPage("farm")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
+                  activePage === "farm"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <Sprout className="w-3.5 h-3.5" />
+                <span>Page 2: Thông tin & Hình ảnh nông trại</span>
+                <span
+                  className={`text-[10.5px] px-1.5 py-0.2 rounded-full font-extrabold tabular-nums ${
+                    activePage === "farm"
+                      ? "bg-white/25 text-white"
+                      : "bg-white text-slate-700 border border-slate-200"
+                  }`}
+                >
+                  {existingFarmImages.length}
+                </span>
+              </button>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => switchSubPage("subscriptions")}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activePage === "subscriptions"
-                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
-                : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-            }`}
-          >
-            <CalendarCheck2 className="w-4 h-4" />
-            <span>Page 3: Quản Lý Gói Định Kỳ</span>
-            <span
-              className={`text-[11px] px-2 py-0.5 rounded-full font-extrabold tabular-nums ${
-                activePage === "subscriptions"
-                  ? "bg-white/25 text-white"
-                  : "bg-white text-slate-700 border border-slate-200"
-              }`}
-            >
-              {subscriptions.length}
-            </span>
-          </button>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-600">
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200/70 tabular-nums">
+                Ship:{" "}
+                <strong>{Number(savedValues.don_gia_ship_km).toLocaleString("vi-VN")}đ/km</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/70 tabular-nums">
+                1 điểm ={" "}
+                <strong>{Number(savedValues.diem_quy_doi_vnd).toLocaleString("vi-VN")}đ</strong>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Nội dung từng Page */}
-      {activePage === "products" ? (
-        <AdminProductListTab
-          products={products}
-          categories={categories}
-          loading={loading}
-          selectedCategoryFilter={prodCategoryFilter}
-          onCategoryFilterChange={setProdCategoryFilter}
-          togglingProdId={togglingProdId}
-          onEditProduct={(prod) => {
-            setEditingProduct(prod);
-            setIsProdModalOpen(true);
-          }}
-          onToggleStatus={handleToggleProductStatus}
-          onDeleteProduct={handleDeleteProduct}
-        />
-      ) : activePage === "categories" ? (
-        <AdminCategoryListTab
-          categories={categories}
-          loading={loading}
-          togglingCatId={togglingCatId}
-          onSelectCategoryProducts={(catId) => {
-            setProdCategoryFilter(catId);
-            switchSubPage("products");
-          }}
-          onEditCategory={(cat) => {
-            setEditingCategory(cat);
-            setIsCatModalOpen(true);
-          }}
-          onToggleStatus={handleToggleCategoryStatus}
-          onDeleteCategory={handleDeleteCategory}
-        />
-      ) : (
-        <AdminSubscriptionListTab
-          packages={subscriptions}
-          loading={loading}
-          togglingSubId={togglingSubId}
-          onEditPackage={(pkg) => {
-            setEditingSubscription(pkg);
-            setIsSubModalOpen(true);
-          }}
-          onToggleStatus={handleToggleSubscriptionStatus}
-          onDeletePackage={handleDeleteSubscription}
-        />
-      )}
-
-      {/* Modals */}
-      <ProductFormModal
-        isOpen={isProdModalOpen}
-        onClose={() => setIsProdModalOpen(false)}
-        editingProduct={editingProduct}
-        categories={categories}
-        onSaved={handleProductSaved}
-      />
-
-      <CategoryFormModal
-        isOpen={isCatModalOpen}
-        onClose={() => setIsCatModalOpen(false)}
-        editingCategory={editingCategory}
-        onSaved={handleCategorySaved}
-      />
-
-      <SubscriptionPackageFormModal
-        isOpen={isSubModalOpen}
-        onClose={() => setIsSubModalOpen(false)}
-        editingPackage={editingSubscription}
-        products={products}
-        onSaved={handleSubscriptionSaved}
-      />
+      {/* VÙNG NỘI DUNG TỪNG PAGE (CUỘN ĐỘC LẬP) */}
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5">
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-16 text-center flex flex-col items-center justify-center">
+              <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
+              <p className="text-xs text-slate-500 font-medium">
+                Đang tải cấu hình tham số hệ thống...
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSave}>
+              {activePage === "general" ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <ShippingSettingTab
+                    value={form.don_gia_ship_km}
+                    onChange={(val) =>
+                      setForm((prev) => ({ ...prev, don_gia_ship_km: val }))
+                    }
+                  />
+                  <LoyaltySettingTab
+                    value={form.diem_quy_doi_vnd}
+                    onChange={(val) =>
+                      setForm((prev) => ({ ...prev, diem_quy_doi_vnd: val }))
+                    }
+                  />
+                </div>
+              ) : (
+                <FarmProfileSettingTab
+                  farmForm={farmForm}
+                  onChangeField={(field, val) =>
+                    setFarmForm((prev) => ({ ...prev, [field]: val }))
+                  }
+                  existingImages={existingFarmImages}
+                  onUpdateExistingImages={setExistingFarmImages}
+                  newImageFiles={newFarmImageFiles}
+                  onChangeNewImageFiles={setNewFarmImageFiles}
+                  externalUrls={externalFarmImageUrls}
+                  onChangeExternalUrls={setExternalFarmImageUrls}
+                />
+              )}
+            </form>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

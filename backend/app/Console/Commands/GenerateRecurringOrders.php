@@ -10,6 +10,7 @@ use App\Models\ChiTietDonHang;
 use App\Models\DangKyGoi;
 use App\Models\DonHang;
 use App\Models\PhanBoLoHang;
+use App\Models\ThanhToan;
 use App\Services\FefoStockService;
 use App\Services\ShippingDistanceService;
 use Carbon\CarbonImmutable;
@@ -27,8 +28,7 @@ class GenerateRecurringOrders extends Command
     public function handle(
         FefoStockService $stock,
         ShippingDistanceService $shipping
-    ): int
-    {
+    ): int {
         $today = CarbonImmutable::today();
         $mysqlWeekday = $today->dayOfWeek + 1;
         $generatedCount = 0;
@@ -70,6 +70,7 @@ class GenerateRecurringOrders extends Command
                         $created = DB::transaction(function () use (
                             $registration,
                             $today,
+                            $mysqlWeekday,
                             $stock,
                             $shipping
                         ): ?DonHang {
@@ -96,11 +97,11 @@ class GenerateRecurringOrders extends Command
                                 return null;
                             }
 
-                            $scheduleStillActive = $lockedRegistration->lichGiao()
-                                ->where('Thu_trong_tuan', $today->dayOfWeek + 1)
+                            $activeSchedule = $lockedRegistration->lichGiao()
+                                ->where('Thu_trong_tuan', $mysqlWeekday)
                                 ->where('Trang_thai', 'Hoat_dong')
-                                ->exists();
-                            if (! $scheduleStillActive) {
+                                ->first();
+                            if (! $activeSchedule) {
                                 return null;
                             }
 
@@ -116,6 +117,10 @@ class GenerateRecurringOrders extends Command
                                 }
                             }
 
+                            $deliveryWindowNote = $activeSchedule->Khung_gio_giao
+                                ? " • Khung giờ nhận: {$activeSchedule->Khung_gio_giao}"
+                                : '';
+
                             $order = DonHang::query()->create([
                                 'Ma_nguoi_dung' => $lockedRegistration->Ma_nguoi_dung,
                                 'Ma_dia_chi' => $lockedRegistration->Ma_dia_chi,
@@ -129,7 +134,17 @@ class GenerateRecurringOrders extends Command
                                 'Tien_giam_tu_diem' => 0,
                                 'Tong_tien' => 0,
                                 'Trang_thai' => 'Cho_xac_nhan',
-                                'Ghi_chu' => 'Đơn tự động sinh từ gói định kỳ',
+                                'Ghi_chu' => 'Đơn tự động sinh từ gói định kỳ' . $deliveryWindowNote,
+                            ]);
+
+                            ThanhToan::query()->create([
+                                'Ma_don_hang'          => $order->Ma_don_hang,
+                                'Ma_dang_ky_goi'       => null,
+                                'Phuong_thuc'          => 'Mien_phi_goi',
+                                'So_tien'              => 0,
+                                'Trang_thai'           => 'Thanh_cong',
+                                'Thoi_gian_thanh_toan' => now(),
+                                'Noi_dung_thanh_toan'  => 'GOI_DK_' . $lockedRegistration->Ma_dang_ky . '_' . $today->format('Ymd'),
                             ]);
 
                             foreach ($lockedRegistration->goi->chiTiets as $item) {

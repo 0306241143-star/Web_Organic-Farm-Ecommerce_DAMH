@@ -17,5 +17,6 @@ Schedule::command('orders:expire-pending-payments')
     ->withoutOverlapping();
 
 Schedule::command('subscriptions:generate-orders')
-    ->dailyAt('06:00')
+    ->hourlyAt(0)
+    ->between('06:00', '10:00')
     ->withoutOverlapping();

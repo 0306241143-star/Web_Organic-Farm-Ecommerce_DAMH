@@ -91,9 +91,8 @@ export default function SubscriptionPackagesSection() {
         </div>
       ) : (
         <div
-          className={`grid grid-cols-1 ${
-            packages.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2"
-          } gap-6`}
+          className={`grid grid-cols-1 ${packages.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2"
+            } gap-6`}
         >
           {packages.map((pkg, idx) => {
             const isFeatured = idx === 0;
@@ -101,21 +100,19 @@ export default function SubscriptionPackagesSection() {
             return (
               <div
                 key={pkg.id}
-                className={`relative rounded-3xl p-6 sm:p-7 transition-all flex flex-col justify-between ${
-                  isFeatured
-                    ? "bg-[#064e2e] text-white shadow-xl border-2 border-[#10b981]"
-                    : "bg-white text-slate-900 shadow-xs border border-slate-200/90 hover:border-emerald-400"
-                }`}
+                className={`relative rounded-3xl p-6 sm:p-7 transition-all flex flex-col justify-between ${isFeatured
+                  ? "bg-[#064e2e] text-white shadow-xl border-2 border-[#10b981]"
+                  : "bg-white text-slate-900 shadow-xs border border-slate-200/90 hover:border-emerald-400"
+                  }`}
               >
                 <div>
                   {/* Top Badges */}
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wide ${
-                        isFeatured
-                          ? "bg-emerald-400/20 text-[#86efac] border border-[#86efac]/40"
-                          : "bg-emerald-50 text-emerald-700 border border-emerald-200/70"
-                      }`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wide ${isFeatured
+                        ? "bg-emerald-400/20 text-[#86efac] border border-[#86efac]/40"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200/70"
+                        }`}
                     >
                       <Scale className="w-3.5 h-3.5" />
                       {pkg.weight_per_delivery} kg / lần giao
@@ -131,56 +128,87 @@ export default function SubscriptionPackagesSection() {
 
                   {/* Title & Description */}
                   <h3
-                    className={`text-lg sm:text-xl font-black leading-snug ${
-                      isFeatured ? "text-white" : "text-slate-900"
-                    }`}
+                    className={`text-lg sm:text-xl font-black leading-snug ${isFeatured ? "text-white" : "text-slate-900"
+                      }`}
                   >
                     {pkg.name}
                   </h3>
                   {pkg.description && (
                     <p
-                      className={`text-xs mt-2 leading-relaxed ${
-                        isFeatured ? "text-emerald-100/85" : "text-slate-500"
-                      }`}
+                      className={`text-xs mt-2 leading-relaxed ${isFeatured ? "text-emerald-100/85" : "text-slate-500"
+                        }`}
                     >
                       {pkg.description}
                     </p>
                   )}
 
                   {/* Price Box */}
-                  <div
-                    className={`mt-5 pb-5 border-b flex items-baseline gap-2 ${
-                      isFeatured ? "border-white/15" : "border-slate-100"
-                    }`}
-                  >
-                    <span
-                      className={`text-2xl sm:text-3xl font-black ${
-                        isFeatured ? "text-[#86efac]" : "text-[#064e2e]"
-                      }`}
-                    >
-                      {Number(pkg.price).toLocaleString("vi-VN")}đ
-                    </span>
-                    <span
-                      className={`text-xs font-semibold ${
-                        isFeatured ? "text-emerald-200/80" : "text-slate-400"
-                      }`}
-                    >
-                      / gói {pkg.duration_months} tháng
-                    </span>
-                  </div>
+                  {/* Price Box */}
+                  {(() => {
+                    const salePrice = Number(pkg.price ?? 0);
+                    const originalPrice = Number(pkg.original_price ?? 0);
+                    const hasDiscount = originalPrice > salePrice && originalPrice > 0;
+                    const discountPercent = hasDiscount
+                      ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
+                      : 0;
+
+                    return (
+                      <div
+                        className={`mt-5 pb-5 border-b ${isFeatured ? "border-white/15" : "border-slate-100"
+                          }`}
+                      >
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            <span
+                              className={`text-2xl sm:text-3xl font-black tabular-nums ${isFeatured ? "text-[#86efac]" : "text-[#064e2e]"
+                                }`}
+                            >
+                              {salePrice.toLocaleString("vi-VN")}đ
+                            </span>
+
+                            {hasDiscount && (
+                              <span
+                                className={`text-xs sm:text-sm font-semibold line-through tabular-nums ${isFeatured ? "text-emerald-200/70" : "text-slate-400"
+                                  }`}
+                              >
+                                {originalPrice.toLocaleString("vi-VN")}đ
+                              </span>
+                            )}
+                          </div>
+
+                          {hasDiscount && discountPercent > 0 && (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-black tabular-nums ${isFeatured
+                                  ? "bg-[#86efac] text-[#043821]"
+                                  : "bg-rose-100 text-rose-700"
+                                }`}
+                            >
+                              -{discountPercent}%
+                            </span>
+                          )}
+                        </div>
+
+                        <span
+                          className={`mt-1 block text-xs font-semibold ${isFeatured ? "text-emerald-200/80" : "text-slate-400"
+                            }`}
+                        >
+                          / gói {pkg.duration_months} tháng
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* Included Items from chi_tiet_goi */}
                   <div className="mt-5">
                     <div
-                      className={`text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 mb-3 ${
-                        isFeatured ? "text-emerald-200" : "text-slate-500"
-                      }`}
+                      className={`text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 mb-3 ${isFeatured ? "text-emerald-200" : "text-slate-500"
+                        }`}
                     >
                       <Package className="w-3.5 h-3.5" />
                       <span>Thành phần tiêu chuẩn mỗi đợt giao:</span>
                     </div>
 
-{Array.isArray(pkg.items) && pkg.items.length > 0 ? (
+                    {Array.isArray(pkg.items) && pkg.items.length > 0 ? (
                       <ul className="space-y-2">
                         {pkg.items.map((item) => {
                           const hasProductLink = Number(item.product_id) > 0;
@@ -188,27 +216,24 @@ export default function SubscriptionPackagesSection() {
                             <>
                               <span className="inline-flex items-center gap-2 font-medium min-w-0">
                                 <CheckCircle2
-                                  className={`w-4 h-4 shrink-0 ${
-                                    isFeatured ? "text-[#86efac]" : "text-emerald-600"
-                                  }`}
+                                  className={`w-4 h-4 shrink-0 ${isFeatured ? "text-[#86efac]" : "text-emerald-600"
+                                    }`}
                                 />
                                 <span className="truncate group-hover/homeprod:underline">
                                   {item.product_name}
                                 </span>
                                 {hasProductLink && (
                                   <ArrowUpRight
-                                    className={`w-3.5 h-3.5 shrink-0 opacity-70 group-hover/homeprod:opacity-100 transition-opacity ${
-                                      isFeatured ? "text-[#86efac]" : "text-emerald-700"
-                                    }`}
+                                    className={`w-3.5 h-3.5 shrink-0 opacity-70 group-hover/homeprod:opacity-100 transition-opacity ${isFeatured ? "text-[#86efac]" : "text-emerald-700"
+                                      }`}
                                   />
                                 )}
                               </span>
                               <span
-                                className={`font-bold px-2 py-0.5 rounded-md shrink-0 tabular-nums ${
-                                  isFeatured
-                                    ? "bg-white/10 text-white"
-                                    : "bg-slate-100 text-slate-700"
-                                }`}
+                                className={`font-bold px-2 py-0.5 rounded-md shrink-0 tabular-nums ${isFeatured
+                                  ? "bg-white/10 text-white"
+                                  : "bg-slate-100 text-slate-700"
+                                  }`}
                               >
                                 {Number(item.quantity)} {item.unit}
                               </span>
@@ -221,11 +246,10 @@ export default function SubscriptionPackagesSection() {
                                 <Link
                                   to={`/products/${item.product_id}`}
                                   title={`Xem chi tiết ${item.product_name}`}
-                                  className={`group/homeprod flex items-center justify-between gap-2 text-xs rounded-lg px-2 py-1 -mx-2 transition-colors ${
-                                    isFeatured
-                                      ? "hover:bg-white/10"
-                                      : "hover:bg-emerald-50/80"
-                                  }`}
+                                  className={`group/homeprod flex items-center justify-between gap-2 text-xs rounded-lg px-2 py-1 -mx-2 transition-colors ${isFeatured
+                                    ? "hover:bg-white/10"
+                                    : "hover:bg-emerald-50/80"
+                                    }`}
                                 >
                                   {itemBody}
                                 </Link>
@@ -240,9 +264,8 @@ export default function SubscriptionPackagesSection() {
                       </ul>
                     ) : (
                       <p
-                        className={`text-xs italic ${
-                          isFeatured ? "text-emerald-200/70" : "text-slate-400"
-                        }`}
+                        className={`text-xs italic ${isFeatured ? "text-emerald-200/70" : "text-slate-400"
+                          }`}
                       >
                         Rau củ hữu cơ tuyển chọn theo mùa vụ thu hoạch trong ngày.
                       </p>
@@ -251,11 +274,10 @@ export default function SubscriptionPackagesSection() {
 
                   {/* Flexible Pause Note */}
                   <div
-                    className={`mt-5 px-3.5 py-2.5 rounded-xl text-[11px] flex items-center gap-2 ${
-                      isFeatured
-                        ? "bg-white/10 text-emerald-100"
-                        : "bg-emerald-50/70 text-emerald-900"
-                    }`}
+                    className={`mt-5 px-3.5 py-2.5 rounded-xl text-[11px] flex items-center gap-2 ${isFeatured
+                      ? "bg-white/10 text-emerald-100"
+                      : "bg-emerald-50/70 text-emerald-900"
+                      }`}
                   >
                     <PauseCircle className="w-4 h-4 shrink-0 text-emerald-400" />
                     <span>
@@ -270,22 +292,20 @@ export default function SubscriptionPackagesSection() {
                     <button
                       type="button"
                       disabled
-                      className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 opacity-70 cursor-not-allowed ${
-                        isFeatured
-                          ? "bg-[#10b981] text-white"
-                          : "bg-[#064e2e] text-white"
-                      }`}
+                      className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 opacity-70 cursor-not-allowed ${isFeatured
+                        ? "bg-[#10b981] text-white"
+                        : "bg-[#064e2e] text-white"
+                        }`}
                     >
                       <span>Chỉ xem (Tài khoản nội bộ)</span>
                     </button>
                   ) : isAdminPreview ? (
                     <Link
                       to={`/subscriptions?package_id=${pkg.id}`}
-                      className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                        isFeatured
-                          ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
-                          : "bg-[#064e2e] hover:bg-[#043821] text-white"
-                      }`}
+                      className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${isFeatured
+                        ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
+                        : "bg-[#064e2e] hover:bg-[#043821] text-white"
+                        }`}
                     >
                       <span>Xem Trang Đăng Ký (Admin)</span>
                       <ArrowRight className="w-4 h-4" />
@@ -294,11 +314,10 @@ export default function SubscriptionPackagesSection() {
                     user ? (
                       <Link
                         to={`/subscriptions?package_id=${pkg.id}`}
-                        className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                          isFeatured
-                            ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
-                            : "bg-[#064e2e] hover:bg-[#043821] text-white"
-                        }`}
+                        className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${isFeatured
+                          ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
+                          : "bg-[#064e2e] hover:bg-[#043821] text-white"
+                          }`}
                       >
                         <span>Đăng Ký Gói Định Kỳ Này</span>
                         <ArrowRight className="w-4 h-4" />
@@ -309,11 +328,10 @@ export default function SubscriptionPackagesSection() {
                         onClick={() =>
                           openLoginModal(`/subscriptions?package_id=${pkg.id}`)
                         }
-                        className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${
-                          isFeatured
-                            ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
-                            : "bg-[#064e2e] hover:bg-[#043821] text-white"
-                        }`}
+                        className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer ${isFeatured
+                          ? "bg-[#10b981] hover:bg-[#059669] text-white shadow-lg shadow-emerald-950/30"
+                          : "bg-[#064e2e] hover:bg-[#043821] text-white"
+                          }`}
                       >
                         <span>Đăng Ký Gói Định Kỳ Này</span>
                         <ArrowRight className="w-4 h-4" />

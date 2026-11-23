@@ -60,4 +60,22 @@ export const adminApi = {
   updateSubscriptionStatus: (id, status) =>
     axiosClient.patch(`/admin/subscriptions/${id}/status`, { Trang_thai: status }),
   deleteSubscription: (id) => axiosClient.delete(`/admin/subscriptions/${id}`),
+
+
+  // Cấu hình thông tin & hình ảnh nông trại
+  getFarmSettings: () => axiosClient.get("/admin/settings/farm"),
+  updateFarmSettings: (formData) => {
+    if (formData instanceof FormData) {
+      formData.append("_method", "PUT");
+      return axiosClient.post("/admin/settings/farm", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    return axiosClient.put("/admin/settings/farm", formData);
+  },
+  deleteFarmImage: (imageId) =>
+    axiosClient.delete(`/admin/settings/farm/images/${imageId}`),
+
+  geocodeFarmAddress: (address) =>
+    axiosClient.post("/admin/settings/farm/geocode", { address }),
 };
