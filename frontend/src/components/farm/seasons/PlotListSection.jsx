@@ -17,15 +17,15 @@ export default function PlotListSection({
                 {/* Plots Grid */}
                 <div className="p-5">
                   <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center justify-between">
-                    <span>Danh sách các lô canh tác ({season.plots?.length || 0})</span>
+                    <span>Lô canh tác ({season.plots?.length || 0})</span>
                     <span className="text-[11px] text-slate-400 normal-case">
-                      Tổng diện tích: <strong>{(season.total_area_m2 || 0).toLocaleString()} m²</strong>
+                      Tổng: <strong>{(season.total_area_m2 || 0).toLocaleString()} m²</strong>
                     </span>
                   </h4>
 
                   {!season.plots || season.plots.length === 0 ? (
                     <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                      <p className="text-xs text-slate-500">Mùa vụ này chưa có lô canh tác nào.</p>
+                      <p className="text-xs text-slate-500">Chưa có lô canh tác nào.</p>
                       <button
                         type="button"
                         onClick={() => {
@@ -34,11 +34,11 @@ export default function PlotListSection({
                         }}
                         className="text-xs font-bold text-emerald-700 hover:underline mt-1 inline-block"
                       >
-                        + Thêm lô gieo trồng ngay
+                        + Thêm lô
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
                       {season.plots.map((plot) => {
                         const isSelected = selectedPlot?.id === plot.id;
 
@@ -119,7 +119,7 @@ export default function PlotListSection({
                                   </>
                                 ) : (
                                   <>
-                                    Xem nhật ký lô này
+                                    Xem nhật ký
                                     <ChevronRight className="w-3.5 h-3.5" />
                                   </>
                                 )}
@@ -133,10 +133,10 @@ export default function PlotListSection({
                                     fetchLogs(plot.id);
                                     setIsAddLogOpen(true);
                                   }}
-                                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 px-2 py-1 hover:bg-emerald-100/60 rounded-lg transition-colors"
+                                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 px-2 py-1 hover:bg-emerald-100/60 rounded-lg transition-colors cursor-pointer"
                                   title="Thêm nhật ký canh tác cho lô này"
                                 >
-                                  + Ghi nhật ký
+                                  Ghi nhật ký
                                 </button>
                                 <button
                                   type="button"

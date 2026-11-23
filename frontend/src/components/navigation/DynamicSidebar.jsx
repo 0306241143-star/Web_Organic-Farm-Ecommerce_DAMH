@@ -13,6 +13,7 @@ import {
   Receipt,
   Settings,
   Sprout,
+  Store,
   Trash2,
   Users,
   Warehouse,
@@ -54,10 +55,10 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
     switch (user?.role) {
       case "farm_staff":
         return {
-          portalBadge: "NỘI BỘ",
+          portalBadge: "FARM",
           sectionTitle: "QUẢN LÝ NÔNG TRẠI",
-          statusPill: "Kỹ thuật Nông trại (Farm Staff)",
-          defaultName: "Phạm Hoàng Kỹ Thuật (Farm Staff)",
+          statusPill: "Kỹ Sư Nông Trại",
+          defaultName: "Phạm Hoàng Kỹ Thuật",
           defaultEmail: "farm.kythuat@nongsansach.vn",
           menu: [
             {
@@ -84,10 +85,10 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
         };
       case "sales":
         return {
-          portalBadge: "NỘI BỘ",
-          sectionTitle: "QUẢN LÝ BÁN HÀNG & CSKH",
-          statusPill: "Nhân viên Bán hàng (Sales)",
-          defaultName: "Trần Thị Thu Hà (Sales)",
+          portalBadge: "SALES",
+          sectionTitle: "QUẢN LÝ BÁN HÀNG",
+          statusPill: "Chuyên Viên Bán Hàng",
+          defaultName: "Trần Thị Thu Hà",
           defaultEmail: "sales.ha@nongsansach.vn",
           menu: [
             {
@@ -114,10 +115,10 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
         };
       case "admin":
         return {
-          portalBadge: "NỘI BỘ",
+          portalBadge: "ADMIN",
           sectionTitle: "QUẢN TRỊ HỆ THỐNG",
-          statusPill: "Quản trị viên (Admin)",
-          defaultName: "Nguyễn Minh Quản Trị (Admin)",
+          statusPill: "Quản Trị Viên",
+          defaultName: "Nguyễn Minh Quản Trị",
           defaultEmail: "admin@nongsansach.vn",
           menu: [
             {
@@ -146,7 +147,7 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
         return {
           portalBadge: "NỘI BỘ",
           sectionTitle: "KHU VỰC QUẢN TRỊ",
-          statusPill: "Nhân sự nội bộ",
+          statusPill: "Nhân Sự Nội Bộ",
           defaultName: "Nhân sự XanhFarm",
           defaultEmail: "nhansu@nongsansach.vn",
           menu: [],
@@ -169,11 +170,14 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
     }
   };
 
-  const displayName = user?.name || roleConfig.defaultName;
-  const displayEmail = user?.email || roleConfig.defaultEmail;
+  const rawName = user?.name || roleConfig.defaultName;
+  const displayName = rawName
+    .replace(/\s*\(Farm Staff\)/i, "")
+    .replace(/\s*\(Sales\)/i, "")
+    .replace(/\s*\(Admin\)/i, "")
+    .trim();
   const initial = displayName.charAt(0).toUpperCase();
 
-  // Tải trước mã nguồn JS chunk và dữ liệu khi người dùng rê chuột vào menu (Instant 0ms transition)
   const handlePrefetch = (to) => {
     switch (to) {
       case "/farm/seasons":
@@ -186,6 +190,9 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
         break;
       case "/farm/certificates":
         import("../../pages/farm/CertificateManagePage").catch(() => {});
+        break;
+      case "/farm/disposals":
+        import("../../pages/farm/InventoryWastagePage").catch(() => {});
         break;
       case "/admin":
         import("../../pages/admin/AdminDashboardPage").catch(() => {});
@@ -210,29 +217,24 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
   };
 
   const sidebarContent = (
-    <div className="h-full flex flex-col justify-between p-4 bg-gradient-to-b from-[#012413] via-[#03301a] to-[#011d0e] text-white border-r border-[#0d5932]/50 shadow-2xl select-none">
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 -mr-1">
+    <div className="h-full flex flex-col justify-between p-4 bg-gradient-to-b from-[#021f11] via-[#042817] to-[#01170d] text-white border-r border-emerald-900/40 shadow-2xl select-none">
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-1 -mr-1 scrollbar-thin scrollbar-thumb-emerald-900/40 scrollbar-track-transparent">
         {/* Brand Header */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-emerald-500/15 shrink-0">
+        <div className="flex items-center justify-between pb-3 border-b border-emerald-500/15 shrink-0">
           <Link
             to={getDashboardHome()}
             onClick={onClose}
             className="flex items-center gap-2.5 group focus:outline-none"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-[#022b15] shadow-md shadow-emerald-950/40 shrink-0 group-hover:scale-105 transition-transform">
-              <Sprout className="w-5 h-5 text-[#022b15]" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0 group-hover:scale-105 transition-all duration-200">
+              <Sprout className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-[18px] text-white tracking-tight leading-none">
-                  XanhFarm
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-[#86efac] border border-emerald-500/30 tracking-wider">
-                  {roleConfig.portalBadge}
-                </span>
-              </div>
-              <span className="text-[11px] text-emerald-300/80 font-medium leading-tight block mt-1 truncate max-w-[150px]">
-                {farmAddress}
+            <div className="flex items-center gap-1.5">
+              <span className="font-black text-lg text-white tracking-tight leading-none">
+                XanhFarm
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 tracking-wider">
+                {roleConfig.portalBadge}
               </span>
             </div>
           </Link>
@@ -240,40 +242,36 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-emerald-300/60 hover:text-white hover:bg-white/10 transition-colors"
-            aria-label="Thu gọn hoặc đóng menu"
+            className="p-1.5 rounded-xl text-emerald-300/60 hover:text-white hover:bg-white/10 transition-colors lg:hidden cursor-pointer"
+            aria-label="Đóng menu"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
         </div>
 
         {/* User Profile Card */}
-        <div className="p-3.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 shadow-inner transition-colors">
+        <div className="p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.07] border border-emerald-500/20 hover:border-emerald-500/35 shadow-inner transition-all duration-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#86efac] to-emerald-300 text-[#022b15] flex items-center justify-center font-black text-sm shrink-0 shadow-md">
-              {initial}
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-200 text-[#022b15] flex items-center justify-center font-black text-sm shadow-md">
+                {initial}
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#021f11]" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-bold text-[13px] text-white truncate leading-tight">
                 {displayName}
               </p>
-              <p className="text-[11px] text-emerald-300/70 truncate font-mono leading-tight mt-0.5">
-                {displayEmail}
+              <p className="text-[11px] text-emerald-300/80 truncate font-semibold mt-0.5">
+                {roleConfig.statusPill}
               </p>
             </div>
-          </div>
-
-          <div className="mt-2.5 px-2.5 py-1 rounded-xl bg-black/30 border border-emerald-500/25 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#86efac] animate-pulse shrink-0" />
-            <span className="text-[11px] font-bold text-[#86efac] truncate tracking-wide">
-              {roleConfig.statusPill}
-            </span>
           </div>
         </div>
 
         {/* Navigation List */}
         <nav aria-label="Điều hướng quản trị nội bộ" className="space-y-1.5 pt-1">
-          <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-emerald-400/60 mb-2 font-mono">
+          <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-emerald-400/70 mb-2 font-mono">
             {roleConfig.sectionTitle}
           </p>
 
@@ -290,44 +288,63 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
                 to={item.to}
                 onClick={onClose}
                 onMouseEnter={() => handlePrefetch(item.to)}
-                className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
+                className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 cursor-pointer ${
                   isActive
-                    ? "bg-[#86efac] text-[#04331a] font-extrabold shadow-md shadow-emerald-950/30 ring-1 ring-[#86efac]/50"
-                    : "text-emerald-100/80 hover:bg-white/[0.08] hover:text-white font-semibold"
+                    ? "bg-gradient-to-r from-emerald-500/25 via-emerald-500/15 to-transparent text-white font-bold border-l-[3px] border-l-emerald-400 border-y border-r border-emerald-500/15 shadow-sm shadow-emerald-950/40"
+                    : "text-emerald-100/75 hover:bg-white/[0.05] hover:text-white border-l-[3px] border-l-transparent border-y border-r border-transparent font-medium"
                 }`}
               >
-                <Icon
-                  className={`w-4.5 h-4.5 shrink-0 transition-transform group-hover:scale-105 ${
-                    isActive ? "text-[#04331a]" : "text-emerald-300/70 group-hover:text-white"
+                <div
+                  className={`p-1.5 rounded-lg shrink-0 transition-all ${
+                    isActive
+                      ? "bg-emerald-500 text-[#022415] shadow-xs shadow-emerald-400/30"
+                      : "bg-white/[0.05] text-emerald-300/80 group-hover:bg-emerald-500/20 group-hover:text-emerald-200"
                   }`}
-                />
-                <span className="text-[13px] leading-tight truncate">{item.label}</span>
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                </div>
+                <span className="text-[13px] leading-tight truncate">
+                  {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
       </div>
 
-      {/* Docked Footer (Farm location & Logout) */}
-      <div className="space-y-2 pt-3.5 border-t border-emerald-500/15 shrink-0">
-        <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/25 border border-emerald-500/20 text-emerald-200/90 text-[11.5px] font-medium transition-colors hover:border-emerald-500/40"
-          title={`Cơ sở nông trại: ${farmAddress}`}
-        >
-          <div className="w-5 h-5 rounded-md bg-emerald-500/20 flex items-center justify-center shrink-0">
-            <MapPin className="w-3.5 h-3.5 text-[#86efac]" />
+      {/* Docked Footer (Farm location & Quick Actions) */}
+      <div className="space-y-2 pt-3 border-t border-emerald-500/15 shrink-0">
+        {user?.role === "farm_staff" && (
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/25 border border-emerald-500/20 text-emerald-200/90 text-xs font-medium transition-colors hover:border-emerald-500/35"
+            title={farmAddress}
+          >
+            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">{farmAddress}</span>
           </div>
-          <span className="truncate">{farmAddress}</span>
-        </div>
+        )}
 
-        <button
-          type="button"
-          onClick={logout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-300/80 hover:text-white hover:bg-rose-500/20 border border-transparent hover:border-rose-500/30 transition-all text-[12.5px] font-bold text-left cursor-pointer active:scale-98"
-        >
-          <LogOut className="w-4 h-4 shrink-0 text-rose-300" />
-          <span>Đăng xuất tài khoản</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <Link
+            to="/"
+            onClick={onClose}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-emerald-300/80 hover:text-white hover:bg-white/[0.06] border border-white/5 hover:border-emerald-500/20 transition-all text-xs font-semibold cursor-pointer"
+            title="Xem trang web cửa hàng"
+          >
+            <Store className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Cửa hàng</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={logout}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-rose-300/85 hover:text-rose-100 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/30 transition-all text-xs font-semibold cursor-pointer"
+            title="Đăng xuất khỏi hệ thống"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <span>Đăng xuất</span>
+          </button>
+        </div>
       </div>
     </div>
   );

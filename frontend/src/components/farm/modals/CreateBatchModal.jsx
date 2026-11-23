@@ -316,9 +316,9 @@ export default function CreateBatchModal({
               <Sparkles className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="font-bold">
-                  Trỏ từ mốc thu hoạch:{" "}
+                  Từ mốc thu hoạch:{" "}
                   {initialHarvestLog.staff_name
-                    ? `Kỹ thuật viên ${initialHarvestLog.staff_name}`
+                    ? `KTV ${initialHarvestLog.staff_name}`
                     : "Đồng ruộng"}
                 </p>
                 <p className="text-purple-700 mt-0.5 line-clamp-2 break-words">

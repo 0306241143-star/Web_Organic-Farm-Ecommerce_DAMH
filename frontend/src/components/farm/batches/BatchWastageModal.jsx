@@ -1,6 +1,12 @@
+/**
+ * Component: BatchWastageModal
+ * Phân hệ: Farm Staff (Nhân viên Nông trại)
+ * Chức năng: Hộp thoại ghi nhận số lượng hao hụt tự nhiên, xuất hủy hư hỏng hoặc điều chỉnh tồn kho cho lô hàng
+ */
 import { AlertCircle, AlertTriangle, Loader2, X } from "lucide-react";
 
 export default function BatchWastageModal({
+  batch,
   wastageBatch,
   wastageForm,
   setWastageForm,
@@ -9,7 +15,8 @@ export default function BatchWastageModal({
   onClose,
   onSubmit,
 }) {
-  if (!wastageBatch) return null;
+  const currentBatch = wastageBatch || batch;
+  if (!currentBatch) return null;
 
   return (
     <div
@@ -47,12 +54,12 @@ export default function BatchWastageModal({
           <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs">
             <span className="text-slate-400 block mb-0.5">Lô hàng:</span>
             <strong className="text-slate-800">
-              {wastageBatch.product_name} • {wastageBatch.batch_code}
+              {currentBatch.product_name} • {currentBatch.batch_code}
             </strong>
             <div className="mt-1 text-slate-500">
               Tồn kho hiện tại:{" "}
               <strong className="text-emerald-700">
-                {wastageBatch.remaining_quantity} {wastageBatch.product_unit}
+                {currentBatch.remaining_quantity} {currentBatch.product_unit}
               </strong>
             </div>
           </div>
@@ -116,14 +123,14 @@ export default function BatchWastageModal({
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Số Lượng Hao Hụt ({wastageBatch.product_unit}) *
+              Số Lượng Hao Hụt ({currentBatch.product_unit}) *
             </label>
             <input
               type="number"
               step="0.1"
               min="0.1"
-              max={wastageBatch.remaining_quantity}
-              placeholder={`Tối đa: ${wastageBatch.remaining_quantity}`}
+              max={currentBatch.remaining_quantity}
+              placeholder={`Tối đa: ${currentBatch.remaining_quantity}`}
               value={wastageForm.quantity}
               onChange={(e) => setWastageForm({ ...wastageForm, quantity: e.target.value })}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"

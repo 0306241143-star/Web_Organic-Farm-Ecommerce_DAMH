@@ -29,7 +29,7 @@ export default function SeasonListSection({
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
                 type="text"
-                placeholder="Tìm kiếm mùa vụ canh tác..."
+                placeholder="Tìm mùa vụ, nông sản..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
@@ -54,17 +54,15 @@ export default function SeasonListSection({
           ) : filteredSeasons.length === 0 ? (
             <div className="bg-white p-12 text-center rounded-2xl border border-slate-100 shadow-xs">
               <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-              <h3 className="text-sm font-bold text-slate-700">Chưa tìm thấy mùa vụ nào</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Bấm nút &quot;Thêm Mùa Vụ Mới&quot; để thiết lập chu kỳ canh tác cho nông trại.
-              </p>
+              <h3 className="text-sm font-bold text-slate-700">Chưa có mùa vụ nào</h3>
             </div>
           ) : (
-            filteredSeasons.map((season) => (
-              <div
-                key={season.id}
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all hover:border-emerald-300"
-              >
+            <div className="space-y-3.5 max-h-[calc(100vh-270px)] min-h-[480px] overflow-y-auto pr-1 scrollbar-thin">
+              {filteredSeasons.map((season) => (
+                <div
+                  key={season.id}
+                  className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all hover:border-emerald-300"
+                >
                 {/* Season Card Header */}
                 <div className="p-5 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -133,7 +131,8 @@ export default function SeasonListSection({
                   handleDeletePlot={handleDeletePlot}
                 />
               </div>
-            ))
+            ))}
+            </div>
           )}
         </div>
     </>

@@ -2,13 +2,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  Award,
-  Plus,
-  RefreshCw,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   ShieldCheck,
+  Award,
+  Plus,
+  RefreshCw,
 } from "lucide-react";
 import { farmApi } from "../../services/farmApi";
 import { showGlobalToast } from "../../components/GlobalToast";
@@ -25,6 +25,9 @@ import {
 export default function CertificateManagePage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // =========================================================================
+  // 1. STATE QUẢN LÝ DỮ LIỆU & CHỈ SỐ THỐNG KÊ CHỨNG NHẬN
+  // =========================================================================
   const [certificates, setCertificates] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -38,22 +41,29 @@ export default function CertificateManagePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filters
+  // =========================================================================
+  // 2. STATE BỘ LỌC TÌM KIẾM
+  // =========================================================================
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [scopeFilter, setScopeFilter] = useState("ALL");
 
-  // Upload / Edit Modal state
+  // =========================================================================
+  // 3. STATE HỘP THOẠI (MODALS)
+  // =========================================================================
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCert, setEditingCert] = useState(null);
   const [initialFormValues, setInitialFormValues] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Preview Modal & Delete Confirm Modal
+  // Modal xem trước và modal xác nhận xóa
   const [previewCert, setPreviewCert] = useState(null);
   const [deletingCert, setDeletingCert] = useState(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
+  // =========================================================================
+  // 4. API HANDLERS & TẢI DỮ LIỆU
+  // =========================================================================
   // Thông báo nổi dùng chung toàn hệ thống (top-center)
   const showToast = useCallback((msg, type = "success") => {
     showGlobalToast(msg, type);
@@ -99,105 +109,76 @@ export default function CertificateManagePage() {
     fetchReferenceData();
   }, [fetchCertificates, fetchReferenceData]);
 
-  const openCreateModal = useCallback(
-    (prefillBatchId = "") => {
-      const matchedBatch = batches.find((b) => String(b.id) === String(prefillBatchId));
-      setEditingCert(null);
-      setInitialFormValues({
-        Ma_lo_hang: prefillBatchId ? String(prefillBatchId) : "",
-        Ma_san_pham: matchedBatch?.product_id ? String(matchedBatch.product_id) : "",
-      });
-      setIsFormOpen(true);
-    },
-    [batches]
-  );
+  // =========================================================================
+  // 5. EVENT HANDLERS (MỞ MODAL, THÊM, SỬA, XÓA HỒ SƠ)
+  // =========================================================================
+  // Khởi tạo mở modal tải lên chứng nhận mới
+  const openCreateModal = (defaultBatchId = "") => {
+    setEditingCert(null);
+    setInitialFormValues(
+      defaultBatchId ? { batch_id: String(defaultBatchId) } : null
+    );
+    setIsFormOpen(true);
+  };
 
-  const openEditModal = useCallback(
-    (cert) => {
-      setEditingCert(cert);
-      setInitialFormValues(null);
-      setIsFormOpen(true);
-    },
-    []
-  );
+  // Khởi tạo mở modal chỉnh sửa chứng nhận hiện có
+  const openEditModal = (cert) => {
+    setEditingCert(cert);
+    setInitialFormValues({
+      name: cert.name || "",
+      issuer: cert.issuer || "",
+      code: cert.code || "",
+      issued_date: cert.issued_date || "",
+      expiry_date: cert.expiry_date || "",
+      batch_id: cert.batch_id ? String(cert.batch_id) : "",
+      product_id: cert.product_id ? String(cert.product_id) : "",
+    });
+    setIsFormOpen(true);
+  };
 
-  // Tự mở modal khi chuyển từ trang Lô thu hoạch (?batch_id=...&upload=1)
+  // Tự động mở modal tải lên nếu có query trên URL
   useEffect(() => {
-    const batchIdParam = searchParams.get("batch_id");
     const uploadParam = searchParams.get("upload");
-    if (uploadParam === "1" && batchIdParam) {
-      openCreateModal(batchIdParam);
-      setSearchParams({}, { replace: true });
+    const batchIdParam = searchParams.get("batch_id");
+    if (uploadParam === "1") {
+      openCreateModal(batchIdParam || "");
+      setSearchParams({});
     } else if (batchIdParam) {
-      const matched = batches.find((b) => String(b.id) === String(batchIdParam));
-      if (matched?.batch_code) {
-        setSearchTerm(matched.batch_code);
-      }
+      setSearchTerm(batchIdParam);
     }
-  }, [searchParams, batches, openCreateModal, setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
-  const handleSubmitForm = async ({ attachMode, formState, selectedFile }) => {
+  // Submit Form thêm hoặc cập nhật chứng nhận
+  const handleSubmitForm = async (formData) => {
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      if (attachMode === "batch" && formState.Ma_lo_hang) {
-        formData.append("Ma_lo_hang", formState.Ma_lo_hang);
-        if (formState.Ma_san_pham) {
-          formData.append("Ma_san_pham", formState.Ma_san_pham);
-        }
-      } else if (attachMode === "product" && formState.Ma_san_pham) {
-        formData.append("Ma_san_pham", formState.Ma_san_pham);
-      }
-
-      formData.append("Ten_chung_nhan", formState.Ten_chung_nhan.trim());
-      formData.append("To_chuc_cap", formState.To_chuc_cap.trim());
-      formData.append("Ngay_cap", formState.Ngay_cap);
-      if (formState.Ngay_het_han) {
-        formData.append("Ngay_het_han", formState.Ngay_het_han);
-      }
-      if (selectedFile) {
-        formData.append("file", selectedFile);
-      }
-
       if (editingCert) {
         const res = await farmApi.updateCertificate(editingCert.id, formData);
-        const updatedCert = res.data?.data ?? res.data;
-        if (updatedCert?.id != null) {
-          const previousCert =
-            certificates.find((cert) => String(cert.id) === String(updatedCert.id)) ||
-            editingCert;
-          const wasValid = ["valid", "no_expiry"].includes(previousCert.validity_status);
-          const isValid = ["valid", "no_expiry"].includes(updatedCert.validity_status);
-
+        const updated = res.data?.data ?? res.data;
+        if (updated?.id != null) {
           setCertificates((prev) =>
-            prev.map((cert) =>
-              String(cert.id) === String(updatedCert.id) ? updatedCert : cert
+            prev.map((c) =>
+              String(c.id) === String(updated.id) ? { ...c, ...updated } : c
             )
           );
           setStats((prev) => ({
             ...prev,
-            valid: Math.max(
-              0,
-              (Number(prev.valid) || 0) - Number(wasValid) + Number(isValid)
-            ),
-            expiring_soon: Math.max(
-              0,
-              (Number(prev.expiring_soon) || 0) -
-                Number(previousCert.validity_status === "expiring_soon") +
-                Number(updatedCert.validity_status === "expiring_soon")
-            ),
-            expired: Math.max(
-              0,
-              (Number(prev.expired) || 0) -
-                Number(previousCert.validity_status === "expired") +
-                Number(updatedCert.validity_status === "expired")
-            ),
-            batch_attached: Math.max(
-              0,
-              (Number(prev.batch_attached) || 0) -
-                Number(Boolean(previousCert.batch_id)) +
-                Number(Boolean(updatedCert.batch_id))
-            ),
+            valid:
+              (Number(prev.valid) || 0) +
+              (["valid", "no_expiry"].includes(updated.validity_status) ? 1 : 0) -
+              (["valid", "no_expiry"].includes(editingCert.validity_status) ? 1 : 0),
+            expiring_soon:
+              (Number(prev.expiring_soon) || 0) +
+              (updated.validity_status === "expiring_soon" ? 1 : 0) -
+              (editingCert.validity_status === "expiring_soon" ? 1 : 0),
+            expired:
+              (Number(prev.expired) || 0) +
+              (updated.validity_status === "expired" ? 1 : 0) -
+              (editingCert.validity_status === "expired" ? 1 : 0),
+            batch_attached:
+              (Number(prev.batch_attached) || 0) +
+              (updated.batch_id ? 1 : 0) -
+              (editingCert.batch_id ? 1 : 0),
           }));
         }
         showToast("Đã cập nhật hồ sơ chứng nhận thành công.");
@@ -247,35 +228,40 @@ export default function CertificateManagePage() {
     }
   };
 
+  // Xác nhận xóa chứng nhận
   const handleConfirmDelete = async () => {
     if (!deletingCert) return;
     setDeleteSubmitting(true);
     try {
       await farmApi.deleteCertificate(deletingCert.id);
-      setCertificates((prev) =>
-        prev.filter((cert) => String(cert.id) !== String(deletingCert.id))
-      );
+      showToast("Đã xóa chứng nhận thành công.");
+      const deletedId = deletingCert.id;
+      setCertificates((prev) => prev.filter((c) => String(c.id) !== String(deletedId)));
       setStats((prev) => ({
         ...prev,
         total: Math.max(0, (Number(prev.total) || 0) - 1),
-        valid: ["valid", "no_expiry"].includes(deletingCert.validity_status)
-          ? Math.max(0, (Number(prev.valid) || 0) - 1)
-          : Number(prev.valid) || 0,
-        expiring_soon:
-          deletingCert.validity_status === "expiring_soon"
-            ? Math.max(0, (Number(prev.expiring_soon) || 0) - 1)
-            : Number(prev.expiring_soon) || 0,
-        expired:
-          deletingCert.validity_status === "expired"
-            ? Math.max(0, (Number(prev.expired) || 0) - 1)
-            : Number(prev.expired) || 0,
-        batch_attached: deletingCert.batch_id
-          ? Math.max(0, (Number(prev.batch_attached) || 0) - 1)
-          : Number(prev.batch_attached) || 0,
+        valid: Math.max(
+          0,
+          (Number(prev.valid) || 0) -
+            (["valid", "no_expiry"].includes(deletingCert.validity_status) ? 1 : 0)
+        ),
+        expiring_soon: Math.max(
+          0,
+          (Number(prev.expiring_soon) || 0) -
+            (deletingCert.validity_status === "expiring_soon" ? 1 : 0)
+        ),
+        expired: Math.max(
+          0,
+          (Number(prev.expired) || 0) -
+            (deletingCert.validity_status === "expired" ? 1 : 0)
+        ),
+        batch_attached: Math.max(
+          0,
+          (Number(prev.batch_attached) || 0) - (deletingCert.batch_id ? 1 : 0)
+        ),
       }));
-      showToast(`Đã xóa chứng nhận "${deletingCert.name}".`);
       setDeletingCert(null);
-      if (String(previewCert?.id) === String(deletingCert.id)) {
+      if (previewCert && String(previewCert.id) === String(deletedId)) {
         setPreviewCert(null);
       }
     } catch (err) {
@@ -285,6 +271,7 @@ export default function CertificateManagePage() {
     }
   };
 
+  // Lọc danh sách chứng nhận theo từ khóa và trạng thái
   const filteredCertificates = useMemo(() => {
     return certificates.filter((item) => {
       if (statusFilter === "valid" && !["valid", "no_expiry"].includes(item.validity_status)) {
@@ -319,6 +306,7 @@ export default function CertificateManagePage() {
     });
   }, [certificates, statusFilter, scopeFilter, searchTerm]);
 
+  // Huy hiệu trạng thái hiệu lực
   const renderValidityBadge = (cert) => {
     if (cert.validity_status === "expired") {
       return (
@@ -352,47 +340,58 @@ export default function CertificateManagePage() {
     );
   };
 
+  // =========================================================================
+  // 6. GIAO DIỆN (UI RENDER)
+  // =========================================================================
   return (
     <div className="space-y-6 pb-12">
-      {/* Page Header */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200/70">
-              <Award className="w-5 h-5" />
-            </span>
-            <span>Chứng Nhận & Kết Quả Kiểm Định</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-2xl leading-relaxed">
-            Lưu trữ giấy chứng nhận VietGAP, Hữu cơ và phiếu kết quả kiểm định mẫu đất, nước gắn trực tiếp vào từng lô hàng thu hoạch để minh bạch khi truy xuất nguồn gốc.
-          </p>
-        </div>
+      {/* 6.1 Top Banner Tiêu Chuẩn Phân Hệ Nông Trại */}
+      <div className="relative overflow-hidden rounded-2xl p-4 sm:p-5 border border-emerald-900/10 bg-gradient-to-br from-white via-[#fcfdfa] to-emerald-50/30 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-100/80 text-emerald-900 border border-emerald-300/60">
+                Phân Hệ Nông Trại
+              </span>
+              <span className="text-xs text-slate-400">•</span>
+              <span className="text-xs font-semibold text-emerald-800">
+                Chứng nhận chất lượng & Hồ sơ kiểm định
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+              <Award className="w-5 h-5 text-emerald-700" />
+              <span>Chứng Nhận & Kiểm Định</span>
+            </h1>
+          </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => fetchCertificates(true)}
-            disabled={refreshing}
-            className="p-2.5 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-            title="Làm mới danh sách"
-            aria-label="Làm mới danh sách"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => fetchCertificates(true)}
+              disabled={refreshing}
+              className="p-2.5 rounded-xl border border-slate-200/90 bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer shadow-2xs"
+              title="Làm mới danh sách"
+              aria-label="Làm mới danh sách"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => openCreateModal("")}
-            className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tải Chứng Nhận Mới</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => openCreateModal("")}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tải Chứng Nhận</span>
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* 6.2 Thẻ thống kê chỉ số KPI chứng nhận */}
       <CertificateStatCards stats={stats} />
 
+      {/* 6.3 Bảng danh sách chứng nhận & bộ lọc */}
       <CertificateTable
         stats={stats}
         statusFilter={statusFilter}
@@ -411,6 +410,7 @@ export default function CertificateManagePage() {
         setDeletingCert={setDeletingCert}
       />
 
+      {/* 6.4 Hộp thoại: Thêm & Chỉnh sửa chứng nhận */}
       {isFormOpen && (
         <CertificateFormModal
           editingCert={editingCert}
@@ -423,12 +423,14 @@ export default function CertificateManagePage() {
         />
       )}
 
+      {/* 6.5 Hộp thoại: Xem trước tài liệu / kết quả kiểm định */}
       <CertificatePreviewModal
         previewCert={previewCert}
         setPreviewCert={setPreviewCert}
         openEditModal={openEditModal}
       />
 
+      {/* 6.6 Hộp thoại: Xác nhận xóa chứng nhận */}
       <CertificateDeleteModal
         deletingCert={deletingCert}
         setDeletingCert={setDeletingCert}

@@ -52,19 +52,16 @@ export default function BatchTable({
                   <PackageCheck className="w-7 h-7" />
                 </div>
                 <h4 className="text-sm sm:text-base font-bold text-slate-700">
-                  Không tìm thấy lô hàng thu hoạch nào
+                  Chưa có lô hàng nào
                 </h4>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  {searchTerm || statusFilter !== "ALL"
-                    ? "Không có lô nào khớp với điều kiện lọc. Hãy thử tìm từ khóa khác."
-                    : "Chưa có lô hàng nào được thu hoạch. Hãy bấm nút 'Tạo Lô Hàng Thu Hoạch' để nhập kho đợt nông sản đầu tiên."}
-                </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-thin">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/70">
+                  <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10 shadow-2xs">
+                    <tr className="border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/95">
                       <th className="py-3.5 px-4 sm:px-5">Lô Hàng & Nông Sản</th>
                       {!selectedBatch && <th className="py-3.5 px-4">Lô Canh Tác</th>}
                       <th className="py-3.5 px-4">Thu Hoạch & HSD</th>
@@ -196,6 +193,107 @@ export default function BatchTable({
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card List */}
+              <div className="md:hidden divide-y divide-slate-100 max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-thin">
+                {filteredBatches.map((batch) => {
+                  const percentLeft = Math.min(
+                    100,
+                    Math.round((batch.remaining_quantity / (batch.harvest_quantity || 1)) * 100)
+                  );
+                  const isSelected = selectedBatch?.id === batch.id;
+
+                  return (
+                    <div
+                      key={batch.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleSelectBatch(batch)}
+                      className={`p-4 space-y-3 cursor-pointer transition-colors ${
+                        isSelected ? "bg-emerald-50/80 ring-1 ring-inset ring-emerald-200" : "hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200/80">
+                              {batch.batch_code}
+                            </span>
+                            {batch.certificates_count > 0 && (
+                              <span className="p-0.5 px-1.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/80 text-[10px] font-bold inline-flex items-center gap-1">
+                                <Award className="w-3 h-3" />
+                                <span>{batch.certificates_count}</span>
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-slate-800 text-sm leading-snug break-words">
+                            {batch.product_name}
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">
+                            {batch.plot_name} · {batch.season_name}
+                          </p>
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${
+                            batch.status === "Con_hang"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : batch.status === "Sap_het_han"
+                              ? "bg-amber-50 text-amber-800 border-amber-200"
+                              : batch.status === "Het_hang"
+                              ? "bg-slate-100 text-slate-600 border-slate-200"
+                              : "bg-red-50 text-red-800 border-red-200"
+                          }`}
+                        >
+                          {batch.status_label}
+                        </span>
+                      </div>
+
+                      {/* Stock and Dates */}
+                      <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/60 space-y-2 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-slate-500">Tồn kho khả dụng:</span>
+                          <span className="font-bold text-slate-800 tabular-nums">
+                            {batch.remaining_quantity} / {batch.harvest_quantity} {batch.product_unit} ({percentLeft}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              percentLeft > 40
+                                ? "bg-emerald-500"
+                                : percentLeft > 15
+                                ? "bg-amber-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{ width: `${percentLeft}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                          <span>Thu hoạch: {batch.harvest_date}</span>
+                          <span
+                            className={`font-semibold ${
+                              batch.days_until_expiry < 0
+                                ? "text-red-600"
+                                : batch.days_until_expiry <= 2
+                                ? "text-amber-700"
+                                : "text-slate-600"
+                            }`}
+                          >
+                            HSD: {batch.expiry_date}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end text-xs text-emerald-700 font-bold gap-1 pt-1">
+                        <span>{isSelected ? "Đang chọn xem chi tiết" : "Chạm để xem chi tiết & in tem QR"}</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
             )}
           </div>
     </>

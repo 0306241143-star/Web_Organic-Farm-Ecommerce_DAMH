@@ -10,16 +10,18 @@ import {
   notifyApiErrorToast,
 } from "../../services/axiosClient";
 import CreateBatchModal from "../../components/farm/modals/CreateBatchModal";
+import QrPrintPreviewModal from "../../components/farm/modals/QrPrintPreviewModal";
 import BatchStatCards from "../../components/farm/batches/BatchStatCards";
 import BatchTable from "../../components/farm/batches/BatchTable";
-import BatchTraceModal from "../../components/farm/batches/BatchTraceModal";
 import BatchDetailPanel from "../../components/farm/batches/BatchDetailPanel";
 import BatchWastageModal from "../../components/farm/batches/BatchWastageModal";
 
 export default function BatchHarvestPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Data State
+  // =========================================================================
+  // 1. STATE QUẢN LÝ DỮ LIỆU & CHỈ SỐ THỐNG KÊ LÔ HÀNG
+  // =========================================================================
   const [batches, setBatches] = useState([]);
   const [stats, setStats] = useState({
     total_batches: 0,
@@ -33,11 +35,15 @@ export default function BatchHarvestPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filters & Search
+  // =========================================================================
+  // 2. STATE BỘ LỌC TÌM KIẾM & TRẠNG THÁI
+  // =========================================================================
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // Modals State
+  // =========================================================================
+  // 3. STATE HỘP THOẠI (MODALS)
+  // =========================================================================
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createInitialPlot, setCreateInitialPlot] = useState(null);
   const [createInitialDate, setCreateInitialDate] = useState(null);
@@ -45,13 +51,13 @@ export default function BatchHarvestPage() {
   // QR Modal
   const [activeQrBatch, setActiveQrBatch] = useState(null);
 
-  // Selected Batch Info & Control Panel (Master-Detail)
+  // Chi tiết lô hàng được chọn (Master-Detail)
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [detailBatch, setDetailBatch] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailSubTab, setDetailSubTab] = useState("certificates"); // "certificates" | "timeline" | "disposals"
 
-  // Record Wastage Modal
+  // Modal ghi nhận hao hụt / xuất hủy
   const [wastageBatch, setWastageBatch] = useState(null);
   const [wastageForm, setWastageForm] = useState({
     quantity: "",
@@ -61,6 +67,9 @@ export default function BatchHarvestPage() {
   const [wastageSubmitting, setWastageSubmitting] = useState(false);
   const [wastageError, setWastageError] = useState("");
 
+  // =========================================================================
+  // 4. API HANDLERS & TẢI DỮ LIỆU
+  // =========================================================================
   // Thông báo nổi dùng chung toàn hệ thống (top-center)
   const showToast = useCallback((msg, type = "success") => {
     showGlobalToast(msg, type);
@@ -102,95 +111,61 @@ export default function BatchHarvestPage() {
     fetchEligiblePlots();
   }, [fetchBatches, fetchEligiblePlots]);
 
-  // Tự động mở CreateBatchModal hoặc điền bộ lọc tìm kiếm nếu có query params
+  // Tự động mở modal tạo lô nếu URL có query plot_id
   useEffect(() => {
-    const shouldCreate = searchParams.get("create");
-    const plotId = searchParams.get("plot_id");
-    const harvestDate = searchParams.get("harvest_date");
-    const searchQ = searchParams.get("search") || searchParams.get("batch_id");
-
-    if (searchQ) {
-      setSearchTerm(searchQ);
-    }
-
-    if (shouldCreate === "1" || plotId) {
-      if (plotId && eligiblePlots.length > 0) {
-        const found = eligiblePlots.find((p) => String(p.id) === String(plotId));
-        if (found) setCreateInitialPlot(found);
+    const plotIdFromUrl = searchParams.get("plot_id");
+    const dateFromUrl = searchParams.get("date");
+    if (plotIdFromUrl && eligiblePlots.length > 0) {
+      const matched = eligiblePlots.find((p) => String(p.id) === String(plotIdFromUrl));
+      if (matched) {
+        setCreateInitialPlot(matched);
+        setCreateInitialDate(dateFromUrl || null);
+        setIsCreateOpen(true);
       }
-      if (harvestDate) {
-        setCreateInitialDate(harvestDate);
-      }
-      setIsCreateOpen(true);
     }
   }, [searchParams, eligiblePlots]);
 
-  // Lọc danh sách lô
-  const filteredBatches = useMemo(() => {
-    return batches.filter((b) => {
-      if (statusFilter !== "ALL" && b.status !== statusFilter) {
-        return false;
-      }
-      if (searchTerm.trim()) {
-        const kw = searchTerm.toLowerCase();
-        const matchId = String(b.id) === kw || `#${b.id}` === kw || `lh-${b.id}` === kw;
-        const matchCode = b.batch_code?.toLowerCase().includes(kw);
-        const matchPlot = b.plot_name?.toLowerCase().includes(kw);
-        const matchProduct = b.product_name?.toLowerCase().includes(kw);
-        const matchSeason = b.season_name?.toLowerCase().includes(kw);
-        return matchId || matchCode || matchPlot || matchProduct || matchSeason;
-      }
-      return true;
-    });
-  }, [batches, statusFilter, searchTerm]);
-
-  // Chọn lô hàng -> mở bảng thông tin & thao tác điều khiển ngay lập tức
-  const handleSelectBatch = useCallback(async (batch, forceReload = false) => {
+  // =========================================================================
+  // 5. EVENT HANDLERS (CHỌN LÔ, CHI TIẾT, HAO HỤT)
+  // =========================================================================
+  // Chọn xem chi tiết một lô hàng
+  const handleSelectBatch = async (batch, isSilent = false) => {
     if (!batch) {
       setSelectedBatch(null);
       setDetailBatch(null);
       return;
     }
 
-    if (!forceReload && selectedBatch?.id === batch.id) {
-      setSelectedBatch(null);
-      setDetailBatch(null);
-      return;
-    }
-
     setSelectedBatch(batch);
-    setDetailBatch(null);
-    setLoadingDetail(true);
+    if (!isSilent) setLoadingDetail(true);
+
     try {
       const res = await farmApi.getBatchDetail(batch.id);
-      const payload = res.data?.data ?? res.data ?? null;
-      if (payload) {
-        setDetailBatch(payload);
-        setSelectedBatch(payload);
-      }
+      const payload = res.data?.data ?? res.data ?? res ?? {};
+      setDetailBatch(payload.batch || payload);
     } catch (err) {
-      notifyApiErrorToast(err, "Không thể tải chi tiết truy xuất nguồn gốc lô hàng.");
+      notifyApiErrorToast(err, "Không thể tải thông tin chi tiết lô hàng.");
     } finally {
       setLoadingDetail(false);
     }
-  }, [selectedBatch?.id]);
+  };
 
-  // Tự mở bảng thông tin & điều khiển nếu chuyển trang kèm ?search={id} hoặc ?batch_id={id}
-  useEffect(() => {
-    const targetQ = searchParams.get("batch_id") || searchParams.get("search");
-    if (targetQ && batches.length > 0 && !selectedBatch) {
-      const matched = batches.find(
-        (b) =>
-          String(b.id) === String(targetQ) ||
-          b.batch_code?.toLowerCase() === String(targetQ).toLowerCase()
-      );
-      if (matched) {
-        handleSelectBatch(matched, true);
-      }
-    }
-  }, [searchParams, batches, selectedBatch, handleSelectBatch]);
+  // Lọc danh sách lô theo từ khóa và trạng thái
+  const filteredBatches = useMemo(() => {
+    return batches.filter((b) => {
+      const matchSearch =
+        !searchTerm.trim() ||
+        b.batch_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.plot_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  // Mở modal xuất hủy / hao hụt
+      const matchStatus = statusFilter === "ALL" || b.status === statusFilter;
+
+      return matchSearch && matchStatus;
+    });
+  }, [batches, searchTerm, statusFilter]);
+
+  // Mở modal ghi nhận hao hụt
   const handleOpenWastage = (batch) => {
     setWastageBatch(batch);
     setWastageForm({
@@ -244,39 +219,36 @@ export default function BatchHarvestPage() {
           const availableStatuses = ["Con_hang", "Sap_het_han"];
           const wasAvailable = availableStatuses.includes(affectedBatch.status);
           const isAvailable = availableStatuses.includes(updatedBatch.status);
+          const prevAvailableQty = Number(affectedBatch.remaining_quantity || 0);
+          const nextAvailableQty = Number(updatedBatch.remaining_quantity || 0);
 
           return {
             ...prev,
+            active_batches:
+              (Number(prev.active_batches) || 0) +
+              (updatedBatch.status === "Con_hang" ? 1 : 0) -
+              (affectedBatch.status === "Con_hang" ? 1 : 0),
+            expiring_soon_batches:
+              (Number(prev.expiring_soon_batches) || 0) +
+              (updatedBatch.status === "Sap_het_han" ? 1 : 0) -
+              (affectedBatch.status === "Sap_het_han" ? 1 : 0),
+            depleted_batches:
+              (Number(prev.depleted_batches) || 0) +
+              (updatedBatch.status === "Het_hang" ? 1 : 0) -
+              (affectedBatch.status === "Het_hang" ? 1 : 0),
             total_available_qty: Math.max(
               0,
-              (Number(prev.total_available_qty) || 0) +
-                (isAvailable ? Number(updatedBatch.remaining_quantity) || 0 : 0) -
-                (wasAvailable ? Number(affectedBatch.remaining_quantity) || 0 : 0)
-            ),
-            active_batches: Math.max(
-              0,
-              (Number(prev.active_batches) || 0) -
-                (affectedBatch.status === "Con_hang" ? 1 : 0) +
-                (updatedBatch.status === "Con_hang" ? 1 : 0)
-            ),
-            expiring_soon_batches: Math.max(
-              0,
-              (Number(prev.expiring_soon_batches) || 0) -
-                (affectedBatch.status === "Sap_het_han" ? 1 : 0) +
-                (updatedBatch.status === "Sap_het_han" ? 1 : 0)
-            ),
-            depleted_batches: Math.max(
-              0,
-              (Number(prev.depleted_batches) || 0) -
-                (affectedBatch.status === "Het_hang" ? 1 : 0) +
-                (updatedBatch.status === "Het_hang" ? 1 : 0)
+              (Number(prev.total_available_qty) || 0) -
+                (wasAvailable ? prevAvailableQty : 0) +
+                (isAvailable ? nextAvailableQty : 0)
             ),
           };
         });
       }
 
-      showToast(`Đã ghi nhận trừ kho ${qty} ${affectedBatch.product_unit} thành công!`);
+      showToast(`Đã xuất hủy / ghi nhận hao hụt ${qty} ${affectedBatch.product_unit} thành công!`);
       setWastageBatch(null);
+
       if (String(selectedBatch?.id) === String(affectedBatch.id)) {
         handleSelectBatch(updatedBatch || affectedBatch, true);
       }
@@ -291,52 +263,62 @@ export default function BatchHarvestPage() {
     }
   };
 
+  // =========================================================================
+  // 6. GIAO DIỆN (UI RENDER)
+  // =========================================================================
   return (
     <div className="space-y-6 pb-12">
-      {/* Page Header */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">
-            <PackageCheck className="w-4 h-4" />
-            <span>Phân Hệ Nông Trại</span>
+      {/* 6.1 Top Banner Tiêu Chuẩn Phân Hệ Nông Trại */}
+      <div className="relative overflow-hidden rounded-2xl p-4 sm:p-5 border border-emerald-900/10 bg-gradient-to-br from-white via-[#fcfdfa] to-emerald-50/30 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-100/80 text-emerald-900 border border-emerald-300/60">
+                Phân Hệ Nông Trại
+              </span>
+              <span className="text-xs text-slate-400">•</span>
+              <span className="text-xs font-semibold text-emerald-800">
+                Lô thu hoạch & Mã QR truy xuất
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+              <PackageCheck className="w-5 h-5 text-emerald-700" />
+              <span>Quản Lý Lô Hàng Thu Hoạch</span>
+            </h1>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-            Quản Lý Lô Hàng Thu Hoạch
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Theo dõi các lô nông sản sau thu hoạch, kiểm soát hạn sử dụng, in tem QR truy xuất và kiểm kê kho.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => fetchBatches(true)}
-            disabled={refreshing}
-            className="p-2.5 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-            title="Làm mới dữ liệu"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => fetchBatches(true)}
+              disabled={refreshing}
+              className="p-2.5 rounded-xl border border-slate-200/90 bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer shadow-2xs"
+              title="Làm mới dữ liệu"
+              aria-label="Làm mới dữ liệu"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`} />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setCreateInitialPlot(null);
-              setCreateInitialDate(null);
-              setIsCreateOpen(true);
-            }}
-            className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tạo Lô Hàng Thu Hoạch</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreateInitialPlot(null);
+                setCreateInitialDate(null);
+                setIsCreateOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tạo Lô Hàng</span>
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* 6.2 Thẻ thống kê chỉ số KPI lô hàng */}
       <BatchStatCards stats={stats} />
 
-      {/* TAB 1: Danh sách Lô hàng Thu hoạch (Chọn lô -> Hiện thông tin & bảng điều khiển) */}
+      {/* 6.3 Danh sách Lô hàng Thu hoạch & Bảng điều khiển chi tiết (Master-Detail) */}
       <div
         className={
           selectedBatch
@@ -344,6 +326,7 @@ export default function BatchHarvestPage() {
             : "block"
         }
       >
+        {/* Bảng dữ liệu lô hàng */}
         <BatchTable
           selectedBatch={selectedBatch}
           filteredBatches={filteredBatches}
@@ -357,6 +340,7 @@ export default function BatchHarvestPage() {
           handleSelectBatch={handleSelectBatch}
         />
 
+        {/* Panel chi tiết lô hàng (Master-Detail) */}
         <BatchDetailPanel
           selectedBatch={selectedBatch}
           detailBatch={detailBatch}
@@ -369,6 +353,7 @@ export default function BatchHarvestPage() {
         />
       </div>
 
+      {/* 6.4 Hộp thoại: Tạo Lô Thu Hoạch Mới */}
       <CreateBatchModal
         isOpen={isCreateOpen}
         onClose={() => {
@@ -414,19 +399,23 @@ export default function BatchHarvestPage() {
         plots={eligiblePlots}
       />
 
-      <BatchTraceModal
-        activeQrBatch={activeQrBatch}
+      {/* 6.5 Hộp thoại: Xem Trước & Xuất In Tem Mã QR */}
+      <QrPrintPreviewModal
+        batch={activeQrBatch}
+        isOpen={!!activeQrBatch}
         onClose={() => setActiveQrBatch(null)}
       />
 
-      {/* Modal: Ghi nhận hao hụt / Xuất hủy */}
+      {/* 6.6 Hộp thoại: Ghi Nhận Hao Hụt / Xuất Hủy */}
       <BatchWastageModal
-        wastageBatch={wastageBatch}
+        batch={wastageBatch}
+        isOpen={!!wastageBatch}
+        onClose={() => setWastageBatch(null)}
         wastageForm={wastageForm}
         setWastageForm={setWastageForm}
         wastageError={wastageError}
+        setWastageError={setWastageError}
         wastageSubmitting={wastageSubmitting}
-        onClose={() => setWastageBatch(null)}
         onSubmit={handleSubmitWastage}
       />
     </div>

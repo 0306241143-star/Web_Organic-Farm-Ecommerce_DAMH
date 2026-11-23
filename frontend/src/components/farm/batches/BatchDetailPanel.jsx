@@ -22,9 +22,12 @@ export default function BatchDetailPanel({
     detailBatch?.certificates?.length ?? activeBatch.certificates_count ?? 0;
 
   return (
-    <div className="xl:col-span-5 xl:sticky xl:top-5 bg-white rounded-3xl shadow-sm border border-slate-200/90 overflow-hidden animate-in fade-in slide-in-from-right-3 duration-200">
+    <div
+      id="batch-detail-panel"
+      className="xl:col-span-5 xl:sticky xl:top-5 bg-white rounded-3xl shadow-sm border border-slate-200/90 overflow-hidden animate-in fade-in slide-in-from-right-3 duration-200 max-h-[calc(100vh-100px)] flex flex-col"
+    >
       {/* Panel Header */}
-      <div className="px-5 py-4 bg-[#064e2e] text-white flex items-start justify-between gap-3">
+      <div className="px-5 py-4 bg-[#064e2e] text-white flex items-start justify-between gap-3 shrink-0">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg bg-white/15 text-emerald-100">
@@ -52,11 +55,9 @@ export default function BatchDetailPanel({
         </button>
       </div>
 
-      {/* Bảng Thao Tác Điều Khiển */}
+      <div className="overflow-y-auto scrollbar-thin flex-1">
+        {/* Bảng Thao Tác Điều Khiển */}
       <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2.5">
-          Bảng Thao Tác Điều Khiển
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3 gap-2">
           <button
             type="button"
@@ -310,6 +311,7 @@ export default function BatchDetailPanel({
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
