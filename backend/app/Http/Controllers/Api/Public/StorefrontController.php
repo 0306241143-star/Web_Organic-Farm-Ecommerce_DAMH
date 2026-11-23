@@ -270,9 +270,13 @@ class StorefrontController extends Controller
      * GET /api/subscriptions
      * Lấy danh sách gói giao hàng định kỳ đang mở (goi_dinh_ky) kèm thành phần sản phẩm (chi_tiet_goi).
      */
+/**
+     * GET /api/subscriptions
+     * Lấy danh sách gói giao hàng định kỳ đang mở (goi_dinh_ky) kèm thành phần sản phẩm, giá gốc & % giảm tự tính.
+     */
     public function subscriptions(): JsonResponse
     {
-        $cacheKey = 'public_subscription_packages_v1';
+        $cacheKey = 'public_subscription_packages_v2';
         $packages = Cache::get($cacheKey);
 
         if (empty($packages)) {
@@ -300,15 +304,58 @@ class StorefrontController extends Controller
                         'sp.Ma_san_pham as product_id',
                         'sp.Ten_san_pham as product_name',
                         'sp.Don_vi_tinh as unit',
+                        'sp.Gia_ban as unit_price',
                         'ctg.So_luong as quantity'
                     )
                     ->get()
                     ->groupBy('package_id');
 
                 $packages = $rows->map(function ($pkg) use ($itemsByPackage) {
-                    $pkg->price = (float) $pkg->price;
+                    $salePrice = (float) $pkg->price;
+                    $durationMonths = max(1, (int) $pkg->duration_months);
+                    $pkgItems = ($itemsByPackage[$pkg->id] ?? collect())
+                        ->map(function ($item) {
+                            $item->unit_price = (float) $item->unit_price;
+                            $item->quantity = (float) $item->quantity;
+                            return $item;
+                        })
+                        ->values();
+
+                    // Tổng giá bán lẻ cho 1 lần giao
+                    $singleDeliveryPrice = (float) $pkgItems->sum(
+                        fn ($item) => $item->unit_price * $item->quantity
+                    );
+
+                    // Xác định tổng số lần giao trong kỳ hạn (mặc định 4 lần/tháng, hoặc đọc theo mô tả nếu giao 2 lần/tuần = 8 lần/tháng)
+                    $text = ($pkg->name ?? '') . ' ' . ($pkg->description ?? '');
+                    $deliveriesPerMonth = 4;
+                    if (preg_match('/(\d+)\s*lần\s*\/\s*tháng/iu', $text, $m)) {
+                        $deliveriesPerMonth = max(1, (int) $m[1]);
+                    } elseif (preg_match('/(\d+)\s*lần\s*\/\s*tuần/iu', $text, $m)) {
+                        $deliveriesPerMonth = max(1, (int) $m[1]) * 4;
+                    }
+
+                    $totalDeliveries = $durationMonths * $deliveriesPerMonth;
+                    if ($singleDeliveryPrice > 0 && ($singleDeliveryPrice * $totalDeliveries) < $salePrice) {
+                        $totalDeliveries = max(
+                            $totalDeliveries,
+                            (int) ceil($salePrice / $singleDeliveryPrice)
+                        );
+                    }
+
+                    $originalPrice = (float) round($singleDeliveryPrice * $totalDeliveries);
+                    $discountPercent = ($originalPrice > $salePrice && $originalPrice > 0)
+                        ? (int) round((($originalPrice - $salePrice) / $originalPrice) * 100)
+                        : 0;
+
+                    $pkg->price = $salePrice;
+                    $pkg->original_price = $originalPrice > $salePrice ? $originalPrice : $salePrice;
+                    $pkg->discount_percent = $discountPercent;
+                    $pkg->single_delivery_price = (float) round($singleDeliveryPrice);
+                    $pkg->estimated_deliveries = $totalDeliveries;
                     $pkg->weight_per_delivery = (float) $pkg->weight_per_delivery;
-                    $pkg->items = ($itemsByPackage[$pkg->id] ?? collect())->values()->toArray();
+                    $pkg->items = $pkgItems->toArray();
+
                     return $pkg;
                 })->toArray();
 

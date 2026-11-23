@@ -1,6 +1,6 @@
 /* Declares routes for authentication and the five application areas with lazy code-splitting for maximum speed. */
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import DashboardLayout from "../layouts/DashboardLayout";
 import StorefrontLayout from "../layouts/StorefrontLayout";
 import ProtectedRoute from "./ProtectedRoute";
@@ -85,10 +85,10 @@ export default function AppRouter() {
               </Route>
               <Route element={<RoleGuard roles={["admin"]} />}>
                 <Route path="admin" element={<AdminDashboardPage />} />
+                <Route path="admin/dashboard" element={<Navigate to="/admin" replace />} />
                 <Route path="admin/catalog" element={<CatalogManagePage />} />
                 <Route path="admin/users" element={<UserManagementPage />} />
                 <Route path="admin/settings" element={<SystemSettingsPage />} />
-
               </Route>
             </Route>
           </Route>

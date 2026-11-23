@@ -32,6 +32,49 @@ const DELIVERY_WINDOWS = [
   "15:00 - 17:00",
 ];
 
+function resolvePackagePricing(pkg) {
+  const salePrice = Number(pkg?.price ?? 0);
+  const durationMonths = Math.max(1, Number(pkg?.duration_months ?? 1));
+
+  // Tính giá 1 lần giao từ danh sách nông sản (fallback nếu cần)
+  const itemsSingleTotal = Array.isArray(pkg?.items)
+    ? pkg.items.reduce(
+        (sum, it) => sum + Number(it?.unit_price ?? 0) * Number(it?.quantity ?? 0),
+        0
+      )
+    : 0;
+
+  let originalPrice = Number(pkg?.original_price ?? 0);
+  if (originalPrice <= 0 && itemsSingleTotal > 0) {
+    const text = `${pkg?.name || ""} ${pkg?.description || ""}`;
+    const perMonthMatch = text.match(/(\d+)\s*lần\s*\/\s*tháng/i);
+    const perWeekMatch = text.match(/(\d+)\s*lần\s*\/\s*tuần/i);
+    const perMonth = perMonthMatch
+      ? Number(perMonthMatch[1])
+      : perWeekMatch
+      ? Number(perWeekMatch[1]) * 4
+      : 4;
+    let deliveries = durationMonths * perMonth;
+    if (itemsSingleTotal * deliveries < salePrice) {
+      deliveries = Math.max(deliveries, Math.ceil(salePrice / itemsSingleTotal));
+    }
+    originalPrice = Math.round(itemsSingleTotal * deliveries);
+  }
+
+  const hasDiscount = originalPrice > salePrice && originalPrice > 0;
+  const discountPercent = hasDiscount
+    ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
+    : 0;
+  const savedAmount = hasDiscount ? originalPrice - salePrice : 0;
+
+  return {
+    salePrice,
+    originalPrice: hasDiscount ? originalPrice : salePrice,
+    hasDiscount,
+    discountPercent,
+    savedAmount,
+  };
+}
 export default function SubscriptionScheduleForm({
   packages,
   addresses,
@@ -63,6 +106,8 @@ export default function SubscriptionScheduleForm({
       return dayLabel ? `${dayLabel} (${item.delivery_window})` : null;
     })
     .filter(Boolean);
+
+    
 
   return (
     <form onSubmit={onSubmit} aria-label="Đăng ký gói rau định kỳ" className="space-y-8">
@@ -152,34 +197,83 @@ export default function SubscriptionScheduleForm({
                     )}
 
                     {/* Khung giá gói */}
-                    <span
-                      className={`mt-4 flex items-baseline justify-between gap-3 rounded-2xl px-4 py-3.5 border ${isSelected
-                        ? "bg-[#00450d] text-white border-[#00450d]"
-                        : "bg-[#f6f8f6] text-slate-900 border-[#c0c9bb]/40"
-                        }`}
-                    >
-                      <span>
+                    {/* Khung giá gói: Giá giảm + Giá gốc gạch ngang + % giảm tự tính ngược */}
+                    {(() => {
+                      const pricing = resolvePackagePricing(item);
+                      return (
                         <span
-                          className={`block text-[10.5px] font-bold uppercase tracking-wider ${isSelected ? "text-emerald-200" : "text-slate-500"
-                            }`}
-                        >
-                          Giá trọn gói
-                        </span>
-                        <span
-                          className={`mt-0.5 block text-2xl sm:text-[26px] font-black tabular-nums ${isSelected ? "text-[#91f78e]" : "text-[#00450d]"
-                            }`}
-                        >
-                          {Number(item.price).toLocaleString("vi-VN")}đ
-                        </span>
-                      </span>
-
-                      <span
-                        className={`text-xs font-semibold ${isSelected ? "text-emerald-100" : "text-slate-500"
+                          className={`mt-4 block rounded-2xl px-4 py-3.5 border ${
+                            isSelected
+                              ? "bg-[#00450d] text-white border-[#00450d]"
+                              : "bg-[#f6f8f6] text-slate-900 border-[#c0c9bb]/40"
                           }`}
-                      >
-                        / {Number(item.duration_months)} tháng
-                      </span>
-                    </span>
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span
+                              className={`text-[10.5px] font-bold uppercase tracking-wider ${
+                                isSelected ? "text-emerald-200" : "text-slate-500"
+                              }`}
+                            >
+                              Giá trọn gói ưu đãi
+                            </span>
+
+                            {pricing.hasDiscount && pricing.discountPercent > 0 && (
+                              <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-black tabular-nums ${
+                                  isSelected
+                                    ? "bg-[#91f78e] text-[#00390a]"
+                                    : "bg-rose-100 text-rose-700 border border-rose-200/80"
+                                }`}
+                              >
+                                Giảm {pricing.discountPercent}%
+                              </span>
+                            )}
+                          </span>
+
+                          <span className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="flex flex-wrap items-baseline gap-2.5">
+                              {/* Giá giảm (giá thực tế của gói) */}
+                              <span
+                                className={`text-2xl sm:text-[26px] font-black tabular-nums ${
+                                  isSelected ? "text-[#91f78e]" : "text-[#00450d]"
+                                }`}
+                              >
+                                {pricing.salePrice.toLocaleString("vi-VN")}đ
+                              </span>
+
+                              {/* Giá gốc gạch ngang */}
+                              {pricing.hasDiscount && (
+                                <span
+                                  className={`text-xs sm:text-sm font-semibold line-through tabular-nums ${
+                                    isSelected ? "text-emerald-200/75" : "text-slate-400"
+                                  }`}
+                                >
+                                  {pricing.originalPrice.toLocaleString("vi-VN")}đ
+                                </span>
+                              )}
+                            </span>
+
+                            <span
+                              className={`text-xs font-semibold ${
+                                isSelected ? "text-emerald-100" : "text-slate-500"
+                              }`}
+                            >
+                              / {Number(item.duration_months)} tháng
+                            </span>
+                          </span>
+
+                          {pricing.hasDiscount && pricing.savedAmount > 0 && (
+                            <span
+                              className={`mt-1.5 block text-[11px] font-semibold tabular-nums ${
+                                isSelected ? "text-emerald-100/90" : "text-[#006e1c]"
+                              }`}
+                            >
+                              Tiết kiệm {pricing.savedAmount.toLocaleString("vi-VN")}đ so với mua lẻ
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {/* Thành phần rau mỗi lần giao */}
@@ -604,21 +698,41 @@ export default function SubscriptionScheduleForm({
               </div>
 
               {/* Tổng chi phí */}
-              <div className="flex items-baseline justify-between gap-3 pt-1">
-                <div>
-                  <span className="block text-sm font-extrabold text-slate-900">
-                    Tổng chi phí gói
-                  </span>
-                  <span className="text-[11px] text-slate-500">
-                    Đã bao gồm đóng gói bảo quản mát
-                  </span>
-                </div>
-                <span className="text-2xl font-black text-[#00450d] tabular-nums">
-                  {selectedPackage
-                    ? `${Number(selectedPackage.price).toLocaleString("vi-VN")}đ`
-                    : "0đ"}
-                </span>
-              </div>
+{/* Tổng chi phí */}
+              {(() => {
+                const selectedPricing = selectedPackage
+                  ? resolvePackagePricing(selectedPackage)
+                  : null;
+                return (
+                  <div className="flex items-baseline justify-between gap-3 pt-1">
+                    <div>
+                      <span className="block text-sm font-extrabold text-slate-900">
+                        Tổng chi phí gói
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Đã bao gồm đóng gói bảo quản mát
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      {selectedPricing?.hasDiscount && (
+                        <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                          <span className="text-xs font-semibold text-slate-400 line-through tabular-nums">
+                            {selectedPricing.originalPrice.toLocaleString("vi-VN")}đ
+                          </span>
+                          <span className="rounded-md bg-rose-100 px-1.5 py-0.5 text-[10.5px] font-black text-rose-700 tabular-nums">
+                            -{selectedPricing.discountPercent}%
+                          </span>
+                        </div>
+                      )}
+                      <span className="text-2xl font-black text-[#00450d] tabular-nums">
+                        {selectedPackage
+                          ? `${selectedPricing.salePrice.toLocaleString("vi-VN")}đ`
+                          : "0đ"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {isPreviewOnly ? (
                 <div

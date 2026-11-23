@@ -1,13 +1,13 @@
 /* Shared dashboard frame for farm staff, sales, and administrators. */
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
-import { Store } from "lucide-react";
 import {
   ChevronDown,
   LogOut,
   Menu,
   ShieldAlert,
   Sprout,
+  Store,
 } from "lucide-react";
 import DynamicSidebar from "../components/navigation/DynamicSidebar";
 import { useAuth } from "../context/useAuth";
@@ -60,11 +60,12 @@ export default function DashboardLayout() {
   const roleInfo = getRoleBadge();
 
   return (
-    <div className="min-h-screen bg-[#f8faf8] text-[#191c1b] flex selection:bg-[#91f78e] selection:text-[#00450d]">
+    <div className="h-screen overflow-hidden bg-[#f8faf8] text-[#191c1b] flex selection:bg-[#91f78e] selection:text-[#00450d]">
       <DynamicSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#c0c9bb]/30 h-16 flex items-center justify-between px-3 sm:px-6 lg:px-8">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Thanh Header cố định đứng yên trên cùng */}
+        <header className="shrink-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#c0c9bb]/30 h-16 flex items-center justify-between px-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -141,14 +142,13 @@ export default function DashboardLayout() {
                   <div className="py-1.5 border-t border-slate-100 space-y-1">
                     <Link
                       to="/"
-                      onClick={() => setIsProfileOpen(false)} // đổi theo tên state đóng dropdown của bạn nếu có
+                      onClick={() => setIsUserMenuOpen(false)}
                       className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] font-bold text-[#00450d] hover:bg-emerald-50 transition-colors"
                     >
                       <Store className="w-4 h-4 shrink-0 text-[#006e1c]" />
                       <span>Về trang cửa hàng</span>
                     </Link>
 
-                    {/* Nút Đăng xuất hiện có của bạn ở ngay bên dưới */}
                     <button
                       type="button"
                       onClick={logout}
@@ -164,8 +164,11 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto overflow-x-hidden">
-          <Outlet />
+        {/* Vùng nội dung chính cuộn độc lập bên dưới */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
