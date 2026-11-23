@@ -339,6 +339,30 @@ class CustomerSubscriptionTest extends TestCase
         ]);
     }
 
+    public function test_recurring_order_command_runs_only_for_active_subscription_schedules(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 11, 17, 6, 0, 0));
+
+        Artisan::call('subscriptions:generate-orders');
+        Artisan::call('subscriptions:generate-orders');
+
+        $this->assertSame(
+            1,
+            DB::table('don_hang')
+                ->where('Ma_dang_ky_goi', 1)
+                ->where('Loai_don', 'Dinh_ky')
+                ->whereDate('Ngay_dat', '2026-11-17')
+                ->count()
+        );
+        $this->assertDatabaseHas('don_hang', [
+            'Ma_dang_ky_goi' => 1,
+            'Loai_don' => 'Dinh_ky',
+            'Trang_thai' => 'Cho_xac_nhan',
+        ]);
+
+        CarbonImmutable::setTestNow();
+    }
+
     private function validPayload(): array
     {
         return [
