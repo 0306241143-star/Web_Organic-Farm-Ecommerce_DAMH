@@ -15,7 +15,7 @@ class FefoStockService
     /**
      * @return array<int, array{batch_id: int, quantity: float}>
      */
-    public function allocateBatches(int $productId, float $quantity): array
+    public function allocateBatches(int $productId, float $quantity, ?int $onlyBatchId = null): array
     {
         if ($quantity <= 0 || ! is_finite($quantity)) {
             throw ValidationException::withMessages([
@@ -23,11 +23,12 @@ class FefoStockService
             ]);
         }
 
-        return DB::transaction(function () use ($productId, $quantity): array {
+        return DB::transaction(function () use ($productId, $quantity, $onlyBatchId): array {
             $remaining = round($quantity, 2);
             $allocations = [];
             $batches = LoHang::query()
                 ->whereHas('loCanhTac', fn ($query) => $query->where('Ma_san_pham', $productId))
+                ->when($onlyBatchId !== null, fn ($query) => $query->where('Ma_lo_hang', $onlyBatchId))
                 ->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])
                 ->where('So_luong_con_lai', '>', 0)
                 ->whereDate('Han_su_dung', '>=', now()->toDateString())

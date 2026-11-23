@@ -54,6 +54,7 @@ class OrderCancellationService
             }
 
             $stockRestored = $this->restoreAllocatedStock($lockedOrder);
+            $this->restoreFlashSaleQuota($lockedOrder);
             $lockedOrder->update(['Trang_thai' => 'Da_huy']);
             DB::table('thanh_toan')
                 ->whereIn(
@@ -79,6 +80,47 @@ class OrderCancellationService
         return $result['order']
             ->setAttribute('points_refunded', $result['points_refunded'])
             ->setAttribute('stock_restored', $result['stock_restored']);
+    }
+
+    public function expirePendingPayment(DonHang $candidate): bool
+    {
+        return DB::transaction(function () use ($candidate): bool {
+            $this->rewards->lockCustomer((int) $candidate->Ma_nguoi_dung);
+
+            $pendingPayments = DB::table('thanh_toan')
+                ->where('Ma_don_hang', $candidate->Ma_don_hang)
+                ->where('Phuong_thuc', 'ApiPay')
+                ->where('Trang_thai', 'Khoi_tao')
+                ->lockForUpdate()
+                ->get(['Ma_thanh_toan']);
+
+            if ($pendingPayments->isEmpty()) {
+                return false;
+            }
+
+            $order = DonHang::query()
+                ->whereKey($candidate->Ma_don_hang)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $order || $order->Trang_thai !== 'Cho_thanh_toan') {
+                return false;
+            }
+
+            $this->restoreAllocatedStock($order);
+            $this->restoreFlashSaleQuota($order);
+            $order->update(['Trang_thai' => 'Da_huy']);
+            DB::table('thanh_toan')
+                ->whereIn('Ma_thanh_toan', $pendingPayments->pluck('Ma_thanh_toan'))
+                ->update(['Trang_thai' => 'That_bai']);
+            $this->rewards->refundOrderPoints($order->refresh());
+
+            Log::info('Pending ApiPay order expired and was cancelled.', [
+                'order_id' => $order->Ma_don_hang,
+            ]);
+
+            return true;
+        });
     }
 
     private function restoreAllocatedStock(DonHang $order): float
@@ -119,5 +161,35 @@ class OrderCancellationService
         }
 
         return $restored;
+    }
+
+    private function restoreFlashSaleQuota(DonHang $order): void
+    {
+        $details = DB::table('chi_tiet_don_hang')
+            ->where('Ma_don_hang', $order->Ma_don_hang)
+            ->whereNotNull('Ma_ct_flash_sale')
+            ->lockForUpdate()
+            ->get(['Ma_ct_flash_sale', 'So_luong'])
+            ->groupBy('Ma_ct_flash_sale');
+
+        foreach ($details as $flashSaleItemId => $items) {
+            $flashSaleItem = DB::table('chi_tiet_flash_sale')
+                ->where('Ma_ct_flash_sale', $flashSaleItemId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $flashSaleItem) {
+                continue;
+            }
+
+            DB::table('chi_tiet_flash_sale')
+                ->where('Ma_ct_flash_sale', $flashSaleItemId)
+                ->update([
+                    'So_luong_da_ban' => max(
+                        0,
+                        round((float) $flashSaleItem->So_luong_da_ban - (float) $items->sum('So_luong'), 2)
+                    ),
+                ]);
+        }
     }
 }

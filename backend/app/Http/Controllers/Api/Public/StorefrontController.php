@@ -188,6 +188,8 @@ class StorefrontController extends Controller
         if (empty($data)) {
             $campaign = DB::table('chuong_trinh_flash_sale')
                 ->where('Trang_thai', 'Dang_dien_ra')
+                ->where('Thoi_gian_bat_dau', '<=', now())
+                ->where('Thoi_gian_ket_thuc', '>=', now())
                 ->orderByDesc('Ma_flash_sale')
                 ->first();
 

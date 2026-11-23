@@ -7,10 +7,12 @@
 namespace App\Services\Order;
 
 use App\Models\ChiTietDonHang;
+use App\Models\ChiTietFlashSale;
 use App\Models\DiaChiGiaoHang;
 use App\Models\DonHang;
 use App\Models\GioHang;
 use App\Models\PhanBoLoHang;
+use App\Models\ThanhToan;
 use App\Services\CartPricingService;
 use App\Services\FefoStockService;
 use App\Services\GoongGeocodingService;
@@ -127,13 +129,49 @@ class OrderCreationService
                     'Thanh_tien' => $item['line_total'],
                 ]);
 
-                foreach ($this->stock->allocateBatches((int) $item['id'], (float) $item['quantity']) as $allocation) {
+                $flashSaleItem = null;
+                if ($item['flash_sale_detail_id'] !== null) {
+                    $flashSaleItem = ChiTietFlashSale::query()
+                        ->whereKey($item['flash_sale_detail_id'])
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (
+                        ! $flashSaleItem
+                        || (float) $flashSaleItem->So_luong_gioi_han
+                            - (float) $flashSaleItem->So_luong_da_ban
+                            < (float) $item['quantity']
+                    ) {
+                        throw ValidationException::withMessages([
+                            'cart' => 'Số lượng Flash Sale vừa thay đổi. Vui lòng tải lại giỏ hàng.',
+                        ]);
+                    }
+                }
+
+                foreach ($this->stock->allocateBatches(
+                    (int) $item['id'],
+                    (float) $item['quantity'],
+                    $flashSaleItem ? (int) $flashSaleItem->Ma_lo_hang : null
+                ) as $allocation) {
                     PhanBoLoHang::query()->create([
                         'Ma_ct_don_hang' => $detail->Ma_ct_don_hang,
                         'Ma_lo_hang' => $allocation['batch_id'],
                         'So_luong_xuat' => $allocation['quantity'],
                     ]);
                 }
+
+                if ($flashSaleItem) {
+                    $flashSaleItem->increment('So_luong_da_ban', (float) $item['quantity']);
+                }
+            }
+
+            if ($paymentMethod === 'COD') {
+                ThanhToan::query()->create([
+                    'Ma_don_hang' => $createdOrder->Ma_don_hang,
+                    'Phuong_thuc' => 'COD',
+                    'So_tien' => $createdOrder->Tong_tien,
+                    'Trang_thai' => 'Khoi_tao',
+                ]);
             }
 
             $this->rewards->recordRedemption($userId, $createdOrder, $redemption['points_to_use']);
