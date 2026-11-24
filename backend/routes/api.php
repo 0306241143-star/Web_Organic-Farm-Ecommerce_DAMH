@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Api\Public\StorefrontController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -84,12 +83,6 @@ Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
 Route::post('/reset-password', [NewPasswordController::class, 'store']);
-//Home Page danh mucj + sản phẩm bán chạy và flash sale
-Route::get('/categories', [StorefrontController::class, 'categories']);
-Route::get('/products', [StorefrontController::class, 'products']);
-Route::get('/flash-sales/active', [StorefrontController::class, 'flashSales']);
-Route::get('/subscriptions', [StorefrontController::class, 'subscriptions']);
-
 
 // Các API yêu cầu đăng nhập qua Sanctum Token (CV04.4 & CV04.6)
 Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
@@ -129,109 +122,11 @@ Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
     });
 });
 
-// Nhóm API Công khai: Danh mục & Sản phẩm nông sản (Guest & Customer)
-Route::get('/categories', [\App\Http\Controllers\Api\Public\CategoryController::class, 'index']);
-Route::get('/products', [\App\Http\Controllers\Api\Public\ProductController::class, 'index']);
-Route::get('/products/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
-Route::get('/public/san-pham/{id}', [\App\Http\Controllers\Api\Public\ProductController::class, 'show'])->whereNumber('id');
-Route::get('/brand-story', [\App\Http\Controllers\Api\Public\BrandStoryController::class, 'index']);
-
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
 Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
 
-// Nhóm API Khách hàng (bảo vệ bằng auth:sanctum + role:customer)
-Route::middleware(['auth:sanctum', 'role:customer'])->prefix('customer')->group(function () {
-    // Cart APIs không nhận user_id từ client: controller luôn lấy giỏ theo phiên Sanctum hiện tại.
-    Route::get('/cart', [\App\Http\Controllers\Api\Customer\CartController::class, 'index']);
-    Route::post('/cart/items', [\App\Http\Controllers\Api\Customer\CartController::class, 'store']);
-    Route::put('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'update'])->whereNumber('productId');
-    Route::delete('/cart/items/{productId}', [\App\Http\Controllers\Api\Customer\CartController::class, 'destroy'])->whereNumber('productId');
-    Route::get('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'addresses']);
-    Route::post('/addresses', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'storeAddress']);
-    Route::put('/addresses/{id}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateAddress'])->whereNumber('id');
-    Route::delete('/addresses/{id}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'destroyAddress'])->whereNumber('id');
-    Route::patch('/addresses/{id}/default', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'setDefaultAddress'])->whereNumber('id');
-    Route::post('/change-password', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'changePassword']);
-    Route::put('/profile', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'updateProfile']);
-    Route::get('/rewards', [\App\Http\Controllers\Api\Customer\RewardPointController::class, 'index']);
-    Route::get('/orders', [\App\Http\Controllers\Api\Customer\OrderController::class, 'index']);
-    Route::get('/orders/{orderId}', [\App\Http\Controllers\Api\Customer\OrderController::class, 'show'])->whereNumber('orderId');
-    Route::get('/claims', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'index']);
-    Route::post('/claims', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'store']);
-    Route::get('/claims/{claimId}', [\App\Http\Controllers\Api\Customer\ClaimController::class, 'show'])->whereNumber('claimId');
-    Route::post('/checkout/quote', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'quote']);
-    Route::post('/checkout/orders', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'store']);
-    Route::get('/checkout/orders/{orderId}', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'status'])->whereNumber('orderId');
-    Route::post('/checkout/orders/{orderId}/cancel', [\App\Http\Controllers\Api\Customer\RetailOrderController::class, 'cancel'])->whereNumber('orderId');
-    Route::get('/checkout/options', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'options']);
-    Route::post('/checkout', [\App\Http\Controllers\Api\Customer\CheckoutController::class, 'store']);
-    // Đăng ký/lịch gói định kỳ và thanh toán thuộc riêng tài khoản khách hiện tại.
-    Route::post('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'store']);
-    Route::get('/subscriptions', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'index']);
-    Route::get('/subscriptions/{subscriptionId}', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'show'])->whereNumber('subscriptionId');
-    Route::post('/subscriptions/{subscriptionId}/pause', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'pause'])->whereNumber('subscriptionId');
-    Route::post('/subscriptions/{subscriptionId}/resume', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'resume'])->whereNumber('subscriptionId');
-    Route::post('/subscriptions/{subscriptionId}/checkout', [\App\Http\Controllers\Api\Customer\SubscriptionController::class, 'checkout'])->whereNumber('subscriptionId');
-});
-
-// Nhóm API Nhân viên Nông trại (bảo vệ bằng auth:sanctum + role:farm_staff)
-Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(function () {
-    Route::get('/seasons', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'index']);
-    Route::post('/seasons', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'store']);
-    Route::get('/seasons/{id}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'show']);
-    Route::put('/seasons/{id}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'update']);
-    Route::delete('/seasons/{id}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'destroy']);
-    Route::post('/seasons/{id}/plots', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'storePlot']);
-    Route::put('/seasons/{id}/plots/{plotId}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'updatePlot']);
-    Route::delete('/seasons/{id}/plots/{plotId}', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'destroyPlot']);
-    Route::get('/products', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'getProducts']);
-    Route::get('/info', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'getFarmInfo']);
-    Route::put('/info', [\App\Http\Controllers\Api\FarmStaff\SeasonController::class, 'updateFarmInfo']);
-
-    Route::get('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'index']);
-    Route::post('/farming-logs', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'store']);
-    Route::delete('/farming-logs/{id}', [\App\Http\Controllers\Api\FarmStaff\FarmingLogController::class, 'destroy']);
-
-    // Quản lý lô hàng thu hoạch & QR (CV04.18, CV04.20, CV04.21)
-    Route::get('/batches/eligible-plots', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'eligiblePlots']);
-    Route::get('/batches/disposals', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'disposalsList']);
-    Route::get('/batches', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'index']);
-    Route::post('/batches', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'store']);
-    Route::get('/batches/{id}', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'show']);
-    Route::put('/batches/{id}', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'update']);
-    Route::post('/batches/{id}/wastage', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'recordWastage']);
-    Route::post('/batches/{id}/qr', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'generate']);
-    Route::get('/batches/{id}/qr-print', [\App\Http\Controllers\Api\FarmStaff\BatchQrController::class, 'printTemplate']);
-
-    // Quản lý chứng nhận chất lượng & kết quả kiểm định gắn vào lô hàng
-    Route::get('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'index']);
-    Route::post('/certificates', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'store']);
-    Route::put('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'update']);
-    Route::delete('/certificates/{id}', [\App\Http\Controllers\Api\FarmStaff\CertificateController::class, 'destroy']);
-
-    Route::post('/batches/{id}/wastage', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'recordWastage'])->whereNumber('id');
-    Route::get('/disposals', [\App\Http\Controllers\Api\FarmStaff\BatchController::class, 'disposalsList']);
-});
-
-// Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/reports/dashboard', [\App\Http\Controllers\Api\Admin\ReportController::class, 'dashboard']);
-    Route::get('/users', [\App\Http\Controllers\Api\Admin\UserRoleController::class, 'index']);
-    Route::put('/users/{id}/status', [\App\Http\Controllers\Api\Admin\UserRoleController::class, 'updateStatus']);
-    Route::get('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'index']);
-    Route::put('/settings', [\App\Http\Controllers\Api\Admin\SystemSettingController::class, 'update']);
-
-    // Quản lý danh mục nông sản (Admin)
-    Route::get('/categories', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'index']);
-    Route::post('/categories', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'store']);
-    Route::put('/categories/{id}', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'update']);
-    Route::patch('/categories/{id}/status', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'updateStatus']);
-    Route::delete('/categories/{id}', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'destroy']);
-
-    // Quản lý danh sách sản phẩm nông sản (Admin)
-    Route::get('/products', [\App\Http\Controllers\Api\Admin\ProductController::class, 'index']);
-    Route::post('/products', [\App\Http\Controllers\Api\Admin\ProductController::class, 'store']);
-    Route::put('/products/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'update']);
-    Route::patch('/products/{id}/status', [\App\Http\Controllers\Api\Admin\ProductController::class, 'updateStatus']);
-    Route::delete('/products/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'destroy']);
-});
+require __DIR__ . '/api/public.php';
+require __DIR__ . '/api/customer.php';
+require __DIR__ . '/api/farm.php';
+require __DIR__ . '/api/sales.php';
+require __DIR__ . '/api/admin.php';

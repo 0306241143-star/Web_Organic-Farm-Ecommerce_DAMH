@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -26,9 +27,15 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $allProducts = Cache::remember('public_catalog_products_v1', 120, function (): Collection {
+        $allProducts = Cache::remember('public_catalog_products_v2', 120, function (): Collection {
+            $soldCountMap = $this->loadSoldCountMap();
+
             return $this->loadActiveProducts()
-                ->map(fn (SanPham $product) => $this->formatProduct($product))
+                ->map(fn(SanPham $product) => $this->formatProduct(
+                    $product,
+                    false,
+                    (float) ($soldCountMap[$product->Ma_san_pham] ?? 0)
+                ))
                 ->values();
         });
 
@@ -73,21 +80,41 @@ class ProductController extends Controller
             );
         }
 
+        $soldCountMap = $this->loadSoldCountMap();
+
         $related = $this->baseProductQuery()
             ->where('Ma_danh_muc', $product->Ma_danh_muc)
             ->where('Ma_san_pham', '!=', $product->Ma_san_pham)
             ->limit(4)
             ->get()
-            ->map(fn (SanPham $item) => $this->formatProduct($item))
+            ->map(fn(SanPham $item) => $this->formatProduct(
+                $item,
+                false,
+                (float) ($soldCountMap[$item->Ma_san_pham] ?? 0)
+            ))
             ->values();
 
-        $payload = $this->formatProduct($product, true);
+        $payload = $this->formatProduct(
+            $product,
+            true,
+            (float) ($soldCountMap[$product->Ma_san_pham] ?? 0)
+        );
         $payload['related_products'] = $related;
 
         return $this->successResponse(
             message: 'Lấy chi tiết sản phẩm nông sản thành công.',
             data: $payload
         );
+    }
+
+    private function loadSoldCountMap(): array
+    {
+        return DB::table('chi_tiet_don_hang as ctdh')
+            ->join('don_hang as dh', 'ctdh.Ma_don_hang', '=', 'dh.Ma_don_hang')
+            ->where('dh.Trang_thai', '!=', 'Da_huy')
+            ->groupBy('ctdh.Ma_san_pham')
+            ->pluck(DB::raw('COALESCE(SUM(ctdh.So_luong), 0) as total_sold'), 'ctdh.Ma_san_pham')
+            ->toArray();
     }
 
     private function baseProductQuery()
@@ -120,7 +147,6 @@ class ProductController extends Controller
                 },
             ]);
     }
-
     private function loadActiveProducts(): Collection
     {
         return $this->baseProductQuery()
@@ -132,22 +158,22 @@ class ProductController extends Controller
     {
         $filtered = $products;
 
-        // 1. Lọc theo danh mục (hỗ trợ 1 mã hoặc nhiều mã phân cách dấu phẩy)
+        // 1. Lọc theo danh mục
         $rawCategory = $request->query('category_id', $request->query('category'));
         if ($rawCategory !== null && trim((string) $rawCategory) !== '' && strtoupper((string) $rawCategory) !== 'ALL') {
             $categoryIds = collect(explode(',', (string) $rawCategory))
-                ->map(fn ($id) => (int) trim($id))
-                ->filter(fn ($id) => $id > 0)
+                ->map(fn($id) => (int) trim($id))
+                ->filter(fn($id) => $id > 0)
                 ->values();
 
             if ($categoryIds->isNotEmpty()) {
                 $filtered = $filtered->filter(
-                    fn (array $item): bool => isset($item['category']['id']) && $categoryIds->contains($item['category']['id'])
+                    fn(array $item): bool => isset($item['category']['id']) && $categoryIds->contains($item['category']['id'])
                 );
             }
         }
 
-        // 2. Tìm kiếm theo từ khóa (hỗ trợ có dấu & không dấu tiếng Việt)
+        // 2. Tìm kiếm theo từ khóa
         $rawSearch = trim((string) $request->query('search', $request->query('q', '')));
         if ($rawSearch !== '') {
             $needleLower = mb_strtolower($rawSearch);
@@ -161,7 +187,7 @@ class ProductController extends Controller
                     $item['farm']['name'] ?? '',
                     $item['unit'] ?? '',
                     implode(' ', $item['certification_standards'] ?? []),
-                    implode(' ', array_map(fn ($c) => ($c['name'] ?? '') . ' ' . ($c['issuer'] ?? ''), $item['certifications'] ?? [])),
+                    implode(' ', array_map(fn($c) => ($c['name'] ?? '') . ' ' . ($c['issuer'] ?? ''), $item['certifications'] ?? [])),
                 ];
 
                 $haystack = implode(' ', array_filter($haystackParts));
@@ -171,38 +197,38 @@ class ProductController extends Controller
             });
         }
 
-        // 3. Lọc theo khoảng giá thực tế (ưu tiên giá Flash Sale nếu đang giảm giá)
+        // 3. Lọc theo khoảng giá thực tế
         $minPrice = $request->query('min_price');
         if ($minPrice !== null && $minPrice !== '' && is_numeric($minPrice)) {
             $minVal = max(0, (float) $minPrice);
-            $filtered = $filtered->filter(fn (array $item): bool => (float) $item['effective_price'] >= $minVal);
+            $filtered = $filtered->filter(fn(array $item): bool => (float) $item['effective_price'] >= $minVal);
         }
 
         $maxPrice = $request->query('max_price');
         if ($maxPrice !== null && $maxPrice !== '' && is_numeric($maxPrice)) {
             $maxVal = max(0, (float) $maxPrice);
-            $filtered = $filtered->filter(fn (array $item): bool => (float) $item['effective_price'] <= $maxVal);
+            $filtered = $filtered->filter(fn(array $item): bool => (float) $item['effective_price'] <= $maxVal);
         }
 
-        // 4. Lọc theo chứng nhận chất lượng (VietGAP, Hữu cơ, GlobalGAP, ...)
+        // 4. Lọc theo chứng nhận chất lượng
         $rawCert = $request->query('certification', $request->query('cert'));
         if ($rawCert !== null && trim((string) $rawCert) !== '') {
             $selectedCerts = collect(explode(',', (string) $rawCert))
-                ->map(fn ($value) => $this->normalizeText($value))
+                ->map(fn($value) => $this->normalizeText($value))
                 ->filter()
                 ->values();
 
             if ($selectedCerts->isNotEmpty()) {
                 $filtered = $filtered->filter(function (array $item) use ($selectedCerts): bool {
                     $standards = collect($item['certification_standards'] ?? [])
-                        ->map(fn ($label) => $this->normalizeText($label));
+                        ->map(fn($label) => $this->normalizeText($label));
                     $certNames = collect($item['certifications'] ?? [])
-                        ->map(fn ($cert) => $this->normalizeText(($cert['name'] ?? '') . ' ' . ($cert['issuer'] ?? '')));
+                        ->map(fn($cert) => $this->normalizeText(($cert['name'] ?? '') . ' ' . ($cert['issuer'] ?? '')));
 
                     $combined = $standards->merge($certNames);
 
                     return $selectedCerts->contains(function (string $wanted) use ($combined): bool {
-                        return $combined->contains(fn (string $text): bool => str_contains($text, $wanted));
+                        return $combined->contains(fn(string $text): bool => str_contains($text, $wanted));
                     });
                 });
             }
@@ -210,12 +236,12 @@ class ProductController extends Controller
 
         // 5. Lọc theo trạng thái còn hàng FEFO
         if ($this->toBool($request->query('in_stock'))) {
-            $filtered = $filtered->filter(fn (array $item): bool => $item['in_stock'] === true);
+            $filtered = $filtered->filter(fn(array $item): bool => $item['in_stock'] === true);
         }
 
         // 6. Lọc sản phẩm đang chạy Flash Sale
         if ($this->toBool($request->query('flash_sale'))) {
-            $filtered = $filtered->filter(fn (array $item): bool => $item['is_flash_sale'] === true);
+            $filtered = $filtered->filter(fn(array $item): bool => $item['is_flash_sale'] === true);
         }
 
         return $filtered->values();
@@ -224,9 +250,22 @@ class ProductController extends Controller
     private function applySort(Collection $products, string $sort): Collection
     {
         return match ($sort) {
+            'best_selling' => $products->sort(function (array $a, array $b): int {
+                $soldCmp = ($b['sold_count'] ?? 0) <=> ($a['sold_count'] ?? 0);
+                if ($soldCmp !== 0) {
+                    return $soldCmp;
+                }
+
+                $stockCmp = ($b['in_stock'] ? 1 : 0) <=> ($a['in_stock'] ? 1 : 0);
+                if ($stockCmp !== 0) {
+                    return $stockCmp;
+                }
+
+                return $b['id'] <=> $a['id'];
+            })->values(),
             'price_asc'  => $products->sortBy([['effective_price', 'asc'], ['id', 'desc']])->values(),
             'price_desc' => $products->sortBy([['effective_price', 'desc'], ['id', 'desc']])->values(),
-            'name_asc'   => $products->sortBy(fn (array $item) => $this->normalizeText($item['name'] ?? ''))->values(),
+            'name_asc'   => $products->sortBy(fn(array $item) => $this->normalizeText($item['name'] ?? ''))->values(),
             'newest'     => $products->sortByDesc('id')->values(),
             'stock_desc' => $products->sortBy([['available_stock', 'desc'], ['id', 'desc']])->values(),
             default      => $products->sort(function (array $a, array $b): int {
@@ -260,7 +299,7 @@ class ProductController extends Controller
             ];
         }
 
-        $prices = $products->pluck('effective_price')->map(fn ($p) => (float) $p);
+        $prices = $products->pluck('effective_price')->map(fn($p) => (float) $p);
 
         return [
             'available_certifications' => $availableCertifications,
@@ -276,30 +315,32 @@ class ProductController extends Controller
         ];
     }
 
-    private function formatProduct(SanPham $product, bool $includeDetail = false): array
+    private function formatProduct(SanPham $product, bool $includeDetail = false, float $soldCount = 0): array
     {
         $allBatches = $product->loCanhTacs
-            ->flatMap(fn ($plot) => $plot->loHangs)
+            ->flatMap(fn($plot) => $plot->loHangs)
             ->values();
 
         $today = now()->toDateString();
-        
+
         // Áp dụng quy tắc FEFO: chỉ tính lô còn hàng / sắp hết hạn, số lượng > 0 và chưa quá hạn
         $fefoBatches = $allBatches
-            ->filter(fn ($batch): bool =>
+            ->filter(
+                fn($batch): bool =>
                 in_array($batch->Trang_thai, ['Con_hang', 'Sap_het_han'], true)
-                && (float) $batch->So_luong_con_lai > 0
-                && (string) $batch->Han_su_dung >= $today
+                    && (float) $batch->So_luong_con_lai > 0
+                    && (string) $batch->Han_su_dung >= $today
             )
             ->sortBy('Han_su_dung')
             ->values();
 
-        $availableStock = round((float) $fefoBatches->sum(fn ($batch) => (float) $batch->So_luong_con_lai), 2);
-        $nearestExpiry = $fefoBatches->first()?->Han_su_dung;
+        $availableStock = round((float) $fefoBatches->sum(fn($batch) => (float) $batch->So_luong_con_lai), 2);
+        $nearestBatch = $fefoBatches->first();
+        $nearestExpiry = $nearestBatch?->Han_su_dung;
         $latestHarvest = $fefoBatches->sortByDesc('Ngay_thu_hoach')->first()?->Ngay_thu_hoach;
 
-        $traceBatch = $fefoBatches->first(fn ($batch) => $batch->maQrTruyXuat !== null)
-            ?? $allBatches->first(fn ($batch) => $batch->maQrTruyXuat !== null);
+        $traceBatch = $fefoBatches->first(fn($batch) => $batch->maQrTruyXuat !== null)
+            ?? $allBatches->first(fn($batch) => $batch->maQrTruyXuat !== null);
         $traceQrCode = $traceBatch?->maQrTruyXuat?->Chuoi_ma_qr;
 
         // Xác định Flash Sale đang hoạt động gắn vào lô còn hàng
@@ -309,7 +350,12 @@ class ProductController extends Controller
         foreach ($fefoBatches as $batch) {
             foreach ($batch->chiTietFlashSales as $detail) {
                 $program = $detail->flashSale;
-                if (! $program || $program->Trang_thai !== 'Dang_dien_ra') {
+                if (
+                    ! $program
+                    || $program->Trang_thai !== 'Dang_dien_ra'
+                    || (string) $program->Thoi_gian_bat_dau > now()->toDateTimeString()
+                    || (string) $program->Thoi_gian_ket_thuc < now()->toDateTimeString()
+                ) {
                     continue;
                 }
 
@@ -341,8 +387,8 @@ class ProductController extends Controller
             ? (int) round((($regularPrice - $effectivePrice) / $regularPrice) * 100)
             : 0;
 
-        // Tổng hợp chứng nhận gắn trực tiếp vào sản phẩm hoặc gắn vào lô hàng của sản phẩm
-        $batchCerts = $allBatches->flatMap(fn ($batch) => $batch->chungNhans);
+        // Tổng hợp chứng nhận gắn trực tiếp vào sản phẩm hoặc gắn vào lô hàng
+        $batchCerts = $allBatches->flatMap(fn($batch) => $batch->chungNhans);
         $mergedCerts = $product->chungNhans
             ->merge($batchCerts)
             ->unique('Ma_chung_nhan')
@@ -373,6 +419,26 @@ class ProductController extends Controller
             ->values()
             ->all();
 
+        $galleryUrls = collect([$this->resolveImageUrl($product->Hinh_anh_dai_dien)]);
+        if ($includeDetail && \Illuminate\Support\Facades\Schema::hasTable('hinh_anh_san_pham')) {
+            $query = DB::table('hinh_anh_san_pham')
+                ->where('Ma_san_pham', $product->Ma_san_pham);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('hinh_anh_san_pham', 'La_anh_chinh')) {
+                $query->orderByDesc('La_anh_chinh');
+            }
+
+            $extraPaths = $query
+                ->orderBy('Thu_tu')
+                ->orderBy('Ma_hinh_anh')
+                ->pluck('Duong_dan');
+
+            foreach ($extraPaths as $path) {
+                $galleryUrls->push($this->resolveImageUrl($path));
+            }
+        }
+        $images = $galleryUrls->filter()->unique()->values()->all();
+
         $data = [
             'id'                      => (int) $product->Ma_san_pham,
             'name'                    => $product->Ten_san_pham,
@@ -383,9 +449,12 @@ class ProductController extends Controller
             'is_flash_sale'           => $activeFlashSale !== null,
             'discount_percent'        => $discountPercent,
             'flash_sale'              => $activeFlashSale,
-            'image_url'               => $this->resolveImageUrl($product->Hinh_anh_dai_dien),
+            'image_url'               => $images[0] ?? null,
+            'images'                  => $images,
             'reward_point_rate'       => (float) $product->Ty_le_tich_diem,
             'status'                  => $product->Trang_thai,
+            'sold_count'              => round($soldCount, 2),
+            'batch_id'                => $nearestBatch ? (int) $nearestBatch->Ma_lo_hang : null,
             'category'                => $product->danhMuc ? [
                 'id'          => (int) $product->danhMuc->Ma_danh_muc,
                 'name'        => $product->danhMuc->Ten_danh_muc,
@@ -408,7 +477,7 @@ class ProductController extends Controller
         ];
 
         if ($includeDetail) {
-            $data['batches'] = $fefoBatches->map(fn ($batch) => [
+            $data['batches'] = $fefoBatches->map(fn($batch) => [
                 'id'           => (int) $batch->Ma_lo_hang,
                 'harvest_date' => $batch->Ngay_thu_hoach,
                 'expiry_date'  => $batch->Han_su_dung,

@@ -132,9 +132,15 @@ class CustomerSubscriptionTest extends TestCase
             'phone' => '0912345678',
             'street' => '12 Nguyễn Trãi',
             'ward' => 'Phường Bến Thành',
-            'district' => 'Quận 1',
             'province' => 'Thành phố Hồ Chí Minh',
         ];
+
+        $legacyPayload = $payload;
+        $legacyPayload['shipping_address']['district'] = 'Quận 1';
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/customer/subscriptions', $legacyPayload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['shipping_address.district']);
 
         $created = $this->actingAs($customer, 'sanctum')
             ->postJson('/api/customer/subscriptions', $payload)
@@ -151,7 +157,7 @@ class CustomerSubscriptionTest extends TestCase
             'So_dien_thoai_nguoi_nhan' => '0912345678',
             'Dia_chi_chi_tiet' => '12 Nguyễn Trãi',
             'Phuong_xa' => 'Phường Bến Thành',
-            'Quan_huyen' => 'Quận 1',
+            'Quan_huyen' => '',
             'Tinh_thanh' => 'Thành phố Hồ Chí Minh',
             'Vi_do' => 10.8231,
             'Kinh_do' => 106.6297,
@@ -179,7 +185,6 @@ class CustomerSubscriptionTest extends TestCase
             'phone' => '0912345678',
             'street' => '12 Nguyễn Trãi',
             'ward' => 'Phường Bến Thành',
-            'district' => 'Quận 1',
             'province' => 'Thành phố Hồ Chí Minh',
         ];
 
@@ -332,6 +337,30 @@ class CustomerSubscriptionTest extends TestCase
         $this->assertDatabaseMissing('thanh_toan', [
             'Ma_dang_ky_goi' => $subscriptionId,
         ]);
+    }
+
+    public function test_recurring_order_command_runs_only_for_active_subscription_schedules(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 11, 17, 6, 0, 0));
+
+        Artisan::call('subscriptions:generate-orders');
+        Artisan::call('subscriptions:generate-orders');
+
+        $this->assertSame(
+            1,
+            DB::table('don_hang')
+                ->where('Ma_dang_ky_goi', 1)
+                ->where('Loai_don', 'Dinh_ky')
+                ->whereDate('Ngay_dat', '2026-11-17')
+                ->count()
+        );
+        $this->assertDatabaseHas('don_hang', [
+            'Ma_dang_ky_goi' => 1,
+            'Loai_don' => 'Dinh_ky',
+            'Trang_thai' => 'Cho_xac_nhan',
+        ]);
+
+        CarbonImmutable::setTestNow();
     }
 
     private function validPayload(): array

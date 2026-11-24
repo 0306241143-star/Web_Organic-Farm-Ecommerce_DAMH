@@ -44,5 +44,13 @@ class SanPham extends Model
             'Ma_lo_canh_tac'
         );
     }
+
+    public function hinhAnhs(): HasMany
+    {
+        return $this->hasMany(HinhAnhSanPham::class, 'Ma_san_pham', 'Ma_san_pham')
+            ->orderByDesc('La_anh_chinh')
+            ->orderBy('Thu_tu')
+            ->orderBy('Ma_hinh_anh');
+    }
 }
 

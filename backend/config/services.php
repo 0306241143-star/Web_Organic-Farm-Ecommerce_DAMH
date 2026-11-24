@@ -55,6 +55,13 @@ return [
     'shipping' => [
         // Dữ liệu mẫu tính 25.000đ cho 12,5km, tương ứng đơn giá 2.000đ/km.
         'price_per_km' => env('SHIPPING_PRICE_PER_KM', 2000),
+        'origin_name' => env('SHIPPING_ORIGIN_NAME', 'Nhà C – Trường Cao đẳng Kỹ thuật Cao Thắng'),
+        'origin_address' => env(
+            'SHIPPING_ORIGIN_ADDRESS',
+            '65 Huỳnh Thúc Kháng, Phường Sài Gòn, Thành phố Hồ Chí Minh'
+        ),
+        'origin_latitude' => env('SHIPPING_ORIGIN_LATITUDE', 10.771687),
+        'origin_longitude' => env('SHIPPING_ORIGIN_LONGITUDE', 106.701978),
     ],
 
     'checkout' => [

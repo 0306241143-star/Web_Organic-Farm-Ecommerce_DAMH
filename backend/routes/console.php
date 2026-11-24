@@ -15,3 +15,7 @@ Artisan::command('inspire', function () {
 Schedule::command('orders:expire-pending-payments')
     ->everyMinute()
     ->withoutOverlapping();
+
+Schedule::command('subscriptions:generate-orders')
+    ->dailyAt('06:00')
+    ->withoutOverlapping();

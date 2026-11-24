@@ -1,13 +1,13 @@
-/* Trang danh sách nông sản hỗ trợ tìm kiếm, lọc đa tiêu chí, sắp xếp và phân trang đồng bộ URL. */
+/* Trang danh sách nông sản: tối ưu mobile (sticky top bar + lưới 2 cột) và desktop (cố định trên, cuộn lưới 4x4 dưới). */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   ArrowUpDown,
   Check,
   ChevronDown,
+  Leaf,
   RefreshCw,
   Search,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 import Badge from "../../components/common/Badge";
@@ -22,6 +22,7 @@ import { formatCurrencyVnd, publicApi } from "../../services/publicApi";
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Nổi bật & Tươi mới" },
+  { value: "best_selling", label: "Bán chạy nhất" },
   { value: "newest", label: "Mới cập nhật nhất" },
   { value: "price_asc", label: "Giá: Thấp đến Cao" },
   { value: "price_desc", label: "Giá: Cao đến Thấp" },
@@ -29,7 +30,8 @@ const SORT_OPTIONS = [
   { value: "stock_desc", label: "Còn hàng nhiều nhất" },
 ];
 
-const PER_PAGE = 12;
+// 4 cột x 4 hàng = 16 sản phẩm mỗi trang (8 hàng x 2 cột trên mobile)
+const PER_PAGE = 16;
 
 const normalizeVi = (value = "") =>
   String(value)
@@ -40,79 +42,7 @@ const normalizeVi = (value = "") =>
     .toLowerCase()
     .trim();
 
-/* ================= THÀNH PHẦN CON 1: TIÊU ĐỀ DANH MỤC & THANH TÌM KIẾM ================= */
-function CatalogHeroHeader({
-  activeCategoryObj,
-  searchInput,
-  onSearchInputChange,
-  onSearchSubmit,
-  onClearSearch,
-  totalResults,
-  loading,
-}) {
-  return (
-    <section className="border-b border-[#c0c9bb]/30 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
-          <div className="space-y-1.5 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1
-                className="text-[26px] sm:text-[32px] font-extrabold text-[#00450d] tracking-tight leading-tight"
-                style={{ fontFamily: "var(--font-headline)" }}
-              >
-                {activeCategoryObj ? activeCategoryObj.name : "Danh mục nông sản sạch"}
-              </h1>
-              <Badge variant="success" size="sm" className="tabular-nums">
-                {loading ? "Đang tải..." : `${totalResults} sản phẩm`}
-              </Badge>
-            </div>
-            {activeCategoryObj?.description && (
-              <p className="text-[14px] text-[#41493e] leading-relaxed">
-                {activeCategoryObj.description}
-              </p>
-            )}
-          </div>
-
-          {/* Thanh tìm kiếm nông sản */}
-          <form
-            onSubmit={onSearchSubmit}
-            className="w-full lg:w-[420px] flex items-center gap-2 bg-[#f8faf8] p-1.5 rounded-2xl border border-[#c0c9bb]/60 focus-within:border-[#00450d] focus-within:bg-white transition-all"
-          >
-            <div className="relative flex-1 flex items-center min-w-0">
-              <Search
-                className="w-4 h-4 text-[#5a6357] absolute left-3 pointer-events-none"
-                aria-hidden="true"
-              />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => onSearchInputChange(e.target.value)}
-                placeholder="Tìm tên nông sản, chứng nhận..."
-                aria-label="Nhập từ khóa tìm kiếm nông sản"
-                className="w-full pl-9 pr-8 py-2 text-[13.5px] text-[#191c1b] placeholder:text-[#5a6357] bg-transparent outline-none"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={onClearSearch}
-                  aria-label="Xóa từ khóa tìm kiếm"
-                  className="absolute right-2 p-1 rounded-lg text-[#5a6357] hover:text-[#191c1b] hover:bg-[#e6e9e7] transition-colors cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            <Button type="submit" variant="primary" size="sm" className="shrink-0">
-              Tìm kiếm
-            </Button>
-          </form>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ================= THÀNH PHẦN CON 2: HỘP CHỌN SẮP XẾP TÙY BIẾN ================= */
+/* ================= HỘP CHỌN SẮP XẾP GỌN NHẸ (HỖ TRỢ MOBILE) ================= */
 function CatalogSortDropdown({ value = "featured", onChange }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -141,20 +71,22 @@ function CatalogSortDropdown({ value = "featured", onChange }) {
   }, [open]);
 
   return (
-    <div ref={containerRef} className="relative w-full sm:w-60">
+    <div ref={containerRef} className="relative shrink-0 sm:w-52">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="w-full min-h-[40px] px-3.5 py-2 rounded-xl bg-white border border-[#c0c9bb]/60 hover:border-[#00450d]/50 text-[13px] font-semibold text-[#191c1b] flex items-center justify-between gap-2 transition-colors cursor-pointer"
+        aria-label={`Sắp xếp: ${selectedOption.label}`}
+        className="h-9 px-2.5 sm:px-3 sm:w-full rounded-xl bg-white border border-[#c0c9bb]/70 hover:border-[#00450d]/50 text-[12px] sm:text-[12.5px] font-semibold text-[#191c1b] flex items-center justify-between gap-1.5 transition-colors cursor-pointer"
       >
-        <span className="flex items-center gap-2 min-w-0">
+        <span className="flex items-center gap-1.5 min-w-0">
           <ArrowUpDown className="w-3.5 h-3.5 text-[#006e1c] shrink-0" />
-          <span className="truncate">{selectedOption.label}</span>
+          <span className="sm:hidden">Sắp xếp</span>
+          <span className="hidden sm:inline truncate">{selectedOption.label}</span>
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-[#5a6357] shrink-0 transition-transform ${
+          className={`w-3.5 h-3.5 text-[#5a6357] shrink-0 transition-transform ${
             open ? "rotate-180" : ""
           }`}
         />
@@ -164,7 +96,7 @@ function CatalogSortDropdown({ value = "featured", onChange }) {
         <ul
           role="listbox"
           aria-label="Sắp xếp danh sách nông sản"
-          className="absolute left-0 right-0 mt-1.5 w-full max-w-full overflow-hidden rounded-2xl bg-white border border-[#c0c9bb]/50 shadow-xl py-1.5 z-30"
+          className="absolute right-0 mt-1.5 w-56 overflow-hidden rounded-2xl bg-white border border-[#c0c9bb]/60 shadow-xl py-1 z-40"
         >
           {SORT_OPTIONS.map((option) => {
             const isSelected = option.value === selectedOption.value;
@@ -176,7 +108,7 @@ function CatalogSortDropdown({ value = "featured", onChange }) {
                     onChange(option.value);
                     setOpen(false);
                   }}
-                  className={`w-full px-3.5 py-2 text-left text-[13px] flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                  className={`w-full px-3 py-2 text-left text-[12.5px] flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-[#91f78e]/30 text-[#00450d] font-bold"
                       : "text-[#41493e] hover:bg-[#f2f4f2] font-medium"
@@ -194,7 +126,7 @@ function CatalogSortDropdown({ value = "featured", onChange }) {
   );
 }
 
-/* ================= THÀNH PHẦN CON 3: THANH THẺ BỘ LỌC ĐANG ÁP DỤNG ================= */
+/* ================= THANH THẺ BỘ LỌC ĐANG ÁP DỤNG ================= */
 function CatalogActiveFilterPills({
   filters,
   activeCategoryObj,
@@ -256,11 +188,11 @@ function CatalogActiveFilterPills({
   if (pills.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 pb-4">
+    <div className="flex flex-wrap items-center gap-1.5 pb-3">
       {pills.map((pill) => (
         <span
           key={pill.key}
-          className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full bg-[#91f78e]/30 border border-[#006e1c]/25 text-[#00450d] text-[12px] font-bold"
+          className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-0.5 rounded-full bg-[#91f78e]/30 border border-[#006e1c]/25 text-[#00450d] text-[11px] sm:text-[11.5px] font-bold"
         >
           <span>{pill.label}</span>
           <button
@@ -277,7 +209,7 @@ function CatalogActiveFilterPills({
       <button
         type="button"
         onClick={onResetAll}
-        className="px-2.5 py-1.5 rounded-full text-[12px] font-bold text-[#5a6357] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors cursor-pointer"
+        className="px-2 py-0.5 rounded-full text-[11px] sm:text-[11.5px] font-bold text-[#5a6357] hover:text-[#00450d] hover:bg-white transition-colors cursor-pointer"
       >
         Xóa tất cả
       </button>
@@ -285,59 +217,7 @@ function CatalogActiveFilterPills({
   );
 }
 
-/* ================= THÀNH PHẦN CON 4: NGĂN KÉO BỘ LỌC TRÊN DI ĐỘNG ================= */
-function CatalogMobileFilterDrawer({ open, onClose, sidebarProps }) {
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Bộ lọc tìm kiếm nông sản"
-      className="fixed inset-0 z-50 lg:hidden flex justify-end bg-slate-900/45 backdrop-blur-[2px]"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-full max-w-sm h-full bg-white shadow-2xl flex flex-col overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#c0c9bb]/35 flex items-center justify-between">
-          <span className="text-[15px] font-extrabold text-[#00450d]">
-            Bộ lọc nông sản
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Đóng bộ lọc"
-            className="p-2 rounded-xl text-[#41493e] hover:bg-[#f2f4f2] cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-3">
-          <ProductFilterSidebar {...sidebarProps} isMobileDrawer />
-        </div>
-
-        <div className="px-5 py-4 border-t border-[#c0c9bb]/35 bg-[#f8faf8]">
-          <Button variant="primary" size="md" className="w-full" onClick={onClose}>
-            Xem kết quả lọc
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ================= THÀNH PHẦN CON 5: LƯỚI SẢN PHẨM & TRẠNG THÁI HIỂN THỊ ================= */
+/* ================= LƯỚI SẢN PHẨM (2 CỘT MOBILE, 4 CỘT DESKTOP) ================= */
 function CatalogProductGrid({
   products,
   loading,
@@ -361,8 +241,8 @@ function CatalogProductGrid({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, index) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {Array.from({ length: 8 }).map((_, index) => (
           <ProductCardSkeleton key={index} />
         ))}
       </div>
@@ -382,8 +262,8 @@ function CatalogProductGrid({
   }
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div className="space-y-5 sm:space-y-6 pb-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
@@ -404,6 +284,7 @@ function CatalogProductGrid({
 /* ================= THÀNH PHẦN CHÍNH: TRANG DANH MỤC NÔNG SẢN ================= */
 export default function ProductCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const listScrollRef = useRef(null);
 
   const [categories, setCategories] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
@@ -414,7 +295,6 @@ export default function ProductCatalogPage() {
   });
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
   // Đọc trạng thái lọc đồng bộ trực tiếp từ URL Query String
@@ -438,7 +318,6 @@ export default function ProductCatalogPage() {
     };
   }, [searchParams]);
 
-  // Lưu nháp từ khóa người dùng đang gõ (null = tự đồng bộ theo URL)
   const [searchDraft, setSearchDraft] = useState(null);
   const searchInput = searchDraft ?? filters.search;
 
@@ -466,7 +345,7 @@ export default function ProductCatalogPage() {
     [searchParams, setSearchParams]
   );
 
-  // Debounce từ khóa tìm kiếm nhẹ 350ms khi người dùng gõ trực tiếp
+  // Debounce từ khóa tìm kiếm 350ms
   useEffect(() => {
     if (searchDraft === null) return undefined;
     const trimmed = searchDraft.trim();
@@ -480,7 +359,7 @@ export default function ProductCatalogPage() {
     return () => clearTimeout(timer);
   }, [searchDraft, filters.search, updateQueryParams]);
 
-  // Tải danh sách danh mục 1 lần
+  // Tải danh sách danh mục
   useEffect(() => {
     let active = true;
     publicApi
@@ -490,16 +369,14 @@ export default function ProductCatalogPage() {
           setCategories(res.data);
         }
       })
-      .catch(() => {
-        // Lỗi tải danh mục đã được interceptor xử lý tập trung
-      });
+      .catch(() => {});
 
     return () => {
       active = false;
     };
   }, []);
 
-  // Tải danh sách sản phẩm một lần; các bộ lọc được xử lý ngay trên client.
+  // Tải danh sách sản phẩm
   useEffect(() => {
     let active = true;
     publicApi
@@ -597,7 +474,13 @@ export default function ProductCatalogPage() {
       list = list.filter((item) => item.is_flash_sale === true);
     }
 
-    if (filters.sort === "price_asc") {
+    if (filters.sort === "best_selling") {
+      list.sort(
+        (a, b) =>
+          Number(b.sold_count || 0) - Number(a.sold_count || 0) ||
+          Number(b.id) - Number(a.id)
+      );
+    } else if (filters.sort === "price_asc") {
       list.sort(
         (a, b) =>
           Number(a.effective_price) - Number(b.effective_price) ||
@@ -687,138 +570,148 @@ export default function ProductCatalogPage() {
         { page: nextPage > 1 ? nextPage : "" },
         { resetPage: false }
       );
+      if (listScrollRef.current) {
+        listScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+      }
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     [updateQueryParams]
   );
 
-  const sidebarProps = {
-    categories,
-    facets,
-    filters,
-    activeFilterCount,
-    onSelectCategory: (catId) => updateQueryParams({ category: catId }),
-    onApplyPrice: (min, max) =>
-      updateQueryParams({ min_price: min, max_price: max }),
-    onToggleCert: handleToggleCertification,
-    onToggleInStock: () => updateQueryParams({ in_stock: !filters.inStock }),
-    onToggleFlashSale: () =>
-      updateQueryParams({ flash_sale: !filters.flashSale }),
-    onResetFilters: handleResetFilters,
-  };
-
   return (
-    <div className="pb-10">
-      <CatalogHeroHeader
-        activeCategoryObj={activeCategoryObj}
-        searchInput={searchInput}
-        onSearchInputChange={setSearchDraft}
-        onSearchSubmit={(e) => {
-          e.preventDefault();
-          const trimmed = searchInput.trim();
-          setSearchDraft(null);
-          updateQueryParams({ search: trimmed });
-        }}
-        onClearSearch={() => {
-          setSearchDraft(null);
-          updateQueryParams({ search: "" });
-        }}
-        totalResults={pagination.total}
-        loading={loading}
-      />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-7">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
-          {/* Cột bộ lọc bên trái trên máy tính (3 cột) */}
-          <div className="hidden lg:block lg:col-span-3">
-            <ProductFilterSidebar {...sidebarProps} />
-          </div>
-
-          {/* Cột danh sách nông sản chính (9 cột) */}
-          <div className="lg:col-span-9 min-w-0">
-            {/* Thanh công cụ: Nút mở bộ lọc di động, tổng số kết quả và hộp chọn sắp xếp */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4">
-              <div className="flex items-center justify-between sm:justify-start gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMobileFilterOpen(true)}
-                  className="lg:hidden inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 rounded-xl bg-white border border-[#c0c9bb]/60 text-[13px] font-bold text-[#00450d] hover:bg-[#f2f4f2] transition-colors cursor-pointer"
+    <div className="bg-[#f6f8f6] min-h-[calc(100vh-5rem)] lg:h-[calc(100vh-5rem)] flex flex-col lg:overflow-hidden">
+      {/* 1. KHỐI TIÊU ĐỀ + TÌM KIẾM + BỘ LỌC CỐ ĐỊNH KHÔNG CUỘN */}
+      <section className="sticky top-20 lg:static shrink-0 bg-white/95 backdrop-blur-md border-b border-[#c0c9bb]/40 z-20 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 py-2.5 sm:py-3 space-y-2">
+          {/* Hàng 1: Tiêu đề + Badge số lượng + Ô tìm kiếm + Sắp xếp */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div className="flex items-center justify-between md:justify-start gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#91f78e]/30 border border-[#006e1c]/20 text-[#00450d] flex items-center justify-center shrink-0">
+                  <Leaf className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <h1
+                  className="text-[17px] sm:text-[22px] font-extrabold text-[#00450d] tracking-tight truncate"
+                  style={{ fontFamily: "var(--font-headline)" }}
                 >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span>Bộ lọc</span>
-                  {activeFilterCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-[#00450d] text-white text-[11px] tabular-nums leading-none">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </button>
-
-                <p className="text-[13.5px] text-[#5a6357] tabular-nums">
-                  {loading ? (
-                    "Đang cập nhật kết quả..."
-                  ) : (
-                    <>
-                      Tìm thấy{" "}
-                      <strong className="text-[#191c1b]">{pagination.total}</strong>{" "}
-                      nông sản phù hợp
-                    </>
-                  )}
-                </p>
+                  {activeCategoryObj ? activeCategoryObj.name : "Danh mục nông sản sạch"}
+                </h1>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <span className="hidden sm:inline text-[12.5px] font-semibold text-[#5a6357] shrink-0">
-                  Sắp xếp:
-                </span>
-                <CatalogSortDropdown
-                  value={filters.sort}
-                  onChange={(sortValue) =>
-                    updateQueryParams({
-                      sort: sortValue === "featured" ? "" : sortValue,
-                    })
-                  }
-                />
-              </div>
+              <Badge variant="success" size="sm" className="tabular-nums shrink-0">
+                {loading ? "..." : `${pagination.total} SP`}
+              </Badge>
             </div>
 
-            {/* Danh sách thẻ bộ lọc đang bật */}
-            <CatalogActiveFilterPills
-              filters={filters}
-              activeCategoryObj={activeCategoryObj}
-              onRemoveSearch={() => {
-                setSearchDraft(null);
-                updateQueryParams({ search: "" });
-              }}
-              onRemoveCategory={() => updateQueryParams({ category: "" })}
-              onRemovePrice={() =>
-                updateQueryParams({ min_price: "", max_price: "" })
-              }
-              onRemoveCert={handleToggleCertification}
-              onRemoveInStock={() => updateQueryParams({ in_stock: false })}
-              onRemoveFlashSale={() => updateQueryParams({ flash_sale: false })}
-              onResetAll={handleResetFilters}
-            />
+            <div className="flex items-center gap-1.5 sm:gap-2 w-full md:w-auto">
+              {/* Ô tìm kiếm gọn */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const trimmed = searchInput.trim();
+                  setSearchDraft(null);
+                  updateQueryParams({ search: trimmed });
+                }}
+                className="flex-1 min-w-0 md:w-72 lg:w-80 flex items-center gap-1 bg-[#f8faf8] p-1 rounded-xl border border-[#c0c9bb]/70 focus-within:border-[#00450d] focus-within:bg-white transition-all"
+              >
+                <div className="relative flex-1 flex items-center min-w-0">
+                  <Search
+                    className="w-3.5 h-3.5 text-[#5a6357] absolute left-2.5 pointer-events-none"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchDraft(e.target.value)}
+                    placeholder="Tìm tên nông sản, chứng nhận..."
+                    aria-label="Nhập từ khóa tìm kiếm nông sản"
+                    className="w-full pl-8 pr-6 py-1 text-[12.5px] text-[#191c1b] placeholder:text-[#5a6357] bg-transparent outline-none"
+                  />
+                  {searchInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchDraft(null);
+                        updateQueryParams({ search: "" });
+                      }}
+                      aria-label="Xóa từ khóa tìm kiếm"
+                      className="absolute right-1 p-0.5 rounded-md text-[#5a6357] hover:text-[#191c1b] hover:bg-[#e6e9e7] transition-colors cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <Button type="submit" variant="primary" size="xs" className="shrink-0">
+                  Tìm
+                </Button>
+              </form>
 
-            {/* Lưới thẻ sản phẩm và phân trang */}
-            <CatalogProductGrid
-              products={products}
-              loading={loading}
-              errorMessage={errorMessage}
-              pagination={pagination}
-              onRetry={handleRetry}
-              onResetFilters={handleResetFilters}
-              onPageChange={handlePageChange}
-            />
+              {/* Hộp chọn sắp xếp */}
+              <CatalogSortDropdown
+                value={filters.sort}
+                onChange={(sortValue) =>
+                  updateQueryParams({
+                    sort: sortValue === "featured" ? "" : sortValue,
+                  })
+                }
+              />
+            </div>
           </div>
+
+          {/* Hàng 2: Thanh bộ lọc ngang 1 dòng cuộn mượt trên mobile */}
+          <ProductFilterSidebar
+            categories={categories}
+            facets={facets}
+            filters={filters}
+            activeFilterCount={activeFilterCount}
+            onSelectCategory={(catId) => updateQueryParams({ category: catId })}
+            onApplyPrice={(min, max) =>
+              updateQueryParams({ min_price: min, max_price: max })
+            }
+            onToggleCert={handleToggleCertification}
+            onToggleInStock={() => updateQueryParams({ in_stock: !filters.inStock })}
+            onToggleFlashSale={() =>
+              updateQueryParams({ flash_sale: !filters.flashSale })
+            }
+            onResetFilters={handleResetFilters}
+          />
+        </div>
+      </section>
+
+      {/* 2. VÙNG DANH SÁCH SẢN PHẨM (2 CỘT MOBILE, 4 CỘT x 4 HÀNG DESKTOP) */}
+      <div
+        ref={listScrollRef}
+        className="flex-1 lg:overflow-y-auto scroll-smooth"
+      >
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <CatalogActiveFilterPills
+            filters={filters}
+            activeCategoryObj={activeCategoryObj}
+            onRemoveSearch={() => {
+              setSearchDraft(null);
+              updateQueryParams({ search: "" });
+            }}
+            onRemoveCategory={() => updateQueryParams({ category: "" })}
+            onRemovePrice={() =>
+              updateQueryParams({ min_price: "", max_price: "" })
+            }
+            onRemoveCert={handleToggleCertification}
+            onRemoveInStock={() => updateQueryParams({ in_stock: false })}
+            onRemoveFlashSale={() => updateQueryParams({ flash_sale: false })}
+            onResetAll={handleResetFilters}
+          />
+
+          <CatalogProductGrid
+            products={products}
+            loading={loading}
+            errorMessage={errorMessage}
+            pagination={pagination}
+            onRetry={handleRetry}
+            onResetFilters={handleResetFilters}
+            onPageChange={handlePageChange}
+          />
         </div>
       </div>
-
-      {/* Ngăn kéo trượt bộ lọc trên màn hình nhỏ */}
-      <CatalogMobileFilterDrawer
-        open={mobileFilterOpen}
-        onClose={() => setMobileFilterOpen(false)}
-        sidebarProps={sidebarProps}
-      />
     </div>
   );
 }

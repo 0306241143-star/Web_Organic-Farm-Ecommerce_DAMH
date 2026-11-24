@@ -1,9 +1,53 @@
-/* Provides authentication session state and actions to the application (RBAC - ). */
+/* Provides authentication session state and actions to the application (RBAC). */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import AuthContext from "./authStateContext";
 import { authApi } from "../services/authApi";
 
 export function AuthProvider({ children }) {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginRedirectTo, setLoginRedirectTo] = useState(null);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [registerRedirectTo, setRegisterRedirectTo] = useState(null);
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+
+  const openLoginModal = useCallback((redirectTo = null) => {
+    setIsRegisterModalOpen(false);
+    setRegisterRedirectTo(null);
+    setIsForgotPasswordModalOpen(false);
+    setLoginRedirectTo(redirectTo);
+    setIsLoginModalOpen(true);
+  }, []);
+
+  const closeLoginModal = useCallback(() => {
+    setIsLoginModalOpen(false);
+    setLoginRedirectTo(null);
+  }, []);
+
+  const openRegisterModal = useCallback((redirectTo = null) => {
+    setIsLoginModalOpen(false);
+    setLoginRedirectTo(null);
+    setIsForgotPasswordModalOpen(false);
+    setRegisterRedirectTo(redirectTo);
+    setIsRegisterModalOpen(true);
+  }, []);
+
+  const closeRegisterModal = useCallback(() => {
+    setIsRegisterModalOpen(false);
+    setRegisterRedirectTo(null);
+  }, []);
+
+  const openForgotPasswordModal = useCallback(() => {
+    setIsLoginModalOpen(false);
+    setLoginRedirectTo(null);
+    setIsRegisterModalOpen(false);
+    setRegisterRedirectTo(null);
+    setIsForgotPasswordModalOpen(true);
+  }, []);
+
+  const closeForgotPasswordModal = useCallback(() => {
+    setIsForgotPasswordModalOpen(false);
+  }, []);
+
   const [user, setUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem("user");
@@ -39,7 +83,6 @@ export function AuthProvider({ children }) {
         }
       })
       .catch((err) => {
-        // Nếu token không hợp lệ (401) hoặc tài khoản bị khóa (403), xóa session
         if (err.status === 401 || err.status === 403) {
           setUser(null);
           localStorage.removeItem("user");
@@ -73,7 +116,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Kiểm tra vai trò của người dùng
   const hasRole = useCallback(
     (roleOrRoles) => {
       if (!user) return false;
@@ -85,22 +127,32 @@ export function AuthProvider({ children }) {
       }
       return userRole === roleOrRoles;
     },
-    [user],
+    [user]
   );
 
-  // Kiểm tra quyền hạn cụ thể
   const hasPermission = useCallback(
     (permission) => {
       if (!user || !Array.isArray(user.permissions)) return false;
       return user.permissions.includes(permission);
     },
-    [user],
+    [user]
   );
 
   const value = useMemo(
     () => ({
       user,
       isLoading,
+      isLoginModalOpen,
+      loginRedirectTo,
+      openLoginModal,
+      closeLoginModal,
+      isRegisterModalOpen,
+      registerRedirectTo,
+      openRegisterModal,
+      closeRegisterModal,
+      isForgotPasswordModalOpen,
+      openForgotPasswordModal,
+      closeForgotPasswordModal,
       login,
       logout,
       setUser,
@@ -111,7 +163,25 @@ export function AuthProvider({ children }) {
       isSales: user?.role === "sales",
       isAdmin: user?.role === "admin",
     }),
-    [user, isLoading, login, logout, hasRole, hasPermission],
+    [
+      user,
+      isLoading,
+      isLoginModalOpen,
+      loginRedirectTo,
+      openLoginModal,
+      closeLoginModal,
+      isRegisterModalOpen,
+      registerRedirectTo,
+      openRegisterModal,
+      closeRegisterModal,
+      isForgotPasswordModalOpen,
+      openForgotPasswordModal,
+      closeForgotPasswordModal,
+      login,
+      logout,
+      hasRole,
+      hasPermission,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

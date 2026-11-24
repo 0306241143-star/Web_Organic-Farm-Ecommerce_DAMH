@@ -2,31 +2,28 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Award,
   BadgeCheck,
-  Calendar,
-  ChevronDown,
-  LayoutDashboard,
-  LogOut,
-  MapPin,
   Menu,
-  Receipt,
   ShoppingBag,
-  User,
   X,
 } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/useCart";
 import { publicApi } from "../../services/publicApi";
+import HeaderUserMenu from "./header/HeaderUserMenu";
+import MobileNavDrawer from "./header/MobileNavDrawer";
 
 export default function StorefrontHeader() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const isInternalStaff = Boolean(
     user && ["admin", "farm_staff", "sales"].includes(user.role)
   );
   const { items } = useCart();
   const location = useLocation();
-  const isProductDetailPage = location.pathname.startsWith("/products/");
+  const isCompactStorefrontPage =
+    location.pathname.startsWith("/products/") ||
+    location.pathname === "/trace" ||
+    location.pathname.startsWith("/trace/");
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -45,26 +42,9 @@ export default function StorefrontHeader() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setIsUserMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const closeMenus = () => {
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
-  };
-
-  const getDashboardRedirect = () => {
-    if (user?.role === "farm_staff") return "/farm/seasons";
-    if (user?.role === "sales") return "/sales/orders";
-    if (user?.role === "admin") return "/admin";
-    return "/";
   };
 
   const isCurrentActive = (path) => {
@@ -89,7 +69,7 @@ export default function StorefrontHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div
           className={`h-20 flex items-center justify-between ${
-            isProductDetailPage ? "gap-2 sm:gap-4" : "gap-4"
+            isCompactStorefrontPage ? "gap-2 sm:gap-4" : "gap-4"
           }`}
         >
           {/* ================= ZONE 1: BRAND LOGO (LEFT) ================= */}
@@ -167,7 +147,7 @@ export default function StorefrontHeader() {
               )}
             </Link>
 
-            {!isInternalStaff && (
+            {(!user || user.role === "customer" || user.role === "admin") && (
               <Link
                 to="/subscriptions"
                 className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${
@@ -185,13 +165,6 @@ export default function StorefrontHeader() {
                 )}
               </Link>
             )}
-
-            <Link
-              to="/brand"
-              className="relative py-1 text-[14px] font-semibold text-[#41493e] hover:text-[#00450d] transition-colors duration-150 whitespace-nowrap"
-            >
-              <span>Về XanhFarm</span>
-            </Link>
 
             <a
               href="#lien-he"
@@ -211,7 +184,7 @@ export default function StorefrontHeader() {
           {/* ================= ZONE 3: ACTIONS & AUTH (RIGHT) ================= */}
           <div
             className={`flex items-center shrink-0 ${
-              isProductDetailPage ? "gap-1 sm:gap-3" : "gap-2 sm:gap-3"
+              isCompactStorefrontPage ? "gap-1 sm:gap-3" : "gap-2 sm:gap-3"
             }`}
           >
             {!isInternalStaff && (
@@ -227,135 +200,13 @@ export default function StorefrontHeader() {
               </Link>
             )}
 
-            <div className={isProductDetailPage ? "hidden sm:block" : ""}>
-              {!user ? (
-                <div className="flex items-center gap-2">
-                  <Link
-                    to="/login"
-                    className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-[#00450d] bg-[#f2f4f2] hover:bg-[#e6eae6] transition-colors whitespace-nowrap"
-                  >
-                    Đăng nhập
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-white bg-[#00450d] hover:bg-[#006e1c] transition-colors shadow-2xs whitespace-nowrap"
-                  >
-                    Đăng ký
-                  </Link>
-                </div>
-              ) : (
-                <div className="relative" ref={userMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl border border-[#c0c9bb]/40 bg-[#f2f4f2]/70 hover:bg-white hover:border-[#00450d]/40 transition-all cursor-pointer focus:outline-none"
-                  aria-expanded={isUserMenuOpen}
-                  aria-label="Menu tài khoản"
-                >
-                  <div className="w-8 h-8 rounded-full bg-[#00450d] text-white flex items-center justify-center font-bold text-[13px] shrink-0 overflow-hidden border border-[#c0c9bb]/40">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      (user.name || user.email || "U").charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="text-left hidden md:block max-w-[120px]">
-                    <p className="text-[12.5px] font-bold text-[#00450d] truncate leading-tight">
-                      {user.name || "Khách hàng"}
-                    </p>
-                    <p className="text-[10px] text-[#5a6357] font-semibold truncate leading-tight">
-                      {user.role === "admin" ? "Quản trị viên" : "Khách hàng"}
-                    </p>
-                  </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-[#5a6357] shrink-0" />
-                </button>
-
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-[#c0c9bb]/40 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="px-4 py-3 border-b border-[#c0c9bb]/20">
-                      <p className="text-[13px] font-bold text-[#191c1b] truncate">
-                        {user.name || "Khách hàng"}
-                      </p>
-                      <p className="text-[11px] text-[#5a6357] truncate font-mono mt-0.5">
-                        {user.email}
-                      </p>
-                    </div>
-
-                    <div className="py-1">
-                      {!isInternalStaff && (
-                        <>
-                          <Link
-                            to="/orders"
-                            onClick={closeMenus}
-                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                          >
-                            <Receipt className="w-4 h-4 text-[#5a6357]" />
-                            <span>Đơn hàng của tôi</span>
-                          </Link>
-                          <Link
-                            to="/subscriptions"
-                            onClick={closeMenus}
-                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                          >
-                            <Calendar className="w-4 h-4 text-[#5a6357]" />
-                            <span>Gói rau định kỳ</span>
-                          </Link>
-                          <Link
-                            to="/rewards?tab=rewards"
-                            onClick={closeMenus}
-                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                          >
-                            <Award className="w-4 h-4 text-[#5a6357]" />
-                            <span>Ví điểm thưởng</span>
-                          </Link>
-                          <Link
-                            to="/rewards?tab=address"
-                            onClick={closeMenus}
-                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                          >
-                            <MapPin className="w-4 h-4 text-[#5a6357]" />
-                            <span>Sổ địa chỉ giao hàng</span>
-                          </Link>
-                          <Link
-                            to="/rewards?tab=profile"
-                            onClick={closeMenus}
-                            className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                          >
-                            <User className="w-4 h-4 text-[#5a6357]" />
-                            <span>Hồ sơ & Bảo mật</span>
-                          </Link>
-                        </>
-                      )}
-                      {isInternalStaff && (
-                        <Link
-                          to={getDashboardRedirect()}
-                          onClick={closeMenus}
-                          className="flex items-center gap-2.5 px-4 py-2 text-[13px] font-bold text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                        >
-                          <LayoutDashboard className="w-4 h-4 text-[#006e1c]" />
-                          <span>Vào trang làm việc nội bộ</span>
-                        </Link>
-                      )}
-                    </div>
-
-                    <div className="pt-1 mt-1 border-t border-[#c0c9bb]/20">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          closeMenus();
-                          logout();
-                        }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] font-semibold text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
-                      >
-                        <LogOut className="w-4 h-4 text-red-600" />
-                        <span>Đăng xuất</span>
-                      </button>
-                    </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <HeaderUserMenu
+              isCompactStorefrontPage={isCompactStorefrontPage}
+              isUserMenuOpen={isUserMenuOpen}
+              setIsUserMenuOpen={setIsUserMenuOpen}
+              userMenuRef={userMenuRef}
+              closeMenus={closeMenus}
+            />
 
             <button
               type="button"
@@ -374,192 +225,11 @@ export default function StorefrontHeader() {
         </div>
       </div>
 
-      {/* ================= MOBILE DRAWER MENU ================= */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-[#c0c9bb]/30 bg-white px-4 pt-3 pb-6 shadow-lg animate-in fade-in duration-150">
-          <div className="space-y-1">
-            <Link
-              to="/"
-              onClick={closeMenus}
-              className={`block px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${
-                isCurrentActive("/")
-                  ? "bg-[#00450d] text-white"
-                  : "text-[#191c1b] hover:bg-[#f2f4f2]"
-              }`}
-            >
-              Trang Chủ
-            </Link>
-
-            <Link
-              to="/products"
-              onClick={closeMenus}
-              onMouseEnter={prefetchCatalog}
-              className={`block px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${
-                isCurrentActive("/products")
-                  ? "bg-[#00450d] text-white"
-                  : "text-[#191c1b] hover:bg-[#f2f4f2]"
-              }`}
-            >
-              Nông Sản
-            </Link>
-
-            <Link
-              to="/brand"
-              onClick={closeMenus}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${
-                isCurrentActive("/brand")
-                  ? "bg-[#00450d] text-white"
-                  : "text-[#191c1b] hover:bg-[#f2f4f2]"
-              }`}
-            >
-              <BadgeCheck className="w-4 h-4 text-[#006e1c]" />
-              <span>Câu Chuyện & Chứng Nhận</span>
-            </Link>
-
-            {!isInternalStaff && (
-              <Link
-                to="/subscriptions"
-                onClick={closeMenus}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition-colors ${
-                  isCurrentActive("/subscriptions")
-                    ? "bg-[#00450d] text-white"
-                    : "text-[#191c1b] hover:bg-[#f2f4f2]"
-                }`}
-              >
-                <span>Gói Định Kỳ</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-[#86efac]/35 text-[#00450d] border border-[#86efac]/60">
-                  -20%
-                </span>
-              </Link>
-            )}
-
-            <Link
-              to="/brand"
-              onClick={closeMenus}
-              className="block px-3.5 py-2.5 rounded-xl text-[14px] font-semibold text-[#191c1b] hover:bg-[#f2f4f2] transition-colors"
-            >
-              Về XanhFarm
-            </Link>
-
-            <a
-              href="#lien-he"
-              onClick={(e) => {
-                e.preventDefault();
-                closeMenus();
-                const footerEl = document.querySelector("footer");
-                if (footerEl) {
-                  footerEl.scrollIntoView({ behavior: "smooth" });
-                }
-              }}
-              className="block px-3.5 py-2.5 rounded-xl text-[14px] font-semibold text-[#191c1b] hover:bg-[#f2f4f2] transition-colors"
-            >
-              Liên Hệ
-            </a>
-          </div>
-
-          {/* Mobile Auth Actions */}
-          <div className="pt-4 mt-3 border-t border-[#c0c9bb]/20">
-            {!user ? (
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  to="/login"
-                  onClick={closeMenus}
-                  className="w-full text-center py-2.5 text-[13px] font-semibold text-[#00450d] bg-[#f2f4f2] rounded-xl"
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={closeMenus}
-                  className="w-full text-center py-2.5 text-[13px] font-semibold text-white bg-[#00450d] rounded-xl"
-                >
-                  Đăng ký
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 px-3 py-2 bg-[#f2f4f2] rounded-xl">
-                  <div className="w-8 h-8 rounded-full bg-[#00450d] text-white flex items-center justify-center font-bold text-[13px] shrink-0 overflow-hidden border border-[#c0c9bb]/40">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      (user.name || user.email || "U").charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="flex-1 truncate">
-                    <p className="text-[13px] font-bold text-[#191c1b] truncate">{user.name}</p>
-                    <p className="text-[11px] text-[#5a6357] truncate">{user.email}</p>
-                  </div>
-                </div>
-                {!isInternalStaff ? (
-                  <div className="space-y-1">
-                    <Link
-                      to="/orders"
-                      onClick={closeMenus}
-                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
-                    >
-                      <Receipt className="w-4 h-4 text-[#5a6357]" />
-                      Đơn hàng của tôi
-                    </Link>
-                    <Link
-                      to="/subscriptions"
-                      onClick={closeMenus}
-                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
-                    >
-                      <Calendar className="w-4 h-4 text-[#5a6357]" />
-                      Gói rau định kỳ
-                    </Link>
-                    <Link
-                      to="/rewards?tab=rewards"
-                      onClick={closeMenus}
-                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
-                    >
-                      <Award className="w-4 h-4 text-[#5a6357]" />
-                      Ví điểm thưởng
-                    </Link>
-                    <Link
-                      to="/rewards?tab=address"
-                      onClick={closeMenus}
-                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
-                    >
-                      <MapPin className="w-4 h-4 text-[#5a6357]" />
-                      Sổ địa chỉ giao hàng
-                    </Link>
-                    <Link
-                      to="/rewards?tab=profile"
-                      onClick={closeMenus}
-                      className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-medium text-[#41493e] hover:bg-[#f2f4f2] rounded-lg"
-                    >
-                      <User className="w-4 h-4 text-[#5a6357]" />
-                      Hồ sơ & Bảo mật
-                    </Link>
-                  </div>
-                ) : (
-                  <Link
-                    to={getDashboardRedirect()}
-                    onClick={closeMenus}
-                    className="flex items-center gap-2 px-3 py-2 text-[13.5px] font-bold text-[#00450d] hover:bg-[#f2f4f2] rounded-lg"
-                  >
-                    <LayoutDashboard className="w-4 h-4 text-[#006e1c]" />
-                    Vào trang làm việc nội bộ
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeMenus();
-                    logout();
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-[13.5px] font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Đăng xuất
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <MobileNavDrawer
+        isOpen={isMobileMenuOpen}
+        closeMenus={closeMenus}
+        prefetchCatalog={prefetchCatalog}
+      />
     </header>
   );
 }

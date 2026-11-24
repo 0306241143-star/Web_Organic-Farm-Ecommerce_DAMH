@@ -33,16 +33,24 @@ class ShippingDistanceService
             throw new RuntimeException('Đơn giá giao hàng theo km chưa được cấu hình hợp lệ.');
         }
 
-        $originName = $farm?->Ten_nong_trai ?? 'Nông trại trung tâm XanhFarm';
+        $originName = (string) config(
+            'services.shipping.origin_name',
+            $farm?->Ten_nong_trai ?? 'Điểm xuất phát giao hàng'
+        );
+        $originLatitude = config('services.shipping.origin_latitude');
+        $originLongitude = config('services.shipping.origin_longitude');
+        if (! is_numeric($originLatitude) || ! is_numeric($originLongitude)) {
+            $originLatitude = $farm?->Vi_do;
+            $originLongitude = $farm?->Kinh_do;
+        }
         $apiKey = (string) config('services.goong.api_key', '');
         $endpoint = (string) config('services.goong.distance_matrix_url', '');
 
         if (
             $apiKey !== ''
             && $endpoint !== ''
-            && $farm
-            && is_numeric($farm->Vi_do)
-            && is_numeric($farm->Kinh_do)
+            && is_numeric($originLatitude)
+            && is_numeric($originLongitude)
             && is_numeric($address->Vi_do)
             && is_numeric($address->Kinh_do)
         ) {
@@ -50,7 +58,7 @@ class ShippingDistanceService
                 $response = Http::acceptJson()
                     ->timeout(10)
                     ->get($endpoint, [
-                        'origins' => $farm->Vi_do.','.$farm->Kinh_do,
+                        'origins' => $originLatitude.','.$originLongitude,
                         'destinations' => $address->Vi_do.','.$address->Kinh_do,
                         'vehicle' => 'car',
                         'api_key' => $apiKey,
@@ -88,7 +96,11 @@ class ShippingDistanceService
             }
         }
 
-        $distanceKm = $this->estimateFallbackDistanceKm($farm, $address);
+        $distanceKm = $this->estimateFallbackDistanceKm(
+            is_numeric($originLatitude) ? (float) $originLatitude : null,
+            is_numeric($originLongitude) ? (float) $originLongitude : null,
+            $address
+        );
 
         return [
             'distance_km' => $distanceKm,
@@ -98,20 +110,23 @@ class ShippingDistanceService
         ];
     }
 
-    private function estimateFallbackDistanceKm(?NongTrai $farm, DiaChiGiaoHang $address): float
+    private function estimateFallbackDistanceKm(
+        ?float $originLatitude,
+        ?float $originLongitude,
+        DiaChiGiaoHang $address
+    ): float
     {
         if (
-            ! $farm
-            || ! is_numeric($farm->Vi_do)
-            || ! is_numeric($farm->Kinh_do)
+            $originLatitude === null
+            || $originLongitude === null
             || ! is_numeric($address->Vi_do)
             || ! is_numeric($address->Kinh_do)
         ) {
             return 12.5;
         }
 
-        $latitude1 = deg2rad((float) $farm->Vi_do);
-        $longitude1 = deg2rad((float) $farm->Kinh_do);
+        $latitude1 = deg2rad($originLatitude);
+        $longitude1 = deg2rad($originLongitude);
         $latitude2 = deg2rad((float) $address->Vi_do);
         $longitude2 = deg2rad((float) $address->Kinh_do);
         $latitudeDelta = $latitude2 - $latitude1;

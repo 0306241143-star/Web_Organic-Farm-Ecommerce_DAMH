@@ -1,0 +1,155 @@
+import { Calendar, Plus, Search, Trash2, X } from "lucide-react";
+import PlotListSection from "./PlotListSection";
+
+export default function SeasonListSection({
+  loading,
+  filteredSeasons,
+  searchTerm,
+  setSearchTerm,
+  mobileTab,
+  selectedPlot,
+  handleToggleSeasonStatus,
+  setActiveSeasonForPlot,
+  setIsAddPlotOpen,
+  handleDeleteSeason,
+  handleSelectPlot,
+  setSelectedPlot,
+  fetchLogs,
+  setIsAddLogOpen,
+  handleOpenEditPlot,
+  handleDeletePlot,
+}) {
+  return (
+    <div
+      className={`lg:col-span-7 min-w-0 flex flex-col min-h-0 lg:h-[calc(100vh-235px)] bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden ${mobileTab === "timeline" ? "hidden lg:flex" : "flex"
+        }`}
+    >
+      {/* Thanh tìm kiếm đứng yên ở đỉnh cột trái */}
+      <div className="p-3 sm:p-3.5 border-b border-slate-100 bg-slate-50/70 shrink-0">
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Tìm mùa vụ, tên lô đất hoặc nông sản..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              aria-label="Xóa từ khóa tìm kiếm"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Vùng danh sách mùa vụ: tự động chỉ hiện thanh cuộn khi nội dung vượt quá khung */}
+      <div className="flex-1 overflow-y-auto min-h-0 p-3.5 sm:p-4 space-y-3.5 scrollbar-thin">
+        {loading ? (
+          <div className="space-y-3.5">
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="bg-slate-50/60 p-5 rounded-2xl border border-slate-100 animate-pulse space-y-3"
+              >
+                <div className="h-4 bg-slate-200 rounded w-1/3" />
+                <div className="h-3.5 bg-slate-100 rounded w-1/2" />
+                <div className="h-14 bg-slate-100 rounded-xl" />
+              </div>
+            ))}
+          </div>
+        ) : filteredSeasons.length === 0 ? (
+          <div className="h-full min-h-[260px] flex flex-col items-center justify-center text-center p-8">
+            <Calendar className="w-11 h-11 text-slate-300 mb-2" />
+            <h3 className="text-sm font-bold text-slate-700">Chưa tìm thấy mùa vụ nào</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Bấm nút &quot;Thêm Mùa Vụ&quot; ở góc trên để khởi tạo chu kỳ canh tác mới.
+            </p>
+          </div>
+        ) : (
+          filteredSeasons.map((season) => (
+            <div
+              key={season.id}
+              className="rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all hover:border-emerald-300"
+            >
+              {/* Header của từng thẻ Mùa vụ */}
+              <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                    <span
+                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${season.status === "Dang_dien_ra"
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                          : "bg-slate-200 text-slate-700 border-slate-300"
+                        }`}
+                    >
+                      {season.status === "Dang_dien_ra" ? "Đang diễn ra" : "Đã kết thúc"}
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {season.start_date} {season.end_date ? `→ ${season.end_date}` : ""}
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
+                    {season.name}
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSeasonStatus(season)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${season.status === "Dang_dien_ra"
+                        ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
+                        : "bg-emerald-100 hover:bg-emerald-200 text-emerald-800"
+                      }`}
+                  >
+                    {season.status === "Dang_dien_ra" ? "Kết thúc vụ" : "Mở lại vụ"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSeasonForPlot(season);
+                      setIsAddPlotOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs inline-flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm Lô</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSeason(season)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    title="Xóa mùa vụ này"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Danh sách các lô dạng List bên trong mùa vụ */}
+              <PlotListSection
+                season={season}
+                selectedPlot={selectedPlot}
+                handleSelectPlot={handleSelectPlot}
+                setActiveSeasonForPlot={setActiveSeasonForPlot}
+                setIsAddPlotOpen={setIsAddPlotOpen}
+                setSelectedPlot={setSelectedPlot}
+                fetchLogs={fetchLogs}
+                setIsAddLogOpen={setIsAddLogOpen}
+                handleOpenEditPlot={handleOpenEditPlot}
+                handleDeletePlot={handleDeletePlot}
+              />
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

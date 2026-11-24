@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\FarmStaff\UploadCertificateRequest;
 use App\Models\ChungNhan;
 use App\Models\LoHang;
+use App\Services\R2StorageService;
 use App\Traits\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -17,11 +18,15 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Throwable;
 
 class CertificateController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private R2StorageService $storage)
+    {
+    }
 
     /**
      * Danh sách toàn bộ chứng nhận & kết quả kiểm định kèm thống kê hiệu lực.
@@ -208,7 +213,7 @@ class CertificateController extends Controller
         if ($request->hasFile('file') && $request->file('file')->isValid()) {
             $oldPath = $cert->Duong_dan_tep;
             $filePath = $this->uploadCertificateFile($request->file('file'));
-            $this->deleteLocalCertificateFile($oldPath);
+            $this->deleteCertificateFile($oldPath);
         }
 
         $cert->update([
@@ -253,7 +258,7 @@ class CertificateController extends Controller
 
         $oldPath = $cert->Duong_dan_tep;
         $cert->delete();
-        $this->deleteLocalCertificateFile($oldPath);
+        $this->deleteCertificateFile($oldPath);
 
         return $this->successResponse(message: 'Đã xóa hồ sơ chứng nhận thành công.');
     }
@@ -263,41 +268,41 @@ class CertificateController extends Controller
      */
     private function uploadCertificateFile(UploadedFile $file): string
     {
-        $extension = strtolower($file->getClientOriginalExtension() ?: 'pdf');
-        $filename = 'cert_' . now()->format('Ymd_His') . '_' . Str::random(8) . '.' . $extension;
-
         $r2Configured = ! empty(env('R2_ACCESS_KEY_ID')) && ! empty(env('R2_BUCKET'));
         if ($r2Configured) {
             try {
-                $path = Storage::disk('r2')->putFileAs('certificates', $file, $filename);
-                if ($path) {
-                    $baseUrl = rtrim(env('R2_URL', 'https://pub-48bd396b58a44984919181b1a0062072.r2.dev'), '/');
-
-                    return "{$baseUrl}/{$path}";
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Lỗi tải tệp chứng nhận lên Cloudflare R2, chuyển sang lưu trữ cục bộ: ' . $e->getMessage());
+                return $this->storage->upload($file, R2StorageService::FOLDER_CERTIFICATES)['url'];
+            } catch (Throwable $exception) {
+                Log::warning('Certificate upload to R2 failed; falling back to local storage.', [
+                    'exception' => $exception::class,
+                ]);
             }
         }
 
-        $localPath = Storage::disk('public')->putFileAs('uploads/certificates', $file, $filename);
+        $localPath = Storage::disk('public')->putFile('uploads/certificates', $file);
 
         return '/storage/' . $localPath;
     }
 
     /**
-     * Dọn tệp cục bộ cũ khi thay thế hoặc xóa chứng nhận (chỉ xóa trong uploads/certificates).
+     * Xóa tệp cũ trên đúng nơi lưu trữ (R2 hoặc disk public cục bộ).
      */
-    private function deleteLocalCertificateFile(?string $path): void
+    private function deleteCertificateFile(?string $path): void
     {
-        if (! $path || ! str_starts_with($path, '/storage/uploads/certificates/')) {
+        if (! $path) {
             return;
         }
 
-        $relative = ltrim(substr($path, strlen('/storage/')), '/');
-        if (Storage::disk('public')->exists($relative)) {
-            Storage::disk('public')->delete($relative);
+        if (str_starts_with($path, '/storage/uploads/certificates/')) {
+            $relative = ltrim(substr($path, strlen('/storage/')), '/');
+            if (Storage::disk('public')->exists($relative)) {
+                Storage::disk('public')->delete($relative);
+            }
+
+            return;
         }
+
+        $this->storage->delete($path);
     }
 
     /**

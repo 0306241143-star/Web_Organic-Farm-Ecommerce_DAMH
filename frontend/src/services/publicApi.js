@@ -62,5 +62,5 @@ export const publicApi = {
     ),
   getBrandStory: () =>
     cachedGet("brand-story", () => axiosClient.get("/brand-story")),
-  getQrTrace: (code) => axiosClient.get(`/trace/${code}`),
+  getQrTrace: (code) => axiosClient.get(`/trace/${encodeURIComponent(code)}`),
 };

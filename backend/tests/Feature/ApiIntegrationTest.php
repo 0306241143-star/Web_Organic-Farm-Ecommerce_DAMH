@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ApiIntegrationTest extends TestCase
@@ -483,6 +484,18 @@ class ApiIntegrationTest extends TestCase
     public function test_customer_reward_wallet_and_address_management_flow(): void
     {
         \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
+        Http::fake([
+            '*' => Http::response([
+                'results' => [[
+                    'geometry' => [
+                        'location' => [
+                            'lat' => 10.8231,
+                            'lng' => 106.6297,
+                        ],
+                    ],
+                ]],
+            ]),
+        ]);
 
         $customer = \App\Models\NguoiDung::where('Email', 'ngocanh.khach@gmail.com')->first();
         $this->assertNotNull($customer, 'Tài khoản khách hàng thử nghiệm không tồn tại trong CSDL.');
@@ -536,7 +549,6 @@ class ApiIntegrationTest extends TestCase
                         'phone',
                         'detail_address',
                         'ward',
-                        'district',
                         'province',
                         'latitude',
                         'longitude',
@@ -547,12 +559,22 @@ class ApiIntegrationTest extends TestCase
             ]);
 
         // 3. Thêm địa chỉ nhận hàng mới
+        $this->postJson('/api/customer/addresses', [
+            'recipient_name' => 'Đặng Ngọc Anh',
+            'phone'          => '0933112233',
+            'detail_address' => '78 Đường 3/2',
+            'ward'           => 'Phường Sài Gòn',
+            'district'       => 'Quận 10',
+            'province'       => 'TP. Hồ Chí Minh',
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['district']);
+
         $createAddrRes = $this->postJson('/api/customer/addresses', [
             'recipient_name' => 'Đặng Ngọc Anh (Nhà riêng)',
             'phone'          => '0933112233',
             'detail_address' => '78 Đường 3/2',
-            'ward'           => 'Phường 12',
-            'district'       => 'Quận 10',
+            'ward'           => 'Phường Sài Gòn',
             'province'       => 'TP. Hồ Chí Minh',
             'is_default'     => true,
         ], $headers)
@@ -568,6 +590,7 @@ class ApiIntegrationTest extends TestCase
         $this->assertDatabaseHas('dia_chi_giao_hang', [
             'Ma_dia_chi'  => $newAddrId,
             'La_mac_dinh' => 1,
+            'Quan_huyen'  => '',
         ]);
 
         // 4. Cập nhật địa chỉ nhận hàng
@@ -575,8 +598,7 @@ class ApiIntegrationTest extends TestCase
             'recipient_name' => 'Đặng Ngọc Anh (Căn hộ)',
             'phone'          => '0933112233',
             'detail_address' => '78A Đường 3/2',
-            'ward'           => 'Phường 12',
-            'district'       => 'Quận 10',
+            'ward'           => 'Phường Sài Gòn',
             'province'       => 'TP. Hồ Chí Minh',
             'is_default'     => true,
         ], $headers)
