@@ -87,7 +87,7 @@ class InventoryFefoController extends Controller
     private function baseQuery()
     {
         return LoHang::query()->with([
-            'loCanhTac.sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien',
+            'loCanhTac.sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Gia_ban,Hinh_anh_dai_dien',
         ]);
     }
 
@@ -103,6 +103,7 @@ class InventoryFefoController extends Controller
             'product_name' => $product?->Ten_san_pham ?? 'Sản phẩm đã ngừng kinh doanh',
             'product_image' => $product?->Hinh_anh_dai_dien,
             'unit' => $product?->Don_vi_tinh,
+            'regular_price' => (float) ($product?->Gia_ban ?? 0),
             'plot_name' => $batch->loCanhTac?->Ten_lo,
             'harvest_date' => $batch->Ngay_thu_hoach,
             'expiry_date' => $batch->Han_su_dung,

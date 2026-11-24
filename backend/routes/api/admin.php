@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\SystemSettingController;
 use App\Http\Controllers\Api\Admin\UserRoleController;
 use App\Http\Controllers\Api\Admin\SubscriptionPackageController;
+use App\Http\Controllers\Api\Admin\FarmProfileController;
 use Illuminate\Support\Facades\Route;
 
 // Nhóm API Quản trị viên (bảo vệ bằng auth:sanctum + role:admin)
@@ -40,4 +41,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::put('/subscriptions/{id}', [SubscriptionPackageController::class, 'update']);
     Route::patch('/subscriptions/{id}/status', [SubscriptionPackageController::class, 'updateStatus']);
     Route::delete('/subscriptions/{id}', [SubscriptionPackageController::class, 'destroy']);
+
+    // Cấu hình thông tin & hình ảnh nông trại (Admin)
+    Route::get('/settings/farm', [FarmProfileController::class, 'show']);
+    Route::put('/settings/farm', [FarmProfileController::class, 'update']);
+    Route::delete('/settings/farm/images/{imageId}', [FarmProfileController::class, 'destroyImage']);
+    Route::post('/settings/farm/geocode', [FarmProfileController::class, 'geocodeAddress']);
 });

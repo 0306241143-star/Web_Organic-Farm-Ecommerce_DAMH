@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, AlertTriangle } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardCheck, Loader2, X } from "lucide-react";
 
 const PRESET_REASONS = [
   "Hỏng, dập nát trong quá trình lưu kho",
@@ -46,63 +46,95 @@ export default function RecordWastageModal({ batch, onClose, onSubmit, submittin
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-2xs">
-      <div className="w-full max-w-lg rounded-2xl bg-white border border-slate-200 p-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900">
-              Phiếu Kiểm Kho & Ghi Nhận Hao Hụt
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {productName} • Mã lô: <span className="font-mono font-bold">{batch.batch_code}</span>
-            </p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !submitting) onClose();
+      }}
+    >
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[calc(100dvh-2rem)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* Header đồng bộ xanh #064e2e giống các form khác */}
+        <div className="px-5 py-3.5 sm:px-6 sm:py-4 bg-[#064e2e] text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 bg-[#043821] rounded-xl shrink-0">
+              <ClipboardCheck className="w-5 h-5 text-[#86efac]" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-extrabold truncate text-white">
+                Phiếu Kiểm Kho & Ghi Nhận Hao Hụt
+              </h3>
+              <p className="text-[11px] sm:text-xs text-emerald-200/90 truncate">
+                {productName} · Mã lô: <span className="font-mono font-bold">{batch.batch_code}</span>
+              </p>
+            </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100">
-            <X className="w-4 h-4 text-slate-500" />
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="text-emerald-200 hover:text-white p-1.5 rounded-lg hover:bg-emerald-700/50 transition-colors shrink-0 ml-2 cursor-pointer"
+            aria-label="Đóng hộp thoại"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleFormSubmit} className="mt-4 space-y-4 text-xs">
+        {/* Nội dung Form cuộn độc lập */}
+        <form
+          id="record-wastage-form"
+          onSubmit={handleFormSubmit}
+          className="flex-1 overflow-y-auto min-h-0 p-5 sm:p-6 space-y-4 text-left"
+        >
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
+          {/* Loại thao tác kho */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1.5">Loại thao tác kho *</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Loại Thao Tác Kho <span className="text-red-500">*</span>
+            </label>
             <div className="grid grid-cols-3 gap-2">
               {[
                 { value: "Xuat_huy", label: "Xuất hủy hư hỏng" },
                 { value: "Hao_hut", label: "Hao hụt tự nhiên" },
                 { value: "Dieu_chinh", label: "Điều chỉnh kiểm kê" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setMovementType(opt.value)}
-                  className={`p-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer ${
-                    movementType === opt.value
-                      ? "border-[#00450d] bg-[#00450d]/5 text-[#00450d]"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              ].map((opt) => {
+                const active = movementType === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setMovementType(opt.value)}
+                    className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                      active
+                        ? "bg-emerald-50 border-emerald-600 text-emerald-900 shadow-2xs ring-1 ring-emerald-600"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
+          {/* Số lượng trừ kho */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="font-bold text-slate-700">
-                Số lượng trừ kho ({unit}) *
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Số Lượng Trừ Kho ({unit}) <span className="text-red-500">*</span>
               </label>
               <button
                 type="button"
                 onClick={() => setQuantity(String(maxQty))}
-                className="text-[11px] font-bold text-rose-700 hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
               >
                 Xuất hủy toàn bộ ({maxQty} {unit})
               </button>
@@ -115,27 +147,35 @@ export default function RecordWastageModal({ batch, onClose, onSubmit, submittin
               required
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              placeholder={`Tối đa ${maxQty} ${unit}`}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold focus:outline-none focus:border-[#00450d]"
+              placeholder={`Nhập số lượng (tối đa ${maxQty} ${unit})`}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all tabular-nums"
             />
-            <div className="mt-2 flex justify-between rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
-              <span>Tồn hiện tại: <strong>{maxQty} {unit}</strong></span>
-              <span>Tồn sau khi trừ: <strong className="text-[#00450d]">{remainingAfter} {unit}</strong></span>
+            <div className="mt-2 flex items-center justify-between rounded-xl bg-emerald-50/70 border border-emerald-200/70 px-3.5 py-2 text-xs text-slate-700 tabular-nums">
+              <span>
+                Tồn hiện tại: <strong className="text-slate-900">{maxQty} {unit}</strong>
+              </span>
+              <span>
+                Tồn sau khi trừ:{" "}
+                <strong className="text-emerald-800">{remainingAfter} {unit}</strong>
+              </span>
             </div>
           </div>
 
+          {/* Lý do xuất hủy / chênh lệch */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1.5">Lý do xuất hủy / chênh lệch *</label>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Lý Do Xuất Hủy / Chênh Lệch <span className="text-red-500">*</span>
+            </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {PRESET_REASONS.map((preset) => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => setReason(preset)}
-                  className={`px-2.5 py-1 rounded-lg border text-[11px] cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors cursor-pointer ${
                     reason === preset
-                      ? "border-[#00450d] bg-[#00450d] text-white font-semibold"
-                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800"
                   }`}
                 >
                   {preset}
@@ -148,27 +188,35 @@ export default function RecordWastageModal({ batch, onClose, onSubmit, submittin
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ghi chi tiết tình trạng lô hàng hoặc biên bản kiểm kho..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:border-[#00450d]"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all leading-relaxed"
             />
           </div>
-
-          <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-5 py-2.5 rounded-xl bg-rose-700 text-white font-bold hover:bg-rose-800 disabled:opacity-60 cursor-pointer"
-            >
-              {submitting ? "Đang cập nhật kho..." : "Xác nhận trừ kho"}
-            </button>
-          </div>
         </form>
+
+        {/* Footer cố định đồng bộ các form khác */}
+        <div className="px-5 py-3 sm:px-6 sm:py-3.5 bg-slate-50/95 border-t border-slate-100 flex items-center justify-end gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/70 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+          >
+            Hủy bỏ
+          </button>
+          <button
+            type="submit"
+            form="record-wastage-form"
+            disabled={submitting}
+            className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+          >
+            {submitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
+            <span>{submitting ? "Đang cập nhật kho..." : "Xác Nhận Trừ Kho"}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

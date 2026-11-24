@@ -65,21 +65,29 @@ class BatchController extends Controller
         if ($request->filled('plot_id')) {
             $query->where('Ma_lo_canh_tac', $request->query('plot_id'));
         }
-
+        // Trong hàm index(Request $request): thay đoạn tính $stats bằng:
         $batches = $query->get()->map(function ($batch) {
             return $this->formatBatchResource($batch);
         });
 
-        // Thống kê nhanh phục vụ KPI Cards
-        $now = Carbon::today();
-        $allBatches = LoHang::all();
+        $allFormatted = LoHang::with([
+            'loCanhTac.sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Hinh_anh_dai_dien',
+            'loCanhTac.muaVu:Ma_mua_vu,Ten_mua_vu',
+            'nhanVienPhuTrach:Ma_nguoi_dung,Ho_ten',
+            'maQrTruyXuat',
+            'bienDongKhos',
+            'chungNhans',
+        ])->get()->map(fn($b) => $this->formatBatchResource($b));
+
         $stats = [
-            'total_batches'          => $allBatches->count(),
-            'active_batches'         => $allBatches->where('Trang_thai', 'Con_hang')->count(),
-            'expiring_soon_batches'  => $allBatches->where('Trang_thai', 'Sap_het_han')->count(),
-            'depleted_batches'       => $allBatches->where('Trang_thai', 'Het_hang')->count(),
-            'total_initial_qty'      => (float) $allBatches->sum('So_luong_thu_hoach'),
-            'total_available_qty'    => (float) $allBatches->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])->sum('So_luong_con_lai'),
+            'total_batches'          => $allFormatted->count(),
+            'active_batches'         => $allFormatted->where('status', 'Con_hang')->count(),
+            'expiring_soon_batches'  => $allFormatted->where('status', 'Sap_het_han')->count(),
+            'depleted_batches'       => $allFormatted->where('status', 'Het_hang')->count(),
+            'total_initial_qty'      => (float) $allFormatted->sum('harvest_quantity'),
+            'total_available_qty'    => (float) $allFormatted
+                ->whereIn('status', ['Con_hang', 'Sap_het_han'])
+                ->sum('remaining_quantity'),
         ];
 
         return $this->successResponse(
@@ -288,7 +296,7 @@ class BatchController extends Controller
         );
     }
 
-/**
+    /**
      * Ghi nhận hao hụt / xuất hủy lô hàng nông sản (CV04.21 / UC18).
      */
     public function recordWastage(Request $request, int $id): JsonResponse
@@ -407,15 +415,34 @@ class BatchController extends Controller
     private function formatBatchResource(LoHang $batch): array
     {
         $today = Carbon::today();
-        $expiry = Carbon::parse($batch->Han_su_dung);
+        $expiry = Carbon::parse($batch->Han_su_dung)->startOfDay();
         $daysUntilExpiry = (int) $today->diffInDays($expiry, false);
+        $remainingQty = (float) $batch->So_luong_con_lai;
 
-        $statusLabel = match ($batch->Trang_thai) {
-            'Con_hang'     => 'Còn hàng',
-            'Sap_het_han'  => 'Sắp hết hạn',
-            'Het_hang'     => 'Hết hàng',
-            'Da_huy'       => 'Đã hủy',
-            default        => $batch->Trang_thai,
+        $isExpired = $remainingQty > 0
+            && $daysUntilExpiry < 0
+            && ! in_array($batch->Trang_thai, ['Het_hang', 'Da_huy'], true);
+
+        $isExpiringSoon = $remainingQty > 0
+            && $daysUntilExpiry >= 0
+            && $daysUntilExpiry <= 2
+            && in_array($batch->Trang_thai, ['Con_hang', 'Sap_het_han'], true);
+
+        $effectiveStatus = match (true) {
+            $batch->Trang_thai === 'Da_huy' => 'Da_huy',
+            $remainingQty <= 0 || $batch->Trang_thai === 'Het_hang' => 'Het_hang',
+            $isExpired => 'Qua_han',
+            $isExpiringSoon => 'Sap_het_han',
+            default => 'Con_hang',
+        };
+
+        $statusLabel = match ($effectiveStatus) {
+            'Con_hang'    => 'Còn hàng',
+            'Sap_het_han' => 'Sắp hết hạn',
+            'Qua_han'     => 'Quá hạn',
+            'Het_hang'    => 'Hết hàng',
+            'Da_huy'      => 'Đã hủy',
+            default       => $batch->Trang_thai,
         };
 
         $qr = $batch->maQrTruyXuat ? [
@@ -442,10 +469,11 @@ class BatchController extends Controller
             'harvest_date'         => Carbon::parse($batch->Ngay_thu_hoach)->format('Y-m-d'),
             'expiry_date'          => Carbon::parse($batch->Han_su_dung)->format('Y-m-d'),
             'days_until_expiry'    => $daysUntilExpiry,
-            'is_expiring_soon'     => $batch->Trang_thai === 'Sap_het_han' || ($daysUntilExpiry <= 2 && $daysUntilExpiry >= 0),
+            'is_expiring_soon'     => $isExpiringSoon,
+            'is_expired'           => $isExpired,
             'harvest_quantity'     => (float) $batch->So_luong_thu_hoach,
-            'remaining_quantity'   => (float) $batch->So_luong_con_lai,
-            'status'               => $batch->Trang_thai,
+            'remaining_quantity'   => $remainingQty,
+            'status'               => $effectiveStatus,
             'status_label'         => $statusLabel,
             'qr'                   => $qr,
             'certificates_count'   => $batch->relationLoaded('chungNhans') ? $batch->chungNhans->count() : $batch->chungNhans()->count(),
@@ -502,5 +530,4 @@ class BatchController extends Controller
     /**
      * Ghi nhận xuất hủy hoặc điều chỉnh hao hụt sau kiểm kho cho một lô hàng.
      */
-
 }

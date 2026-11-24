@@ -73,7 +73,7 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
             },
             {
               to: "/farm/certificates",
-              label: "Chứng nhận VietGAP",
+              label: "Chứng nhận",
               icon: Award,
             },
             {

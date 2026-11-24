@@ -87,7 +87,13 @@ export default function HeaderUserMenu({
                 {user.name || "Khách hàng"}
               </p>
               <p className="text-[10px] text-[#5a6357] font-semibold truncate leading-tight">
-                {user.role === "admin" ? "Quản trị viên" : "Khách hàng"}
+                {user.role === "admin"
+                  ? "Quản trị viên"
+                  : user.role === "sales"
+                    ? "Nhân viên bán hàng"
+                    : user.role === "farm_staff"
+                      ? "Kỹ sư nông trại"
+                      : "Khách hàng"}
               </p>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-[#5a6357] shrink-0" />

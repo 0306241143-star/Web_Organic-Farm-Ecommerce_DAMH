@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import LoginModal from "../components/auth/LoginModal";
 import RegisterModal from "../components/auth/RegisterModal";
 import StorefrontFooter from "../components/navigation/StorefrontFooter";
@@ -8,7 +8,6 @@ import { useAuth } from "../context/useAuth";
 
 export default function StorefrontLayout() {
   const {
-    user,
     isLoginModalOpen,
     loginRedirectTo,
     closeLoginModal,
@@ -20,12 +19,6 @@ export default function StorefrontLayout() {
   } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-
-  if (user && ["farm_staff", "sales"].includes(user?.role)) {
-    const targetDashboard =
-      user.role === "farm_staff" ? "/farm/seasons" : "/sales/orders";
-    return <Navigate to={targetDashboard} replace />;
-  }
 
   const handleCloseLoginModal = () => {
     closeLoginModal();

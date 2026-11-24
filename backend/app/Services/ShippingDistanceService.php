@@ -33,16 +33,18 @@ class ShippingDistanceService
             throw new RuntimeException('Đơn giá giao hàng theo km chưa được cấu hình hợp lệ.');
         }
 
-        $originName = (string) config(
-            'services.shipping.origin_name',
-            $farm?->Ten_nong_trai ?? 'Điểm xuất phát giao hàng'
-        );
-        $originLatitude = config('services.shipping.origin_latitude');
-        $originLongitude = config('services.shipping.origin_longitude');
-        if (! is_numeric($originLatitude) || ! is_numeric($originLongitude)) {
-            $originLatitude = $farm?->Vi_do;
-            $originLongitude = $farm?->Kinh_do;
-        }
+        $originName = filled($farm?->Ten_nong_trai)
+            ? (string) $farm->Ten_nong_trai
+            : (string) config('services.shipping.origin_name', 'Điểm xuất phát giao hàng');
+
+        $originLatitude = is_numeric($farm?->Vi_do)
+            ? $farm->Vi_do
+            : config('services.shipping.origin_latitude');
+
+        $originLongitude = is_numeric($farm?->Kinh_do)
+            ? $farm->Kinh_do
+            : config('services.shipping.origin_longitude');
+            
         $apiKey = (string) config('services.goong.api_key', '');
         $endpoint = (string) config('services.goong.distance_matrix_url', '');
 

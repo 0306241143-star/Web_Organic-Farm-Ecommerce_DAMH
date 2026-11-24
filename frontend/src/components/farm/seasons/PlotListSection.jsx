@@ -6,9 +6,6 @@ export default function PlotListSection({
   handleSelectPlot,
   setActiveSeasonForPlot,
   setIsAddPlotOpen,
-  setSelectedPlot,
-  fetchLogs,
-  setIsAddLogOpen,
   handleOpenEditPlot,
   handleDeletePlot,
 }) {
@@ -42,7 +39,6 @@ export default function PlotListSection({
           </button>
         </div>
       ) : (
-        /* Danh sách lô dạng List gọn gàng */
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 overflow-hidden">
           {plots.map((plot) => {
             const isSelected = selectedPlot?.id === plot.id;
@@ -112,7 +108,7 @@ export default function PlotListSection({
                   </div>
                 </div>
 
-                {/* Cột phải: Huy hiệu đang xem & Các nút thao tác nhanh */}
+                {/* Cột phải: Huy hiệu đang xem & Sửa/Xóa (đã bỏ nút + Ghi) */}
                 <div
                   className="flex items-center justify-end gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100"
                   onClick={(e) => e.stopPropagation()}
@@ -137,19 +133,6 @@ export default function PlotListSection({
                         <ChevronRight className="w-3 h-3" />
                       </>
                     )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPlot(plot);
-                      fetchLogs(plot.id);
-                      setIsAddLogOpen(true);
-                    }}
-                    className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 px-2 py-1 hover:bg-emerald-100/70 rounded-lg transition-colors cursor-pointer"
-                    title="Ghi nhật ký canh tác cho lô này"
-                  >
-                    + Ghi
                   </button>
 
                   <button

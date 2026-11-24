@@ -6,6 +6,7 @@
 
 namespace App\Http\Requests\FarmStaff;
 
+use App\Models\LoCanhTac;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreFarmingLogRequest extends FormRequest
@@ -30,8 +31,15 @@ class StoreFarmingLogRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            // UC14.1 Alternative Flow 2a: Chặn mốc thời gian trong tương lai
-            // So sánh theo giờ Việt Nam và cho phép dung sai 30 phút để chống lệch đồng hồ hoặc lệch giây giữa client và server
+            // Chặn ghi nhật ký cho lô canh tác đã thu hoạch
+            if ($this->filled('Ma_lo_canh_tac')) {
+                $plot = LoCanhTac::find((int) $this->input('Ma_lo_canh_tac'));
+                if ($plot && $plot->Trang_thai === 'Da_thu_hoach') {
+                    $validator->errors()->add('Ma_lo_canh_tac', 'Lô canh tác này đã thu hoạch, không thể ghi thêm nhật ký chăm sóc.');
+                }
+            }
+
+            // Chặn mốc thời gian trong tương lai (dung sai 30 phút)
             if ($this->filled('Thoi_gian_thuc_hien')) {
                 try {
                     $logTime = \Carbon\Carbon::parse($this->input('Thoi_gian_thuc_hien'), 'Asia/Ho_Chi_Minh');
@@ -44,7 +52,7 @@ class StoreFarmingLogRequest extends FormRequest
                 }
             }
 
-            // UC14.1 Alternative Flow 5a: Thiếu thông tin bắt buộc khi bón phân (loại phân bón, liều lượng)
+            // Bắt buộc ghi rõ loại phân bón & liều lượng khi bón phân
             if ($this->input('Loai_hoat_dong') === 'Bon_phan') {
                 $noiDung = trim($this->input('Noi_dung') ?? '');
                 if (mb_strlen($noiDung) < 10) {
@@ -70,4 +78,3 @@ class StoreFarmingLogRequest extends FormRequest
         ];
     }
 }
-
