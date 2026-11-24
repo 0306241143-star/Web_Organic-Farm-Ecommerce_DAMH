@@ -26,15 +26,26 @@ class BrandStoryController extends Controller
     {
         $payload = Cache::remember('public_brand_story_v1', 300, function (): array {
             $farms = NongTrai::query()
+                ->with('hinhAnhs')
                 ->orderBy('Ma_nong_trai', 'asc')
                 ->get()
-                ->map(fn (NongTrai $farm): array => [
-                    'id'                  => (int) $farm->Ma_nong_trai,
-                    'name'                => $farm->Ten_nong_trai,
-                    'address'             => $farm->Dia_chi,
-                    'brand_story'         => $farm->Cau_chuyen_thuong_hieu,
-                    'farming_philosophy'  => $farm->Triet_ly_canh_tac,
-                    'capacity_profile'    => $farm->Ho_so_nang_luc,
+                ->map(fn(NongTrai $farm): array => [
+                    'id'                 => (int) $farm->Ma_nong_trai,
+                    'name'               => $farm->Ten_nong_trai,
+                    'address'            => $farm->Dia_chi,
+                    'latitude'           => (float) $farm->Vi_do,
+                    'longitude'          => (float) $farm->Kinh_do,
+                    'brand_story'        => $farm->Cau_chuyen_thuong_hieu,
+                    'farming_philosophy' => $farm->Triet_ly_canh_tac,
+                    'capacity_profile'   => $farm->Ho_so_nang_luc,
+                    'images'             => $farm->hinhAnhs->map(fn($img, $idx): array => [
+                        'id'       => (int) $img->Ma_hinh_anh,
+                        'url'      => str_starts_with((string) $img->Duong_dan, 'http')
+                            ? $img->Duong_dan
+                            : url($img->Duong_dan),
+                        'caption'  => $img->Mo_ta,
+                        'is_cover' => $idx === 0,
+                    ])->values()->all(),
                 ])
                 ->values()
                 ->toArray();
