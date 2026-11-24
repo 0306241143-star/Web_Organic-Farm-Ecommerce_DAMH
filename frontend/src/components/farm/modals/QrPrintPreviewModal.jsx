@@ -94,8 +94,8 @@ export default function QrPrintPreviewModal({ isOpen, onClose, batch = null }) {
       className={
         compact
           ? "qr-a4-cell border border-dashed border-slate-300 rounded-xl p-2 bg-white text-slate-800 flex flex-col justify-between"
-          : `border-2 border-dashed border-slate-300 rounded-3xl p-5 bg-white shadow-lg text-slate-800 transition-all ${
-              printSize === "70x50" ? "w-[340px]" : "w-[290px]"
+          : `border-2 border-dashed border-slate-300 rounded-3xl p-4 sm:p-5 bg-white shadow-lg text-slate-800 transition-all max-w-full mx-auto ${
+              printSize === "70x50" ? "w-full sm:w-[340px] max-w-[340px]" : "w-full sm:w-[290px] max-w-[290px]"
             }`
       }
     >

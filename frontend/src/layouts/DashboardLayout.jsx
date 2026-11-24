@@ -17,7 +17,7 @@ export default function DashboardLayout() {
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Thanh mở Sidebar chỉ hiển thị trên màn hình Mobile/Tablet nhỏ */}
-        <div className="lg:hidden shrink-0 bg-white border-b border-slate-200/80 h-13 flex items-center justify-between px-3.5">
+        <div className="lg:hidden shrink-0 bg-white border-b border-slate-200/80 h-13 flex items-center justify-between px-4 sm:px-6">
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}

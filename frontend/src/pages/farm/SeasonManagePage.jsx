@@ -502,47 +502,78 @@ const handleOpenCreateBatchFromLog = (plotOrLog, logDate) => {
             </div>
           </div>
 
-          {/* Hàng 2: 4 thẻ KPI nhỏ gọn nằm ngang */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <div className="px-3 py-2 rounded-xl bg-slate-50/80 border border-slate-200/80 flex items-center justify-between">
-              <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
+          {/* Hàng 2: 4 thẻ KPI nhỏ gọn trực quan (2 cột Mobile -> 4 cột Desktop, thiết kế 2 tầng chống dính chữ) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+            <div className="p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between min-h-[58px]">
+              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500 truncate">
                 Mùa vụ đang chạy
               </span>
-              <span className="text-sm sm:text-base font-black text-slate-900 tabular-nums">
+              <div className="text-base sm:text-lg font-black text-slate-900 tabular-nums leading-none mt-1">
                 {kpiStats.activeSeasons}{" "}
                 <span className="text-xs font-semibold text-slate-500">vụ</span>
-              </span>
+              </div>
             </div>
 
-            <div className="px-3 py-2 rounded-xl bg-emerald-50/60 border border-emerald-200/70 flex items-center justify-between">
-              <span className="text-[10.5px] font-bold uppercase tracking-wider text-emerald-800">
+            <div className="p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/70 flex flex-col justify-between min-h-[58px]">
+              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-emerald-800 truncate">
                 Lô đang canh tác
               </span>
-              <span className="text-sm sm:text-base font-black text-emerald-700 tabular-nums">
+              <div className="text-base sm:text-lg font-black text-emerald-700 tabular-nums leading-none mt-1">
                 {kpiStats.activePlots}{" "}
                 <span className="text-xs font-semibold text-emerald-700/80">lô</span>
-              </span>
+              </div>
             </div>
 
-            <div className="px-3 py-2 rounded-xl bg-slate-50/80 border border-slate-200/80 flex items-center justify-between">
-              <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
+            <div className="p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between min-h-[58px]">
+              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500 truncate">
                 Tổng diện tích
               </span>
-              <span className="text-sm sm:text-base font-black text-slate-900 tabular-nums">
+              <div className="text-base sm:text-lg font-black text-slate-900 tabular-nums leading-none mt-1">
                 {kpiStats.totalArea.toLocaleString("vi-VN")}{" "}
                 <span className="text-xs font-semibold text-slate-500">m²</span>
-              </span>
+              </div>
             </div>
 
-            <div className="px-3 py-2 rounded-xl bg-slate-50/80 border border-slate-200/80 flex items-center justify-between">
-              <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
-                Tổng số lô
+            <div
+              className={`p-2.5 sm:px-3 sm:py-2.5 rounded-xl border flex flex-col justify-between min-h-[58px] transition-colors ${
+                selectedPlot
+                  ? "bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400/40"
+                  : "bg-slate-50/80 border-slate-200/80"
+              }`}
+            >
+              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                {selectedPlot ? "Lô đang chọn" : "Tổng số lô"}
               </span>
-              <span className="text-sm sm:text-base font-black text-emerald-800 tabular-nums">
-                {kpiStats.totalPlots}{" "}
-                <span className="text-xs font-semibold text-slate-500">lô</span>
-              </span>
+              <div className="text-sm sm:text-base font-black text-emerald-800 tabular-nums leading-none mt-1 truncate">
+                {selectedPlot ? selectedPlot.plot_name : `${kpiStats.totalPlots} lô`}
+              </div>
             </div>
+          </div>
+
+          {/* Hàng 3: Segmented Switcher chuyển đổi 2 cột trên Mobile/Tablet (lg:hidden) */}
+          <div className="lg:hidden flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold gap-1">
+            <button
+              type="button"
+              onClick={() => setMobileTab("plots")}
+              className={`flex-1 py-1.5 px-3 rounded-lg transition-all text-center cursor-pointer ${
+                mobileTab === "plots"
+                  ? "bg-white text-emerald-800 shadow-2xs font-extrabold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Lô Canh Tác ({kpiStats.totalPlots})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("timeline")}
+              className={`flex-1 py-1.5 px-3 rounded-lg transition-all text-center cursor-pointer ${
+                mobileTab === "timeline"
+                  ? "bg-white text-emerald-800 shadow-2xs font-extrabold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Nhật Ký {selectedPlot ? `(${selectedPlot.plot_name})` : ""}
+            </button>
           </div>
         </div>
       </div>

@@ -39,7 +39,7 @@ export default function PlotListSection({
           </button>
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {plots.map((plot) => {
             const isSelected = selectedPlot?.id === plot.id;
 
@@ -55,34 +55,31 @@ export default function PlotListSection({
                     handleSelectPlot(plot);
                   }
                 }}
-                className={`px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors cursor-pointer group ${
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 text-left ${
                   isSelected
-                    ? "bg-emerald-50/90 border-l-[3px] border-l-emerald-600"
-                    : "bg-white hover:bg-slate-50/90 border-l-[3px] border-l-transparent"
+                    ? "bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/30 shadow-xs"
+                    : "bg-white border-slate-200/90 hover:border-emerald-300 hover:shadow-xs"
                 }`}
               >
-                {/* Cột trái: Icon + Tên lô + Nông sản + Thông số nhanh */}
-                <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+                {/* Header Card: Icon + Tên lô + Badge trạng thái */}
+                <div className="flex items-start gap-2.5 min-w-0">
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                       isSelected
                         ? "bg-emerald-600 text-white shadow-2xs"
-                        : "bg-emerald-50 text-emerald-700 border border-emerald-200/60 group-hover:bg-emerald-100"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
                     }`}
                   >
                     <Sprout className="w-4 h-4" />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs sm:text-[13px] font-bold text-slate-900 truncate">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 leading-snug break-words flex-1 min-w-0">
                         {plot.plot_name}
-                      </span>
-                      <span className="text-[11px] font-semibold text-emerald-700 truncate">
-                        • {plot.product_name || "Nông sản"}
-                      </span>
+                      </h4>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.2 rounded-full border ${
+                        className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
                           plot.status === "Dang_canh_tac"
                             ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                             : "bg-slate-100 text-slate-600 border-slate-200"
@@ -91,26 +88,25 @@ export default function PlotListSection({
                         {plot.status === "Dang_canh_tac" ? "Đang trồng" : "Đã thu hoạch"}
                       </span>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500 mt-0.5">
-                      <span>
-                        Diện tích: <strong className="text-slate-700">{plot.area_m2} m²</strong>
-                      </span>
-                      <span>
-                        Gieo: <strong className="text-slate-700">{plot.planting_date}</strong>
-                      </span>
-                      {plot.latest_activity && (
-                        <span className="truncate max-w-[230px] text-slate-500">
-                          • Mốc gần nhất: <strong className="text-emerald-800">{plot.latest_activity.date}</strong>
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-[11.5px] font-semibold text-emerald-700 truncate mt-0.5">
+                      {plot.product_name || "Nông sản hữu cơ"}
+                    </p>
                   </div>
                 </div>
 
-                {/* Cột phải: Huy hiệu đang xem & Sửa/Xóa (đã bỏ nút + Ghi) */}
+                {/* Thông số nhanh: Diện tích & Ngày gieo */}
+                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                  <span>
+                    Diện tích: <strong className="text-slate-800">{plot.area_m2} m²</strong>
+                  </span>
+                  <span>
+                    Gieo: <strong className="text-slate-800">{plot.planting_date}</strong>
+                  </span>
+                </div>
+
+                {/* Thanh thao tác dưới đáy card (khớp chính xác giao diện) */}
                 <div
-                  className="flex items-center justify-end gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100"
+                  className="flex items-center justify-between gap-1 pt-2 border-t border-slate-100"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -118,40 +114,43 @@ export default function PlotListSection({
                     onClick={() => handleSelectPlot(plot)}
                     className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors inline-flex items-center gap-1 cursor-pointer ${
                       isSelected
-                        ? "bg-emerald-600 text-white shadow-2xs"
-                        : "text-slate-600 hover:text-emerald-700 hover:bg-emerald-50"
+                        ? "text-emerald-800 font-extrabold bg-emerald-100/80"
+                        : "text-slate-600 hover:text-emerald-700 hover:bg-slate-50"
                     }`}
                   >
                     {isSelected ? (
                       <>
-                        <CheckCircle2 className="w-3 h-3" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Đang xem</span>
                       </>
                     ) : (
                       <>
-                        <span>Nhật ký</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <span>Xem nhật ký</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </>
                     )}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditPlot(season, plot)}
-                    className="text-slate-400 hover:text-emerald-700 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
-                    title="Chỉnh sửa lô"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePlot(season.id, plot)}
-                    className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                    title="Xóa lô"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditPlot(season, plot)}
+                      className="text-slate-400 hover:text-emerald-700 p-1 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
+                      title="Chỉnh sửa lô"
+                      aria-label="Chỉnh sửa lô"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePlot(season.id, plot)}
+                      className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                      title="Xóa lô"
+                      aria-label="Xóa lô"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
