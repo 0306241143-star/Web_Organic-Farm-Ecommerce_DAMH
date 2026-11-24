@@ -143,7 +143,9 @@ export default function AddFarmingLogModal({
 
   if (!isOpen) return null;
 
-  const selectedPlotInfo = plots.find((p) => String(p.id) === String(plotId));
+  const activePlots = plots.filter((p) => p.status !== "Da_thu_hoach");
+  const selectedPlotInfo = activePlots.find((p) => String(p.id) === String(plotId));
+
 
   const handlePlotKeyDown = (e) => {
     if (e.key === "ArrowDown") {
@@ -151,18 +153,18 @@ export default function AddFarmingLogModal({
       if (!isPlotMenuOpen) {
         setIsPlotMenuOpen(true);
         setHighlightedIndex(0);
-      } else if (plots.length > 0) {
-        setHighlightedIndex((prev) => (prev + 1) % plots.length);
+      } else if (activePlots.length > 0) {
+        setHighlightedIndex((prev) => (prev + 1) % activePlots.length);
       }
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      if (isPlotMenuOpen && plots.length > 0) {
-        setHighlightedIndex((prev) => (prev <= 0 ? plots.length - 1 : prev - 1));
+      if (isPlotMenuOpen && activePlots.length > 0) {
+        setHighlightedIndex((prev) => (prev <= 0 ? activePlots.length - 1 : prev - 1));
       }
     } else if (e.key === "Enter" || e.key === " ") {
-      if (isPlotMenuOpen && highlightedIndex >= 0 && plots[highlightedIndex]) {
+      if (isPlotMenuOpen && highlightedIndex >= 0 && activePlots[highlightedIndex]) {
         e.preventDefault();
-        setPlotId(String(plots[highlightedIndex].id));
+        setPlotId(String(activePlots[highlightedIndex].id));
         setIsPlotMenuOpen(false);
       } else if (e.key === " ") {
         e.preventDefault();

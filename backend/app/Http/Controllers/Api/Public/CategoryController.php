@@ -44,25 +44,26 @@ class CategoryController extends Controller
                     $activeProducts = $category->sanPhams;
                     $inStockCount = $activeProducts->filter(function ($product): bool {
                         $stock = $product->loCanhTacs
-                            ->flatMap(fn ($plot) => $plot->loHangs)
-                            ->sum(fn ($batch) => (float) $batch->So_luong_con_lai);
+                            ->flatMap(fn($plot) => $plot->loHangs)
+                            ->sum(fn($batch) => (float) $batch->So_luong_con_lai);
 
                         return $stock > 0;
                     })->count();
 
                     $prices = $activeProducts
                         ->pluck('Gia_ban')
-                        ->map(fn ($price) => (float) $price)
+                        ->map(fn($price) => (float) $price)
                         ->values();
 
                     return [
-                        'id' => (int) $category->Ma_danh_muc,
-                        'name' => $category->Ten_danh_muc,
-                        'description' => $category->Mo_ta,
-                        'product_count' => $activeProducts->count(),
+                        'id'                     => (int) $category->Ma_danh_muc,
+                        'name'                   => $category->Ten_danh_muc,
+                        'description'            => $category->Mo_ta,
+                        'product_count'          => $activeProducts->count(),
+                        'products_count'         => $activeProducts->count(),
                         'in_stock_product_count' => $inStockCount,
-                        'min_price' => $prices->isNotEmpty() ? $prices->min() : null,
-                        'max_price' => $prices->isNotEmpty() ? $prices->max() : null,
+                        'min_price'              => $prices->isNotEmpty() ? $prices->min() : null,
+                        'max_price'              => $prices->isNotEmpty() ? $prices->max() : null,
                     ];
                 })
                 ->values();

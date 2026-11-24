@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Lập lịch cronjob tự động sinh đơn hàng cho gói định kỳ.
+ * Lập lịch cronjob tự động sinh đơn định kỳ, hủy đơn quá hạn thanh toán và quét hạn sử dụng lô hàng FEFO.
  */
 
 use Illuminate\Foundation\Inspiring;
@@ -14,6 +14,10 @@ Artisan::command('inspire', function () {
 
 Schedule::command('orders:expire-pending-payments')
     ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('inventory:sync-batch-expiry')
+    ->hourly()
     ->withoutOverlapping();
 
 Schedule::command('subscriptions:generate-orders')

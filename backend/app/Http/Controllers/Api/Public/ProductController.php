@@ -350,7 +350,12 @@ class ProductController extends Controller
         foreach ($fefoBatches as $batch) {
             foreach ($batch->chiTietFlashSales as $detail) {
                 $program = $detail->flashSale;
-                if (! $program || $program->Trang_thai !== 'Dang_dien_ra') {
+                if (
+                    ! $program
+                    || $program->Trang_thai !== 'Dang_dien_ra'
+                    || (string) $program->Thoi_gian_bat_dau > now()->toDateTimeString()
+                    || (string) $program->Thoi_gian_ket_thuc < now()->toDateTimeString()
+                ) {
                     continue;
                 }
 

@@ -60,9 +60,20 @@ export default function CertificateFormModal({
   initialFormValues,
   onSubmitForm,
 }) {
-  const initialToday = getTodayLocal();
+ const initialToday = getTodayLocal();
+  const initialBatchId =
+    initialFormValues?.Ma_lo_hang || initialFormValues?.batch_id || "";
+  const initialProductId =
+    initialFormValues?.Ma_san_pham || initialFormValues?.product_id || "";
+
   const [attachMode, setAttachMode] = useState(
-    editingCert ? (editingCert.batch_id ? "batch" : "product") : "batch"
+    editingCert
+      ? editingCert.batch_id
+        ? "batch"
+        : "product"
+      : initialProductId && !initialBatchId
+        ? "product"
+        : "batch"
   );
   const [formState, setFormState] = useState(() =>
     editingCert
@@ -75,13 +86,14 @@ export default function CertificateFormModal({
           Ngay_het_han: editingCert.expiry_date || "",
         }
       : {
-          Ma_lo_hang: initialFormValues?.Ma_lo_hang || "",
-          Ma_san_pham: initialFormValues?.Ma_san_pham || "",
+          Ma_lo_hang: initialBatchId ? String(initialBatchId) : "",
+          Ma_san_pham: initialProductId ? String(initialProductId) : "",
           Ten_chung_nhan: "",
           To_chuc_cap: "",
           Ngay_cap: initialToday,
           Ngay_het_han: addMonthsLocal(initialToday, 12),
         }
+
   );
   const [fieldErrors, setFieldErrors] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);

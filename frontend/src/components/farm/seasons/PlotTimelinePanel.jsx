@@ -1,4 +1,4 @@
-import { CheckCircle2, Plus, Sprout, X } from "lucide-react";
+import { CheckCircle2, Lock, Plus, Scissors, Sprout, X } from "lucide-react";
 import FarmingLogTimeline from "../FarmingLogTimeline";
 
 export default function PlotTimelinePanel({
@@ -14,9 +14,11 @@ export default function PlotTimelinePanel({
   handleDeleteLog,
   handleOpenCreateBatchFromLog,
 }) {
+  const isHarvested = selectedPlot?.status === "Da_thu_hoach";
+
   return (
     <div
-      className={`lg:col-span-5 min-w-0 flex flex-col min-h-0 lg:h-[calc(100vh-235px)] gap-3 ${
+      className={`lg:col-span-5 min-w-0 flex flex-col h-full min-h-0 gap-3 ${
         mobileTab === "plots" ? "hidden lg:flex" : "flex"
       }`}
     >
@@ -37,7 +39,7 @@ export default function PlotTimelinePanel({
       </div>
 
       {!selectedPlot ? (
-        <div className="flex-1 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs text-center flex flex-col items-center justify-center">
+        <div className="flex-1 h-full min-h-0 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs text-center flex flex-col items-center justify-center">
           <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 border border-emerald-100">
             <Sprout className="w-7 h-7" />
           </div>
@@ -68,8 +70,14 @@ export default function PlotTimelinePanel({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
-                    {selectedPlot.status === "Dang_canh_tac" ? "Đang trồng" : "Đã thu hoạch"}
+                  <span
+                    className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border shrink-0 ${
+                      isHarvested
+                        ? "bg-slate-100 text-slate-700 border-slate-200"
+                        : "bg-emerald-100 text-emerald-800 border-emerald-200"
+                    }`}
+                  >
+                    {isHarvested ? "Đã thu hoạch" : "Đang trồng"}
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium truncate">
                     {selectedPlot.season_name}
@@ -111,14 +119,51 @@ export default function PlotTimelinePanel({
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsAddLogOpen(true)}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs inline-flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Ghi nhật ký</span>
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isHarvested ? (
+                  <>
+                    <span
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-[11px] font-bold inline-flex items-center gap-1.5 select-none cursor-not-allowed"
+                      title="Lô này đã hoàn tất thu hoạch"
+                    >
+                      <Lock className="w-3 h-3 text-slate-400" />
+                      <span>Đã thu hoạch</span>
+                    </span>
+
+                    <span
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 text-[11px] font-bold inline-flex items-center gap-1.5 select-none cursor-not-allowed"
+                      title="Lô đã hoàn tất thu hoạch, không thể ghi thêm nhật ký"
+                    >
+                      <Lock className="w-3 h-3 text-slate-400" />
+                      <span>Đã khóa nhật ký</span>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleOpenCreateBatchFromLog &&
+                        handleOpenCreateBatchFromLog(selectedPlot)
+                      }
+                      className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-2xs inline-flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Tạo lô hàng thu hoạch từ lô canh tác này"
+                    >
+                      <Scissors className="w-3.5 h-3.5" />
+                      <span>Thu hoạch</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsAddLogOpen(true)}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs inline-flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Ghi nhật ký</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
