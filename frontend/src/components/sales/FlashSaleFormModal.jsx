@@ -145,26 +145,26 @@ export default function FlashSaleFormModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="flash-sale-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/55 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/55 backdrop-blur-xs"
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose();
       }}
     >
-      <div className="w-full max-w-3xl max-h-[92vh] bg-white rounded-3xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-full max-w-3xl max-h-[92dvh] sm:max-h-[92vh] bg-white rounded-t-3xl rounded-b-none sm:rounded-3xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header Modal */}
-        <div className="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/50 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-700 border border-amber-300/70 flex items-center justify-center shrink-0">
-              <Flame className="w-5 h-5" />
+        <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/50 flex items-start sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-500/15 text-amber-700 border border-amber-300/70 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+              <Flame className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
               <h2
                 id="flash-sale-modal-title"
-                className="text-base sm:text-lg font-black text-slate-900 truncate"
+                className="text-sm sm:text-lg font-black text-slate-900 leading-snug sm:truncate"
               >
                 Tạo Chương Trình Flash Sale Cận Hạn
               </h2>
-              <p className="text-[11.5px] text-slate-500 truncate">
+              <p className="text-[11px] sm:text-[11.5px] text-slate-500 leading-snug sm:truncate">
                 Chỉ áp dụng cho lô còn tồn kho sắp hết hạn trong 2 ngày tới; giá giảm thấp hơn giá gốc.
               </p>
             </div>
@@ -175,7 +175,7 @@ export default function FlashSaleFormModal({
             onClick={onClose}
             disabled={saving}
             aria-label="Đóng hộp thoại"
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -185,11 +185,11 @@ export default function FlashSaleFormModal({
         <form
           id="flash-sale-modal-form"
           onSubmit={handleSubmit}
-          className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 scrollbar-thin"
+          className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5 sm:space-y-4 scrollbar-thin"
         >
           {initialBatch && (
-            <div className="flex items-center gap-2 rounded-xl border border-amber-300/80 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-900">
-              <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
+            <div className="flex items-start sm:items-center gap-2 rounded-xl border border-amber-300/80 bg-amber-50 px-3 sm:px-3.5 py-2 text-xs font-bold text-amber-900">
+              <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
               <span>
                 Đã tự động điền thông tin từ lô #LH-
                 {String(initialBatch.batch_id).padStart(4, "0")} ·{" "}
@@ -216,30 +216,30 @@ export default function FlashSaleFormModal({
                 maxLength={150}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white px-3.5 py-2 text-sm font-medium text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white px-3.5 py-2 text-sm font-medium text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
                 placeholder="Ví dụ: Xả kho rau hữu cơ cuối ngày"
               />
             </label>
 
-            <label className="grid gap-1 text-xs font-bold text-slate-700">
+            <label className="grid gap-1 text-xs font-bold text-slate-700 min-w-0">
               Thời gian bắt đầu *
               <input
                 required
                 type="datetime-local"
                 value={startTime}
                 onChange={(event) => setStartTime(event.target.value)}
-                className="rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-900 outline-none focus:border-emerald-600"
+                className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-900 outline-none focus:border-emerald-600"
               />
             </label>
 
-            <label className="grid gap-1 text-xs font-bold text-slate-700 sm:col-span-2">
+            <label className="grid gap-1 text-xs font-bold text-slate-700 sm:col-span-2 min-w-0">
               Thời gian kết thúc (không vượt quá HSD của lô) *
               <input
                 required
                 type="datetime-local"
                 value={endTime}
                 onChange={(event) => setEndTime(event.target.value)}
-                className="rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-900 outline-none focus:border-emerald-600"
+                className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-900 outline-none focus:border-emerald-600"
               />
             </label>
           </div>
@@ -255,9 +255,9 @@ export default function FlashSaleFormModal({
                 value={batchSearch}
                 onChange={(e) => setBatchSearch(e.target.value)}
                 placeholder="Lọc nhanh lô cận hạn..."
-                className="w-full sm:w-52 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-600"
+                className="w-full min-w-0 sm:w-52 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-emerald-600"
               />
-              <span className="text-[11px] font-semibold text-emerald-700 whitespace-nowrap">
+              <span className="text-[11px] font-semibold text-emerald-700 whitespace-nowrap shrink-0">
                 {loadingBatches && eligibleBatches.length === 0
                   ? "Đang tải..."
                   : `${eligibleBatches.length} lô đủ điều kiện`}
@@ -283,15 +283,15 @@ export default function FlashSaleFormModal({
               return (
                 <div
                   key={`flash-sale-item-${index}`}
-                  className="grid gap-3 rounded-2xl border border-slate-200/80 bg-[#f8faf8] p-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                  className="grid gap-3 rounded-2xl border border-slate-200/80 bg-[#f8faf8] p-3 sm:p-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
                 >
-                  <label className="grid gap-1 text-xs font-bold text-slate-700 sm:col-span-3">
+                  <label className="grid gap-1 text-xs font-bold text-slate-700 sm:col-span-3 min-w-0">
                     Lô hàng cận hạn *
                     <select
                       required
                       value={item.batch_id}
                       onChange={(event) => selectBatch(index, event.target.value)}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 outline-none focus:border-emerald-600"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 outline-none focus:border-emerald-600"
                     >
                       <option value="">-- Chọn lô cận hạn còn tồn kho --</option>
                       {dropdownBatches.map((batch) => (
@@ -314,9 +314,14 @@ export default function FlashSaleFormModal({
                         </option>
                       ))}
                     </select>
+                    {selectedBatch && (
+                      <span className="sm:hidden text-[11px] font-medium text-slate-600">
+                        Tồn kho: <strong>{selectedBatch.remaining_quantity} {selectedBatch.unit}</strong> · HSD: <strong>{selectedBatch.expiry_date}</strong>
+                      </span>
+                    )}
                   </label>
 
-                  <label className="grid gap-1 text-xs font-bold text-slate-700">
+                  <label className="grid gap-1 text-xs font-bold text-slate-700 min-w-0">
                     <span>
                       Giá khuyến mãi (₫) *
                       {regularPrice > 0 && (
@@ -336,11 +341,11 @@ export default function FlashSaleFormModal({
                       onChange={(event) =>
                         updateItem(index, "sale_price", event.target.value)
                       }
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-emerald-800 outline-none focus:border-emerald-600"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-emerald-800 outline-none focus:border-emerald-600"
                     />
                   </label>
 
-                  <label className="grid gap-1 text-xs font-bold text-slate-700">
+                  <label className="grid gap-1 text-xs font-bold text-slate-700 min-w-0">
                     <span>
                       Số lượng mở bán {selectedBatch?.unit ? `(${selectedBatch.unit})` : ""} *
                       {selectedBatch && (
@@ -359,7 +364,7 @@ export default function FlashSaleFormModal({
                       onChange={(event) =>
                         updateItem(index, "limit_quantity", event.target.value)
                       }
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-600"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-emerald-600"
                     />
                   </label>
 
@@ -376,9 +381,10 @@ export default function FlashSaleFormModal({
                       disabled={items.length === 1}
                       title="Xóa dòng lô hàng này"
                       aria-label={`Xóa dòng sản phẩm ${index + 1}`}
-                      className="inline-flex h-10 w-full sm:w-10 items-center justify-center rounded-xl border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                      className="inline-flex h-10 w-full sm:w-10 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer text-xs font-bold"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 shrink-0" />
+                      <span className="sm:hidden">Xóa lô hàng này</span>
                     </button>
                   </div>
                 </div>
@@ -390,20 +396,20 @@ export default function FlashSaleFormModal({
             type="button"
             onClick={() => setItems((current) => [...current, newItem()])}
             disabled={items.length >= 30 || eligibleBatches.length <= items.length}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50 px-3.5 py-2 text-xs font-bold text-[#064e2e] disabled:opacity-50 cursor-pointer"
+            className="inline-flex w-full sm:w-auto justify-center items-center gap-1.5 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50 px-3.5 py-2 text-xs font-bold text-[#064e2e] disabled:opacity-50 cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span>Thêm lô cận hạn khác vào chiến dịch</span>
           </button>
         </form>
 
         {/* Footer Modal */}
-        <div className="px-5 py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2.5 shrink-0">
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2 sm:gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs sm:text-sm font-bold text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-initial justify-center px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs sm:text-sm font-bold text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
           >
             Hủy bỏ
           </button>
@@ -415,9 +421,9 @@ export default function FlashSaleFormModal({
               (loadingBatches && eligibleBatches.length === 0) ||
               eligibleBatches.length === 0
             }
-            className="px-5 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] text-white text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-initial justify-center px-4 sm:px-5 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] text-white text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
           >
-            <Flame className="w-4 h-4" />
+            <Flame className="w-4 h-4 shrink-0" />
             <span>{saving ? "Đang khởi tạo..." : "Tạo & Bật Flash Sale"}</span>
           </button>
         </div>
