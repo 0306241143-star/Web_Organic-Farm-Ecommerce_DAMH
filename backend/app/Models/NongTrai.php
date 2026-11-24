@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class NongTrai extends Model
 {
     protected $table = 'nong_trai';
+
     protected $primaryKey = 'Ma_nong_trai';
+
     protected $guarded = [];
 
     public function sanPhams(): HasMany
@@ -21,5 +23,10 @@ class NongTrai extends Model
         return $this->hasMany(HinhAnhNongTrai::class, 'Ma_nong_trai', 'Ma_nong_trai')
             ->orderBy('Thu_tu')
             ->orderBy('Ma_hinh_anh');
+    }
+
+    public function ketQuaKiemDinhs(): HasMany
+    {
+        return $this->hasMany(KetQuaKiemDinh::class, 'Ma_nong_trai', 'Ma_nong_trai');
     }
 }

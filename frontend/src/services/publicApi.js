@@ -60,7 +60,6 @@ export const publicApi = {
     cachedGet(`product:${productId}`, () =>
       axiosClient.get(`/public/san-pham/${productId}`)
     ),
-  getBrandStory: () =>
-    cachedGet("brand-story", () => axiosClient.get("/brand-story")),
+  getBrandStory: () => axiosClient.get("/brand-story"),
   getQrTrace: (code) => axiosClient.get(`/trace/${encodeURIComponent(code)}`),
 };

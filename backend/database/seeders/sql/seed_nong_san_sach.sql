@@ -40,7 +40,7 @@ INSERT INTO Dia_chi_giao_hang (Ma_dia_chi, Ma_nguoi_dung, Ten_nguoi_nhan, So_die
 -- 3. Nông trại, Hình ảnh, Kiểm định & Danh mục - Sản phẩm
 INSERT INTO Nong_trai (Ma_nong_trai, Ten_nong_trai, Dia_chi, Vi_do, Kinh_do, Cau_chuyen_thuong_hieu, Triet_ly_canh_tac, Ho_so_nang_luc) VALUES
 (1, 'Nông Trại Xanh Củ Chi', 'Ấp 3, Xã Nhuận Đức, Huyện Củ Chi, TP. Hồ Chí Minh', 10.9985000, 106.5123000,
- 'Khởi nguồn từ khát vọng đưa rau củ sạch chuẩn hữu cơ từ vườn đến bàn ăn trong vòng 6 giờ thu hoạch.',
+ 'Nông Trại Xanh Củ Chi ra đời từ ước mơ mang nguồn nông sản sạch đúng nghĩa từ vườn nhà đến thẳng mâm cơm mỗi gia đình Việt. Trên vùng đất Nhuận Đức, Củ Chi đầy nắng gió, đội ngũ kỹ sư và nông dân bản địa của XanhFarm kiên định theo đuổi quy tắc canh tác 6 Không: không thuốc trừ sâu hóa học, không phân bón tổng hợp, không chất kích thích tăng trưởng, không giống biến đổi gen, không chất bảo quản và không giấu giếm nguồn gốc. Với quy mô 12 hecta nhà màng công nghệ cao đạt chuẩn VietGAP, từng luống rau được chăm sóc thuận tự nhiên bằng hệ vi sinh bản địa, thu hoạch lúc rạng sáng và vận chuyển đến tận bếp nhà bạn trong vòng 6 giờ kèm mã QR minh bạch toàn bộ nhật ký trồng trọt lẫn giấy kiểm định chất lượng.',
  'Canh tác 6 không: Không thuốc trừ sâu hóa học, không phân bón vô cơ, không chất kích thích tăng trưởng, không biến đổi gen, không chất bảo quản, không thuốc diệt cỏ.',
  'Quy mô 12 ha nhà màng công nghệ cao tại Củ Chi, đạt chuẩn VietGAP và Hữu cơ TCVN 11041.');
 
