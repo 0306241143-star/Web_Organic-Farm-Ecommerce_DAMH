@@ -10,6 +10,7 @@ import CreateBatchModal from "../../components/farm/modals/CreateBatchModal";
 import QrPrintPreviewModal from "../../components/farm/modals/QrPrintPreviewModal";
 import BatchTable from "../../components/farm/batches/BatchTable";
 import BatchDetailPanel from "../../components/farm/batches/BatchDetailPanel";
+import BatchStatCards from "../../components/farm/batches/BatchStatCards";
 
 const PER_PAGE = 10;
 
@@ -51,6 +52,30 @@ export default function BatchHarvestPage() {
   const [detailBatch, setDetailBatch] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailSubTab, setDetailSubTab] = useState("certificates");
+
+  // Tính các chỉ số thống kê 4 thẻ KPI nhanh
+  const batchStats = useMemo(() => {
+    let totalAvailable = 0;
+    let expiringSoon = 0;
+    let depleted = 0;
+
+    batches.forEach((b) => {
+      totalAvailable += Number(b.remaining_quantity || 0);
+      if (b.status === "Sap_het_han" || b.is_expiring_soon) {
+        expiringSoon += 1;
+      }
+      if (b.status === "Het_hang") {
+        depleted += 1;
+      }
+    });
+
+    return {
+      total_batches: batches.length,
+      total_available_qty: totalAvailable,
+      expiring_soon_batches: expiringSoon,
+      depleted_batches: depleted,
+    };
+  }, [batches]);
 
   // Tải danh sách lô hàng thu hoạch
   const fetchBatches = useCallback(async (isSilent = false) => {
@@ -274,9 +299,14 @@ export default function BatchHarvestPage() {
             </div>
           </div>
 
+          {/* Hàng 1.5: 4 Thẻ KPI thống kê lô hàng trực quan (Co giãn 2 cột Mobile -> 4 cột Desktop) */}
+          <div className="pt-2">
+            <BatchStatCards stats={batchStats} />
+          </div>
+
           {/* Hàng 2: Tabs lọc trạng thái & Ô tìm kiếm */}
-          <div className="pt-2 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 md:pb-0">
+          <div className="pt-2 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
               {filterTabs.map((tab) => (
                 <button
                   key={tab.id}

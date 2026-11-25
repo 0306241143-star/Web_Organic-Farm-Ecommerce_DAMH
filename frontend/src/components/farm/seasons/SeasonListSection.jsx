@@ -138,9 +138,9 @@ export default function SeasonListSection({
                 key={season.id}
                 className="rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all hover:border-emerald-300"
               >
-                {/* Header của từng thẻ Mùa vụ (kèm nút dropdown thu gọn) */}
+                {/* Header của từng thẻ Mùa vụ (kèm nút dropdown thu gọn - tự xếp 2 tầng trên Mobile chống đè chữ) */}
                 <div
-                  className={`px-4 py-3 bg-slate-50/90 flex flex-wrap items-center justify-between gap-2.5 ${
+                  className={`p-3 sm:px-4 sm:py-3 bg-slate-50/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
                     !isCollapsed ? "border-b border-slate-100" : ""
                   }`}
                 >
@@ -172,9 +172,9 @@ export default function SeasonListSection({
                       onClick={() => toggleSeasonCollapse(season.id)}
                       className="min-w-0 flex-1 cursor-pointer select-none"
                     >
-                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
                         <span
-                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
+                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border whitespace-nowrap ${
                             season.status === "Dang_dien_ra"
                               ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                               : "bg-slate-200 text-slate-700 border-slate-300"
@@ -182,11 +182,11 @@ export default function SeasonListSection({
                         >
                           {season.status === "Dang_dien_ra" ? "Đang diễn ra" : "Đã kết thúc"}
                         </span>
-                        <span className="text-[11px] text-slate-500 font-medium">
+                        <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
                           {season.start_date} {season.end_date ? `→ ${season.end_date}` : ""}
                         </span>
                         {isCollapsed && (
-                          <span className="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200/80 tabular-nums">
+                          <span className="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200/80 tabular-nums whitespace-nowrap">
                             {plotsCount} lô canh tác
                           </span>
                         )}
@@ -197,11 +197,11 @@ export default function SeasonListSection({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center justify-end gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                     <button
                       type="button"
                       onClick={() => handleToggleSeasonStatus(season)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                         season.status === "Dang_dien_ra"
                           ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
                           : "bg-emerald-100 hover:bg-emerald-200 text-emerald-800"
@@ -220,7 +220,7 @@ export default function SeasonListSection({
                         setActiveSeasonForPlot(season);
                         setIsAddPlotOpen(true);
                       }}
-                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs inline-flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Thêm Lô</span>
@@ -229,7 +229,7 @@ export default function SeasonListSection({
                     <button
                       type="button"
                       onClick={() => handleDeleteSeason(season)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
                       title="Xóa mùa vụ này"
                     >
                       <Trash2 className="w-4 h-4" />
