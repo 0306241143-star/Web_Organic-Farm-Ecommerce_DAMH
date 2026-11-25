@@ -105,6 +105,13 @@ function BrandStorySkeleton() {
   );
 }
 
+// Thêm object ánh xạ phía trên component BrandStoryPage (gần hàm formatDate)
+const SAMPLE_TYPE_META = {
+  Dat: { label: "Mẫu đất", icon: Leaf },
+  Nuoc: { label: "Mẫu nước", icon: Droplets },
+  Nong_san: { label: "Mẫu nông sản", icon: Sprout },
+};
+
 export default function BrandStoryPage() {
   const [requestResult, setRequestResult] = useState(null);
   const [reloadTick, setReloadTick] = useState(0);
@@ -347,9 +354,13 @@ export default function BrandStoryPage() {
 
           <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {qualityTests.map((test) => {
-              const isWaterSample = test.sample_type === "Nuoc";
+              const sampleMeta = SAMPLE_TYPE_META[test.sample_type] || {
+                label: "Mẫu kiểm định",
+                icon: FlaskConical,
+              };
+              const SampleIcon = sampleMeta.icon;
               const fileUrl = test.file_url || "";
-
+            
               return (
                 <article
                   key={test.id}
@@ -357,18 +368,16 @@ export default function BrandStoryPage() {
                 >
                   <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#edf6e9] text-[#08712b]">
-                      {isWaterSample ? (
-                        <Droplets className="h-5 w-5" aria-hidden="true" />
-                      ) : (
-                        <Leaf className="h-5 w-5" aria-hidden="true" />
-                      )}
+                      <SampleIcon className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
                       <h3 className="font-extrabold text-[#173c20]">
-                        {isWaterSample ? "Mẫu nước" : "Mẫu đất"}
+                        {sampleMeta.label}
                       </h3>
                       <p className="mt-1 text-xs text-[#778272]">{test.farm_name}</p>
                     </div>
+                  </div>
+                  {/* Giữ nguyên phần hiển thị result, note và nút Xem hồ sơ bên dưới */}
                   </div>
                   <p className="mt-4 text-sm font-semibold leading-6 text-[#42513f]">
                     {test.result}
