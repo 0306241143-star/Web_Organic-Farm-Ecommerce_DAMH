@@ -185,21 +185,21 @@ export default function InventoryFefoPage() {
   ];
 
   return (
-    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
+    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100dvh-3.25rem)] sm:h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
       {/* KHỐI CỐ ĐỊNH SÁT MÉP TRÊN */}
       <div className="relative shrink-0 z-30 bg-white border-b border-slate-200/90 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 pb-2.5 space-y-2.5">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2.5 space-y-2 sm:space-y-2.5">
           {/* Hàng 1: Tiêu đề + Nút làm mới */}
-          <div className="flex items-center justify-between gap-2.5">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                <span>Bán Hàng & CSKH</span>
-                <span className="text-slate-300">•</span>
-                <span className="normal-case font-semibold text-emerald-800">
+          <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider truncate">
+                <span className="shrink-0">Bán Hàng & CSKH</span>
+                <span className="text-slate-300 shrink-0">•</span>
+                <span className="normal-case font-semibold text-emerald-800 truncate">
                   Hết hạn trước, xuất trước (FEFO)
                 </span>
               </div>
-              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 mt-0.5">
+              <h1 className="text-[15px] sm:text-lg font-black text-slate-900 tracking-tight leading-tight flex items-center gap-1.5 mt-0.5">
                 <PackageSearch className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 shrink-0" />
                 <span>Quản Lý Tồn Kho FEFO</span>
               </h1>
@@ -223,10 +223,10 @@ export default function InventoryFefoPage() {
           {counts.expiring > 0 && (
             <div
               aria-live="polite"
-              className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-1.5 text-amber-950 text-xs"
+              className="flex items-start sm:items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-1.5 text-amber-950 text-[11.5px] sm:text-xs"
             >
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-              <p className="truncate">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+              <p className="leading-snug line-clamp-2 sm:truncate">
                 Có <strong>{counts.expiring}</strong> lô còn hàng sẽ hết hạn trong 2 ngày tới — ưu tiên xuất kho theo hạn gần nhất hoặc bấm <strong>Xả hàng</strong> ở từng lô bên dưới.
               </p>
             </div>
@@ -234,13 +234,13 @@ export default function InventoryFefoPage() {
 
           {/* Hàng 3: Tabs lọc trạng thái & Ô tìm kiếm */}
           <div className="pt-2 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 md:pb-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto -mx-3.5 px-3.5 sm:mx-0 sm:px-0 pb-0.5 md:pb-0">
               {filterTabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => changeStatus(tab.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${status === tab.id
+                  className={`px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${status === tab.id
                       ? "bg-emerald-600 text-white shadow-2xs"
                       : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
                     }`}
@@ -265,7 +265,7 @@ export default function InventoryFefoPage() {
                 value={search}
                 onChange={(e) => changeSearch(e.target.value)}
                 placeholder="Tìm mã lô, tên nông sản..."
-                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
+                className="w-full pl-8 pr-7 py-2 sm:py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
               />
               {search && (
                 <button
@@ -284,11 +284,11 @@ export default function InventoryFefoPage() {
 
       {/* VÙNG NỘI DUNG CUỘN ĐỘC LẬP BÊN DƯỚI */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 space-y-4">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-3 sm:py-4 space-y-3 sm:space-y-4">
           {error && (
             <p
               role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs sm:text-sm text-red-700"
+              className="rounded-xl border border-red-200 bg-red-50 px-3.5 sm:px-4 py-2.5 text-xs sm:text-sm text-red-700"
             >
               {error}
             </p>

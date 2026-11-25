@@ -278,27 +278,29 @@ export default function FlashSalePage() {
   ];
 
   return (
-    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
+    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100dvh-3.25rem)] sm:h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
       {/* KHỐI CỐ ĐỊNH SÁT MÉP TRÊN */}
       <div className="relative shrink-0 z-30 bg-white border-b border-slate-200/90 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 pb-2.5 space-y-2.5">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-2.5 sm:pt-3 pb-2.5 space-y-2 sm:space-y-2.5">
           {/* Hàng 1: Tiêu đề + Nút làm mới & Tạo Flash Sale */}
-          <div className="flex items-center justify-between gap-2.5">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                <span>Bán Hàng & CSKH</span>
-                <span className="text-slate-300">•</span>
-                <span className="normal-case font-semibold text-emerald-800">
+          <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider truncate">
+                <span className="shrink-0">Bán Hàng & CSKH</span>
+                <span className="text-slate-300 shrink-0">•</span>
+                <span className="normal-case font-semibold text-emerald-800 truncate">
                   Khuyến mãi xả lô hàng cận hạn
                 </span>
               </div>
-              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 mt-0.5">
+              <h1 className="text-[15px] sm:text-lg font-black text-slate-900 tracking-tight leading-tight flex items-center gap-1.5 mt-0.5">
                 <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 shrink-0" />
-                <span>Quản Lý Flash Sale Cận Hạn</span>
+                <span className="line-clamp-2 sm:line-clamp-none">
+                  Quản Lý Flash Sale Cận Hạn
+                </span>
               </h1>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pt-0.5 sm:pt-0">
               <button
                 type="button"
                 onClick={() => {
@@ -318,17 +320,19 @@ export default function FlashSalePage() {
               <button
                 type="button"
                 onClick={handleOpenCreateModal}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-2.5 sm:px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
-                <span>Tạo Flash Sale</span>
+                <Plus className="w-4 h-4 shrink-0" />
+                <span>
+                  Tạo <span className="hidden min-[380px]:inline">Flash Sale</span>
+                </span>
               </button>
             </div>
           </div>
 
           {/* Hàng 2: Tabs lọc trạng thái & Ô tìm kiếm */}
           <div className="pt-2 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 md:pb-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto -mx-3.5 px-3.5 sm:mx-0 sm:px-0 pb-0.5 md:pb-0">
               {filterTabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -337,7 +341,7 @@ export default function FlashSalePage() {
                     setCampaignStatus(tab.id);
                     setCampaignPage(1);
                   }}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
                     campaignStatus === tab.id
                       ? "bg-emerald-600 text-white shadow-2xs"
                       : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
@@ -367,7 +371,7 @@ export default function FlashSalePage() {
                   setCampaignPage(1);
                 }}
                 placeholder="Tìm tên chiến dịch, mã lô, nông sản..."
-                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
+                className="w-full pl-8 pr-7 py-2 sm:py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
               />
               {campaignSearch && (
                 <button
@@ -389,25 +393,25 @@ export default function FlashSalePage() {
 
       {/* VÙNG DANH SÁCH CHƯƠNG TRÌNH FLASH SALE (CUỘN ĐỘC LẬP) */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 space-y-4">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-3 sm:py-4 space-y-3 sm:space-y-4">
           {error && (
             <p
               role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs sm:text-sm text-red-700"
+              className="rounded-xl border border-red-200 bg-red-50 px-3.5 sm:px-4 py-2.5 text-xs sm:text-sm text-red-700"
             >
               {error}
             </p>
           )}
 
           {campaignLoading ? (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-14 text-center flex flex-col items-center justify-center">
+            <div className="bg-white rounded-2xl border border-slate-200/80 px-5 py-10 sm:p-14 text-center flex flex-col items-center justify-center">
               <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
               <p className="text-xs text-slate-500 font-medium">
                 Đang tải danh sách chương trình Flash Sale...
               </p>
             </div>
           ) : paginatedCampaigns.length > 0 ? (
-            <div className="space-y-3.5">
+            <div className="space-y-3 sm:space-y-3.5">
               {paginatedCampaigns.map((campaign) => (
                 <FlashSaleCampaignCard
                   key={campaign.campaign_id}
@@ -418,7 +422,7 @@ export default function FlashSalePage() {
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-14 text-center space-y-2">
+            <div className="bg-white rounded-2xl border border-dashed border-slate-300 px-5 py-10 sm:p-14 text-center space-y-2">
               <Flame className="w-8 h-8 text-slate-300 mx-auto" />
               <p className="text-sm font-bold text-slate-700">
                 Chưa có chương trình Flash Sale phù hợp

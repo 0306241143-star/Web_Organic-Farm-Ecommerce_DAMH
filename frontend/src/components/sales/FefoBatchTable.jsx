@@ -20,7 +20,7 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
     <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 overflow-hidden">
       {/* Sub-header gợi ý quy tắc FEFO */}
       {!loading && batches.length > 0 && (
-        <div className="px-4 sm:px-5 py-2 bg-emerald-50/50 border-b border-emerald-100/80 text-[11.5px] text-emerald-800 flex items-center justify-between gap-2">
+        <div className="px-3.5 sm:px-5 py-2 bg-emerald-50/50 border-b border-emerald-100/80 text-[11px] sm:text-[11.5px] leading-snug text-emerald-800 flex items-center justify-between gap-2">
           <span>
             Danh sách sắp xếp tự động theo nguyên tắc FEFO (lô có hạn sử dụng gần nhất đứng trước).
           </span>
@@ -31,14 +31,14 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
       )}
 
       {loading ? (
-        <div className="p-12 text-center flex flex-col items-center justify-center">
+        <div className="px-5 py-10 sm:p-12 text-center flex flex-col items-center justify-center">
           <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
           <p className="text-xs text-slate-500 font-medium">
             Đang tải danh sách tồn kho FEFO...
           </p>
         </div>
       ) : batches.length === 0 ? (
-        <div className="p-12 text-center">
+        <div className="px-5 py-10 sm:p-12 text-center">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2.5">
             <PackageSearch className="w-6 h-6" />
           </div>
@@ -135,12 +135,13 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
                           <span>{batch.harvest_date || "—"}</span>
                         </div>
                         <div
-                          className={`text-[11px] font-semibold flex items-center gap-1.5 mt-0.5 ${expired
+                          className={`text-[11px] font-semibold flex items-center gap-1.5 mt-0.5 ${
+                            expired
                               ? "text-red-600"
                               : batch.is_expiring_soon
                                 ? "text-amber-700"
                                 : "text-slate-700"
-                            }`}
+                          }`}
                         >
                           <Clock className="w-3.5 h-3.5 shrink-0 opacity-75" />
                           <span>HSD: {batch.expiry_date || "—"}</span>
@@ -162,12 +163,13 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
                         </div>
                         <div className="w-28 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${percentLeft > 40
+                            className={`h-full rounded-full transition-all ${
+                              percentLeft > 40
                                 ? "bg-emerald-500"
                                 : percentLeft > 15
                                   ? "bg-amber-500"
                                   : "bg-red-500"
-                              }`}
+                            }`}
                             style={{ width: `${percentLeft}%` }}
                           />
                         </div>
@@ -224,13 +226,26 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
                       : "bg-red-50 text-red-800 border-red-200";
 
               return (
-                <div key={batch.batch_id} className="p-4 space-y-3">
+                <div key={batch.batch_id} className="p-3.5 space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200/80">
-                        #LH-{String(batch.batch_id).padStart(4, "0")}
-                      </span>
-                      <h4 className="font-bold text-slate-800 text-sm leading-snug break-words mt-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200/80">
+                          #LH-{String(batch.batch_id).padStart(4, "0")}
+                        </span>
+                        {(batch.is_expiring_soon || batch.status === "Sap_het_han") &&
+                          !expired && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200">
+                              <Clock className="w-3 h-3 shrink-0" />
+                              <span>
+                                {batch.days_until_expiry === 0
+                                  ? "Hết hạn hôm nay"
+                                  : `Còn ${batch.days_until_expiry} ngày`}
+                              </span>
+                            </span>
+                          )}
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-sm leading-snug break-words mt-1.5">
                         {batch.product_name}
                       </h4>
                       {batch.plot_name && (
@@ -257,24 +272,26 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
                     </div>
                     <div className="w-full bg-slate-200/80 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${percentLeft > 40
+                        className={`h-full rounded-full ${
+                          percentLeft > 40
                             ? "bg-emerald-500"
                             : percentLeft > 15
                               ? "bg-amber-500"
                               : "bg-red-500"
-                          }`}
+                        }`}
                         style={{ width: `${percentLeft}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5 tabular-nums">
                       <span>Thu hoạch: {batch.harvest_date || "—"}</span>
                       <span
-                        className={`font-semibold ${expired
+                        className={`font-semibold ${
+                          expired
                             ? "text-red-600"
                             : batch.is_expiring_soon
                               ? "text-amber-700"
                               : "text-slate-600"
-                          }`}
+                        }`}
                       >
                         HSD: {batch.expiry_date || "—"}
                       </span>
@@ -282,16 +299,15 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
                   </div>
 
                   {batch.is_expiring_soon && !expired && (
-                    <div className="flex justify-end">
-                      <Link
-                        to="/sales/flash-sales"
-                        className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 hover:text-amber-950"
-                      >
-                        <Flame className="w-3.5 h-3.5" />
-                        <span>Tạo Flash Sale xả lô cận hạn</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </Link>
-                    </div>
+                    <Link
+                      to={`/sales/flash-sales?batch_id=${batch.batch_id}`}
+                      state={{ prefillBatch: batch }}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300/80 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 active:bg-amber-100 transition-colors"
+                    >
+                      <Flame className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Xả hàng lô cận hạn này</span>
+                      <ChevronRight className="w-4 h-4 shrink-0" />
+                    </Link>
                   )}
                 </div>
               );
