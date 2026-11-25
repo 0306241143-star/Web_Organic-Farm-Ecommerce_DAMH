@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ClipboardList, RefreshCw } from "lucide-react";
 import Pagination from "../../components/common/Pagination";
 import SalesOrderCard from "../../components/sales/SalesOrderCard";
@@ -6,6 +7,8 @@ import SalesOrderFilters from "../../components/sales/SalesOrderFilters";
 import { salesApi } from "../../services/salesApi";
 
 export default function SalesOrderPage() {
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get("order_id") || "";
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -24,6 +27,7 @@ export default function SalesOrderPage() {
       .getOrders({
         status: status || undefined,
         payment_method: paymentMethod || undefined,
+        order_id: orderId || undefined,
         page,
         per_page: 10,
       })
@@ -42,7 +46,7 @@ export default function SalesOrderPage() {
     return () => {
       active = false;
     };
-  }, [status, paymentMethod, page, refreshKey]);
+  }, [status, paymentMethod, orderId, page, refreshKey]);
 
   const updateStatus = (value) => {
     setLoading(true);

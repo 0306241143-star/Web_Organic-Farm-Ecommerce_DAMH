@@ -14,6 +14,7 @@ use App\Services\Order\SalesOrderProcessingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrderProcessController extends Controller
 {
@@ -24,6 +25,7 @@ class OrderProcessController extends Controller
         $validated = $request->validate([
             'status' => ['nullable', 'in:Cho_thanh_toan,Cho_xac_nhan,Da_xac_nhan,Dang_giao,Hoan_thanh,Da_huy'],
             'payment_method' => ['nullable', 'in:ApiPay,COD,Mien_phi_goi,Giao_bu'],
+            'order_id' => ['nullable', 'integer', 'min:1'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
@@ -39,6 +41,10 @@ class OrderProcessController extends Controller
                     'thanhToans',
                     fn ($paymentQuery) => $paymentQuery->where('Phuong_thuc', $method)
                 )
+            )
+            ->when(
+                $validated['order_id'] ?? null,
+                fn ($query, int $orderId) => $query->where('Ma_don_hang', $orderId)
             )
             ->with([
                 'khachHang:Ma_nguoi_dung,Ho_ten,Email,So_dien_thoai',
@@ -56,6 +62,26 @@ class OrderProcessController extends Controller
             $orders,
             'Lấy danh sách đơn hàng thành công.',
             $orders->getCollection()->map(fn (DonHang $order) => $this->formatOrder($order))->all()
+        );
+    }
+
+    public function show(int $orderId): JsonResponse
+    {
+        $order = DonHang::query()
+            ->whereKey($orderId)
+            ->with([
+                'khachHang:Ma_nguoi_dung,Ho_ten,Email,So_dien_thoai',
+                'diaChi',
+                'chiTiets.sanPham:Ma_san_pham,Ten_san_pham,Hinh_anh_dai_dien,Don_vi_tinh',
+                'chiTiets.phanBoLoHangs.loHang:Ma_lo_hang,Han_su_dung',
+                'thanhToans',
+                'giaoHang',
+            ])
+            ->firstOrFail();
+
+        return $this->successResponse(
+            'Lấy chi tiết đơn hàng Sales thành công.',
+            $this->formatOrder($order)
         );
     }
 
@@ -133,6 +159,8 @@ class OrderProcessController extends Controller
                 'status' => $order->giaoHang->Trang_thai,
                 'tracking_number' => $order->giaoHang->Ma_van_don,
             ] : null,
+            'original_order_id' => $order->Ma_don_goc === null ? null : (int) $order->Ma_don_goc,
+            'complaint_history' => $this->formatComplaintHistory($order),
             'can_confirm' => $order->Trang_thai === 'Cho_xac_nhan',
             'can_confirm_cod_collection' => in_array(
                 $order->Trang_thai,
@@ -143,5 +171,57 @@ class OrderProcessController extends Controller
                     && $payment->Trang_thai === 'Khoi_tao'
             ),
         ];
+    }
+
+    private function formatComplaintHistory(DonHang $order): array
+    {
+        return DB::table('khieu_nai as claim')
+            ->leftJoin('hoan_tien as refund', 'refund.Ma_khieu_nai', '=', 'claim.Ma_khieu_nai')
+            ->leftJoin('nguoi_dung as staff', 'staff.Ma_nguoi_dung', '=', 'claim.Ma_nhan_vien_xu_ly')
+            ->leftJoin('don_hang as replacement', function ($join): void {
+                $join->on('replacement.Ma_khieu_nai', '=', 'claim.Ma_khieu_nai')
+                    ->on('replacement.Ma_don_goc', '=', 'claim.Ma_don_hang')
+                    ->where('replacement.Loai_don', '=', 'Giao_bu');
+            })
+            ->where(function ($query) use ($order): void {
+                $query->where('claim.Ma_don_hang', $order->Ma_don_hang)
+                    ->orWhere('claim.Ma_don_giao_bu', $order->Ma_don_hang);
+
+                if ($order->Ma_khieu_nai !== null) {
+                    $query->orWhere('claim.Ma_khieu_nai', $order->Ma_khieu_nai);
+                }
+            })
+            ->orderByDesc('claim.Ma_khieu_nai')
+            ->get([
+                'claim.Ma_khieu_nai',
+                'claim.Ma_don_hang',
+                DB::raw('COALESCE(claim.Ma_don_giao_bu, replacement.Ma_don_hang) as Ma_don_giao_bu'),
+                'claim.Ly_do',
+                'claim.Trang_thai',
+                'claim.Hinh_thuc_xu_ly',
+                DB::raw('COALESCE(claim.So_tien_hoan, refund.So_tien) as So_tien_hoan'),
+                'claim.Phan_hoi_cskh',
+                'claim.Ngay_xu_ly',
+                'refund.Trang_thai as refund_status',
+                'staff.Ho_ten as handler_name',
+            ])
+            ->map(fn (object $claim): array => [
+                'claim_id' => (int) $claim->Ma_khieu_nai,
+                'original_order_id' => (int) $claim->Ma_don_hang,
+                'replacement_order_id' => $claim->Ma_don_giao_bu === null
+                    ? null
+                    : (int) $claim->Ma_don_giao_bu,
+                'reason' => $claim->Ly_do,
+                'status' => $claim->Trang_thai,
+                'resolution' => $claim->Hinh_thuc_xu_ly,
+                'refund_amount' => $claim->So_tien_hoan === null
+                    ? null
+                    : (float) $claim->So_tien_hoan,
+                'refund_status' => $claim->refund_status,
+                'feedback' => $claim->Phan_hoi_cskh,
+                'handler' => $claim->handler_name,
+                'resolved_at' => $claim->Ngay_xu_ly,
+            ])
+            ->all();
     }
 }

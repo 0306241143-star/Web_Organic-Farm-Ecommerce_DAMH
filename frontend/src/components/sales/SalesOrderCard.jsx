@@ -1,4 +1,5 @@
 import { Banknote, Check, MapPin, PackageCheck, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import Badge from "../common/Badge";
 
 const STATUS_LABELS = {
@@ -40,6 +41,13 @@ const paymentLabel = (method) =>
     Mien_phi_goi: "Miễn phí gói",
     Giao_bu: "Giao bù",
   })[method] || method;
+
+const CLAIM_STATUS_LABELS = {
+  Cho_xu_ly: "Chờ tiếp nhận",
+  Dang_xu_ly: "Đang xử lý",
+  Da_giai_quyet: "Đã giải quyết",
+  Tu_choi: "Từ chối",
+};
 
 export default function SalesOrderCard({
   order,
@@ -110,6 +118,46 @@ export default function SalesOrderCard({
             <p className="text-xs text-[#5a6357]">
               Ghi chú: <span className="text-[#191c1b]">{order.note}</span>
             </p>
+          )}
+          {order.complaint_history?.length > 0 && (
+            <section className="rounded-xl border border-violet-200 bg-violet-50/70 p-3">
+              <h3 className="text-sm font-bold text-violet-950">Lịch sử khiếu nại & chăm sóc khách hàng</h3>
+              <div className="mt-2 space-y-3">
+                {order.complaint_history.map((claim) => (
+                  <div key={claim.claim_id} className="rounded-lg bg-white/80 p-3 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-bold text-slate-900">
+                        Khiếu nại #{claim.claim_id} · {CLAIM_STATUS_LABELS[claim.status] || claim.status}
+                      </p>
+                      <Link
+                        to="/sales/claims"
+                        className="font-bold text-violet-800 hover:underline"
+                      >
+                        Xem hồ sơ
+                      </Link>
+                    </div>
+                    <p className="mt-1 text-slate-600">{claim.reason}</p>
+                    {claim.resolution === "Hoan_tien" && (
+                      <p className="mt-1 font-semibold text-emerald-800">
+                        Hoàn tiền {currency.format(claim.refund_amount || 0)}
+                        {claim.refund_status === "Cho_xu_ly" ? " · Chờ thực hiện thanh toán" : ""}
+                      </p>
+                    )}
+                    {claim.replacement_order_id && (
+                      <Link
+                        to={`/sales/orders?order_id=${claim.replacement_order_id}`}
+                        className="mt-1 inline-block font-semibold text-emerald-800 hover:underline"
+                      >
+                        Đơn giao bù #{claim.replacement_order_id}
+                      </Link>
+                    )}
+                    {claim.feedback && (
+                      <p className="mt-1 text-slate-700">Phản hồi: {claim.feedback}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
         </div>
 
