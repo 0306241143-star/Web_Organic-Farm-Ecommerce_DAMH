@@ -30,7 +30,7 @@ class DonHang extends Model
         return $this->belongsTo(NguoiDung::class, 'Ma_nguoi_dung', 'Ma_nguoi_dung');
     }
 
-    public function thanhToans(): HasMany
+    public  function thanhToans(): HasMany
     {
         return $this->hasMany(ThanhToan::class, 'Ma_don_hang', 'Ma_don_hang');
     }

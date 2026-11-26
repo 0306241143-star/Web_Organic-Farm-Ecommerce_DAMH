@@ -61,7 +61,7 @@ trait ApiResponse
     /**
      * Phản hồi lỗi chuẩn 6 khóa
      */
-    protected function errorResponse(
+    protected  function errorResponse(
         string $message = 'Có lỗi xảy ra.',
         int $status = 400,
         string $errorCode = self::ERR_BAD_REQUEST,

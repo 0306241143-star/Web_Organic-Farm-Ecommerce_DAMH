@@ -122,10 +122,11 @@ return new class extends Migration
 
             $table->foreign('Ma_flash_sale', 'fk_ctfs_flash_sale')
                 ->references('Ma_flash_sale')->on('chuong_trinh_flash_sale')->onDelete('cascade');
-            $table->foreign('Ma_lo_hang', 'fk_ctfs_lo_hang')
+            $table->foreign  ('Ma_lo_hang', 'fk_ctfs_lo_hang')
                 ->references('Ma_lo_hang')->on('lo_hang');
         });
     }
+
 
     public function down(): void
     {

@@ -56,13 +56,19 @@ export default function AppRouter() {
             <Route path="register" element={<RegisterPage />} />
             <Route path="forgot-password" element={<ForgotPasswordPage />} />
             <Route element={<ProtectedRoute />}>
-              <Route element={<RoleGuard roles={["customer", "admin"]} />}>
+              <Route
+                element={
+                  <RoleGuard
+                    roles={["customer", "admin", "farm_staff", "sales"]}
+                  />
+                }
+              >
                 <Route path="subscriptions" element={<SubscriptionRegisterPage />} />
               </Route>
               <Route element={<RoleGuard roles={["customer"]} />}>
                 <Route path="cart" element={<CartPage />} />
                 <Route path="checkout" element={<CheckoutPage />} />
-                <Route path="orders" element={<OrderHistoryPage />} />
+                <Route path="orders" element={<Navigate to="/rewards?tab=orders" replace />} />
                 <Route path="rewards" element={<RewardWalletPage />} />
                 <Route path="profile" element={<RewardWalletPage />} />
               </Route>
@@ -97,5 +103,7 @@ export default function AppRouter() {
         </Routes>
       </Suspense>
     </BrowserRouter>
-  );
+  )  ;
+
+  
 }

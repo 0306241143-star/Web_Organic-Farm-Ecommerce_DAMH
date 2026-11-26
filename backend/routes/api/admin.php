@@ -40,11 +40,23 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::post('/subscriptions', [SubscriptionPackageController::class, 'store']);
     Route::put('/subscriptions/{id}', [SubscriptionPackageController::class, 'update']);
     Route::patch('/subscriptions/{id}/status', [SubscriptionPackageController::class, 'updateStatus']);
-    Route::delete('/subscriptions/{id}', [SubscriptionPackageController::class, 'destroy']);
+    Route::delete ('/subscriptions/{id}', [SubscriptionPackageController::class, 'destroy']);
 
     // Cấu hình thông tin & hình ảnh nông trại (Admin)
     Route::get('/settings/farm', [FarmProfileController::class, 'show']);
     Route::put('/settings/farm', [FarmProfileController::class, 'update']);
     Route::delete('/settings/farm/images/{imageId}', [FarmProfileController::class, 'destroyImage']);
     Route::post('/settings/farm/geocode', [FarmProfileController::class, 'geocodeAddress']);
+
+
+    // Trong backend/routes/api/admin.php (bên trong Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin'))
+    // Quản lý tài khoản người dùng & nhân viên (Admin)
+    Route::get('/users', [UserRoleController::class, 'index']);
+    Route::post('/users', [UserRoleController::class, 'store']);
+    Route::put('/users/{id}', [UserRoleController::class, 'update'])->whereNumber('id');
+    Route::put('/users/{id}/status', [UserRoleController::class, 'updateStatus'])->whereNumber('id');
+
+    // Thiết lập ma trận phân quyền theo vai trò
+    Route::get('/roles-permissions', [UserRoleController::class, 'rolesAndPermissions']);
+    Route::put('/roles/{roleId}/permissions', [UserRoleController::class, 'updateRolePermissions'])->whereNumber('roleId');
 });

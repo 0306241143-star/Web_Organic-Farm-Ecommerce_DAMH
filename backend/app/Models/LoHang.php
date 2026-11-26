@@ -43,7 +43,7 @@ class LoHang extends Model
         return $this->hasMany(ChiTietFlashSale::class, 'Ma_lo_hang', 'Ma_lo_hang');
     }
 
-    public function scopeKhaDungFefo($query)
+    public  function scopeKhaDungFefo($query)
     {
         return $query->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])
                     ->where('So_luong_con_lai', '>', 0)

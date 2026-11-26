@@ -17,7 +17,7 @@ class MuaVu extends Model
         return $this->belongsTo(NongTrai::class, 'Ma_nong_trai', 'Ma_nong_trai');
     }
 
-    public function loCanhTacs(): HasMany
+    public  function loCanhTacs(): HasMany
     {
         return $this->hasMany(LoCanhTac::class, 'Ma_mua_vu', 'Ma_mua_vu');
     }

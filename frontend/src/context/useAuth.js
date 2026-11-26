@@ -9,5 +9,5 @@ export function useAuth() {
     throw new Error("useAuth phải được sử dụng bên trong AuthProvider.");
   }
 
-  return context;
+  return  context;
 }

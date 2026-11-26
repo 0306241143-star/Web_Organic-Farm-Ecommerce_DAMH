@@ -199,11 +199,12 @@ return new class extends Migration
         });
     }
 
+
     public function down(): void
     {
         Schema::dropIfExists('diem_tich_luy');
         Schema::dropIfExists('hoan_tien');
-        Schema::dropIfExists('tep_bang_chung');
+        Schema:: dropIfExists('tep_bang_chung');
 
         if (Schema::hasTable('don_hang')) {
             Schema::table('don_hang', function (Blueprint $table) {

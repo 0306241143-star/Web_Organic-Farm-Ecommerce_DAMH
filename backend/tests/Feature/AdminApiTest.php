@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\NguoiDung;
+use Carbon\Carbon;
 use Tests\TestCase;
 
 class AdminApiTest extends TestCase
@@ -44,6 +45,40 @@ class AdminApiTest extends TestCase
         $this->assertLessThan(500, $durationMs, "Admin dashboard API response time ({$durationMs}ms) exceeded 500ms SLA.");
     }
 
+    public function test_admin_dashboard_returns_period_metrics_and_daily_series(): void
+    {
+        $adminUser = NguoiDung::where('Email', 'admin@nongsansach.vn')->firstOrFail();
+        $token = $adminUser->createToken('test_admin_report_metrics')->plainTextToken;
+        $headers = ['Authorization' => 'Bearer ' . $token];
+
+        Carbon::setTestNow('2026-11-26 12:00:00');
+        try {
+            $response = $this->getJson('/api/admin/reports/dashboard?period=30d', $headers)
+                ->assertOk()
+                ->assertJsonPath('success', true)
+                ->assertJsonPath('data.period.key', '30d')
+                ->assertJsonPath('data.revenue.orders_count', 3)
+                ->assertJsonPath('data.customers.unique_customers', 1)
+                ->assertJsonPath('data.customers.repeat_customers', 1)
+                ->assertJsonPath('data.wastage.quantity', 5)
+                ->assertJsonPath('data.wastage.harvested_quantity', 1695)
+                ->assertJsonStructure([
+                    'data' => [
+                        'period' => ['start_date', 'end_date'],
+                        'series' => [['date', 'revenue', 'orders', 'harvest_quantity', 'wastage_quantity']],
+                        'wastage' => ['rate', 'by_type' => ['Hao_hut', 'Xuat_huy']],
+                        'customers' => ['repeat_rate'],
+                    ],
+                ]);
+
+            $this->assertSame(30, count($response->json('data.series')));
+            $this->assertSame(351000.0, (float) $response->json('data.revenue.total'));
+            $this->assertSame(100.0, (float) $response->json('data.customers.repeat_rate'));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     public function test_admin_user_management_pagination_and_role_protection(): void
     {
         $adminUser = NguoiDung::where('Email', 'admin@nongsansach.vn')->first();
@@ -80,10 +115,12 @@ class AdminApiTest extends TestCase
             $this->markTestSkipped('Admin user not found.');
         }
 
-        $token = $adminUser->createToken('test_admin_token_3')->plainTextToken;
+        $token = $adminUser ->createToken('test_admin_token_3')->plainTextToken;
         $headers = ['Authorization' => 'Bearer ' . $token];
 
         // 1. Lấy cài đặt hệ thống
+
+
         $this->getJson('/api/admin/settings', $headers)
             ->assertOk()
             ->assertJsonPath('success', true)
