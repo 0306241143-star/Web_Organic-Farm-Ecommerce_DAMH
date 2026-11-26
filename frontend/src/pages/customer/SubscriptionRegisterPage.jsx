@@ -76,19 +76,35 @@ function writeJsonStorage(key, value) {
 export default function SubscriptionRegisterPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdminPreview = user?.role === "admin";
+  const isInternalPreview = Boolean(
+    user && ["admin", "farm_staff", "sales"].includes(user.role)
+  );
+  const previewRoleLabel =
+    user?.role === "admin"
+      ? "Quản trị viên (Admin)"
+      : user?.role === "sales"
+        ? "Nhân viên Sale"
+        : "Nhân viên Nông trại";
+  const previewReturnPath =
+    user?.role === "admin"
+      ? "/admin/catalog?tab=subscriptions"
+      : user?.role === "sales"
+        ? "/sales/orders"
+        : "/farm/seasons";
+  const previewReturnLabel =
+    user?.role === "admin" ? "Quay lại quản lý gói" : "Quay lại khu vực làm việc";
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const selectedProduct = location.state?.product;
 
   const subscriptionStorageKey =
-    !isAdminPreview && user?.id ? `xanhfarm:pendingSubscription:${user.id}` : null;
+    !isInternalPreview && user?.id ? `xanhfarm:pendingSubscription:${user.id}` : null;
   const paymentStorageKey =
-    !isAdminPreview && user?.id ? `xanhfarm:pendingSubscriptionPayment:${user.id}` : null;
+    !isInternalPreview && user?.id ? `xanhfarm:pendingSubscriptionPayment:${user.id}` : null;
   const summaryStorageKey =
-    !isAdminPreview && user?.id ? `xanhfarm:pendingSubscriptionSummary:${user.id}` : null;
+    !isInternalPreview && user?.id ? `xanhfarm:pendingSubscriptionSummary:${user.id}` : null;
   const idempotencyStorageKey =
-    !isAdminPreview && user?.id ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}` : null;
+    !isInternalPreview && user?.id ? `xanhfarm:pendingSubscriptionIdempotency:${user.id}` : null;
 
   const [packages, setPackages] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -131,7 +147,7 @@ export default function SubscriptionRegisterPage() {
   useEffect(() => {
     let active = true;
 
-    const loadData = isAdminPreview
+    const loadData = isInternalPreview
       ? Promise.all([
         storefrontApi.getSubscriptions(),
         Promise.resolve({ data: { data: [] } }),
@@ -155,7 +171,7 @@ export default function SubscriptionRegisterPage() {
             addressList.find((address) => address.is_default)?.id ?? addressList[0]?.id ?? ""
           )
         );
-        setApiPayReady(!isAdminPreview && Boolean(optionsResponse.data?.ready));
+        setApiPayReady(!isInternalPreview && Boolean(optionsResponse.data?.ready));
 
         const productPackage = selectedProduct
           ? availablePackages.find((item) =>
@@ -185,12 +201,12 @@ export default function SubscriptionRegisterPage() {
     return () => {
       active = false;
     };
-  }, [searchParams, selectedProduct, isAdminPreview]);
+  }, [searchParams, selectedProduct, isInternalPreview]);
 
   // Hàm kiểm tra trạng thái đăng ký gói (dùng cho cả polling tự động 5s và nút bấm thủ công)
   const verifySubscriptionPaymentStatus = useCallback(
     async (silent = false) => {
-      if (!subscriptionId || isAdminPreview) return;
+      if (!subscriptionId || isInternalPreview) return;
 
       if (!silent) {
         setErrorMessage("");
@@ -242,12 +258,12 @@ export default function SubscriptionRegisterPage() {
         if (!silent) setCheckingStatus(false);
       }
     },
-    [subscriptionId, isAdminPreview, clearPendingSubscriptionStorage, navigate]
+    [subscriptionId, isInternalPreview, clearPendingSubscriptionStorage, navigate]
   );
 
   // Kiểm tra ngay khi có subscriptionId và tự động polling mỗi 5 giây
   useEffect(() => {
-    if (!subscriptionId || isAdminPreview) return undefined;
+    if (!subscriptionId || isInternalPreview) return undefined;
 
     verifySubscriptionPaymentStatus(true);
     const interval = window.setInterval(() => {
@@ -255,10 +271,10 @@ export default function SubscriptionRegisterPage() {
     }, 5000);
 
     return () => window.clearInterval(interval);
-  }, [subscriptionId, isAdminPreview, verifySubscriptionPaymentStatus]);
+  }, [subscriptionId, isInternalPreview, verifySubscriptionPaymentStatus]);
 
   const startPayment = async (id) => {
-    if (isAdminPreview) {
+    if (isInternalPreview) {
       showGlobalToast("Tài khoản Quản trị viên chỉ được xem trước, không thể thanh toán.", "warning");
       return;
     }
@@ -278,7 +294,7 @@ export default function SubscriptionRegisterPage() {
   };
 
   const handleCancelSubscription = async () => {
-    if (isAdminPreview || !subscriptionId || isCancelling) return;
+    if (isInternalPreview || !subscriptionId || isCancelling) return;
 
     const confirmed = await confirmGlobalDialog({
       title: "Hủy đăng ký gói định kỳ?",
@@ -316,7 +332,7 @@ export default function SubscriptionRegisterPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (isAdminPreview) {
+    if (isInternalPreview) {
       showGlobalToast("Chế độ xem trước Admin: không cho phép đăng ký và thanh toán.", "warning");
       return;
     }
@@ -424,7 +440,7 @@ export default function SubscriptionRegisterPage() {
   };
 
   const currentStep =
-    !isAdminPreview && subscriptionId ? 3 : packageId && deliveryDays.length > 0 ? 2 : 1;
+    !isInternalPreview && subscriptionId ? 3 : packageId && deliveryDays.length > 0 ? 2 : 1;
 
   if (loading) {
     return (
@@ -440,27 +456,27 @@ export default function SubscriptionRegisterPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      {/* ================= BANNER CHẾ ĐỘ XEM TRƯỚC DÀNH CHO ADMIN ================= */}
-      {isAdminPreview && (
+      {/* ================= BANNER CHẾ ĐỘ XEM TRƯỚC DÀNH CHO NHÂN SỰ ================= */}
+      {isInternalPreview && (
         <div
           role="region"
-          aria-label="Chế độ xem trước của Quản trị viên"
+          aria-label="Chế độ xem trước của nhân sự nội bộ"
           className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3.5 text-amber-950 shadow-2xs"
         >
           <div className="flex items-start sm:items-center gap-2.5 text-xs sm:text-sm">
             <Eye className="w-5 h-5 text-amber-700 shrink-0 mt-0.5 sm:mt-0" />
             <p className="font-semibold">
               Bạn đang xem giao diện gói rau định kỳ ở trang khách hàng dưới quyền{" "}
-              <strong className="font-extrabold">Quản trị viên (Admin)</strong>. Thao tác đăng ký
+              <strong className="font-extrabold">{previewRoleLabel}</strong>. Thao tác đăng ký
               và thanh toán ApiPay được khóa.
             </p>
           </div>
           <Link
-            to="/admin/catalog?tab=subscriptions"
+            to={previewReturnPath}
             className="self-start sm:self-auto shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-[#00450d] hover:bg-[#006e1c] px-3.5 py-2 text-xs font-extrabold text-white transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Quay lại quản lý gói</span>
+            <span>{previewReturnLabel}</span>
           </Link>
         </div>
       )}
@@ -546,7 +562,7 @@ export default function SubscriptionRegisterPage() {
       )}
 
       {/* ================= NỘI DUNG CHÍNH ================= */}
-      {!isAdminPreview && subscriptionId ? (
+      {!isInternalPreview && subscriptionId ? (
         <SubscriptionPendingPayment
           subscriptionId={subscriptionId}
           payment={payment}
@@ -585,7 +601,7 @@ export default function SubscriptionRegisterPage() {
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
           apiPayReady={apiPayReady}
-          isPreviewOnly={isAdminPreview}
+          isPreviewOnly={isInternalPreview}
         />
       )}
     </main>

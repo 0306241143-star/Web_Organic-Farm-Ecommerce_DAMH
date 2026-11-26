@@ -15,9 +15,8 @@ import { useAuth } from "../../context/useAuth";
 
 export default function SubscriptionPackagesSection() {
   const { user, openLoginModal } = useAuth();
-  const isAdminPreview = user?.role === "admin";
-  const isRestrictedStaff = Boolean(
-    user && ["farm_staff", "sales"].includes(user.role)
+  const isInternalPreview = Boolean(
+    user && ["admin", "farm_staff", "sales"].includes(user.role)
   );
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,15 +62,13 @@ export default function SubscriptionPackagesSection() {
           </p>
         </div>
 
-        {!isRestrictedStaff && (
-          <Link
-            to="/subscriptions"
-            className="self-start md:self-auto px-4 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-bold text-[#064e2e] inline-flex items-center gap-1.5 transition-colors shadow-xs"
-          >
-            <span>Tìm Hiểu Chính Sách Gói</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        )}
+        <Link
+          to="/subscriptions"
+          className="self-start md:self-auto px-4 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-bold text-[#064e2e] inline-flex items-center gap-1.5 transition-colors shadow-xs"
+        >
+          <span>Tìm Hiểu Chính Sách Gói</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {/* Content */}
@@ -288,18 +285,7 @@ export default function SubscriptionPackagesSection() {
 
                 {/* CTA */}
                 <div className="mt-6 pt-2">
-                  {isRestrictedStaff ? (
-                    <button
-                      type="button"
-                      disabled
-                      className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 opacity-70 cursor-not-allowed ${isFeatured
-                        ? "bg-[#10b981] text-white"
-                        : "bg-[#064e2e] text-white"
-                        }`}
-                    >
-                      <span>Chỉ xem (Tài khoản nội bộ)</span>
-                    </button>
-                  ) : isAdminPreview ? (
+                  {isInternalPreview ? (
                     <Link
                       to={`/subscriptions?package_id=${pkg.id}`}
                       className={`w-full py-3 px-5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${isFeatured
@@ -307,7 +293,11 @@ export default function SubscriptionPackagesSection() {
                         : "bg-[#064e2e] hover:bg-[#043821] text-white"
                         }`}
                     >
-                      <span>Xem Trang Đăng Ký (Admin)</span>
+                      <span>
+                        {user.role === "admin"
+                          ? "Xem Trang Đăng Ký (Admin)"
+                          : "Xem Trang Gói Định Kỳ"}
+                      </span>
                       <ArrowRight className="w-4 h-4" />
                     </Link>
                   ) : (

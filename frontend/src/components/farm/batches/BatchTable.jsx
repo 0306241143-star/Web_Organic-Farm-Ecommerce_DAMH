@@ -13,9 +13,9 @@ export default function BatchTable({
     <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 overflow-hidden">
       {/* Gợi ý chọn dòng */}
       {!loading && filteredBatches.length > 0 && !selectedBatch && (
-        <div className="px-4 sm:px-5 py-2 bg-emerald-50/50 border-b border-emerald-100/80 text-[11.5px] text-emerald-800 flex items-center justify-between gap-2">
-          <span>
-            Bấm chọn vào bất kỳ lô hàng nào bên dưới để xem thông tin chi tiết và bảng thao tác điều khiển.
+        <div className="px-3.5 sm:px-4 py-2 bg-emerald-50/50 border-b border-emerald-100/80 text-[11.5px] text-emerald-800 flex items-center justify-between gap-2">
+          <span className="truncate">
+            Bấm chọn vào bất kỳ lô hàng nào bên dưới để xem chi tiết &amp; in tem QR.
           </span>
           <span className="text-emerald-700 font-bold tabular-nums shrink-0">
             {displayTotal} lô
@@ -45,19 +45,18 @@ export default function BatchTable({
         </div>
       ) : (
         <>
-          {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          {/* Desktop & Tablet Table View — co giãn vừa khít khung, không cuộn ngang */}
+          <div className="hidden md:block">
+            <table className="w-full table-fixed text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/90">
-                  <th className="py-3 px-4 sm:px-5">Lô Hàng & Nông Sản</th>
-                  {!selectedBatch && <th className="py-3 px-4">Lô Canh Tác</th>}
-                  <th className="py-3 px-4">Thu Hoạch & HSD</th>
-                  <th className="py-3 px-4">Tồn Kho</th>
-                  <th className="py-3 px-4 sm:px-5 text-right">Trạng Thái</th>
+                <tr className="border-b border-slate-200/80 text-[10.5px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/90">
+                  <th className="py-2.5 px-3.5 w-[35%]">Lô Hàng &amp; Nông Sản</th>
+                  <th className="py-2.5 px-2.5 w-[23%]">Thu Hoạch &amp; HSD</th>
+                  <th className="py-2.5 px-2.5 w-[22%]">Tồn Kho</th>
+                  <th className="py-2.5 px-3.5 w-[20%] text-right">Trạng Thái</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+              <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredBatches.map((batch) => {
                   const percentLeft = Math.min(
                     100,
@@ -84,18 +83,21 @@ export default function BatchTable({
                           : "hover:bg-slate-50/90"
                       }`}
                     >
-                      {/* Lô Hàng & Nông Sản */}
-                      <td className="py-3 px-4 sm:px-5">
+                      {/* Lô Hàng, Nông Sản & Lô Canh Tác */}
+                      <td className="py-2.5 px-3.5 align-top">
                         <div className="min-w-0">
-                          <div className="font-bold text-slate-800 truncate">
+                          <div className="font-bold text-slate-800 truncate" title={batch.product_name}>
                             {batch.product_name}
                           </div>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            <span className="font-mono font-semibold text-[11px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/70">
+                          <div className="text-[11px] text-slate-500 truncate mt-0.5" title={batch.plot_name}>
+                            {batch.plot_name}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            <span className="font-mono font-semibold text-[10.5px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/70 truncate max-w-full">
                               {batch.batch_code}
                             </span>
                             {batch.certificates_count > 0 && (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 bg-white px-1.5 py-0.5 rounded-md border border-emerald-200">
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 bg-white px-1.5 py-0.5 rounded-md border border-emerald-200 shrink-0">
                                 <Award className="w-3 h-3 shrink-0" />
                                 <span className="tabular-nums">{batch.certificates_count}</span>
                               </span>
@@ -104,39 +106,35 @@ export default function BatchTable({
                         </div>
                       </td>
 
-                      {/* Lô Canh Tác (hiện khi bảng toàn chiều rộng) */}
-                      {!selectedBatch && (
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-700 truncate max-w-[160px]">
-                            {batch.plot_name}
-                          </div>
-                          <div className="text-[11px] text-slate-400 truncate max-w-[160px]">
-                            {batch.season_name}
-                          </div>
-                        </td>
-                      )}
-
                       {/* Thu Hoạch & HSD */}
-                      <td className="py-3 px-4 whitespace-nowrap tabular-nums">
-                        <div className="text-xs text-slate-600 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <td className="py-2.5 px-2.5 align-middle whitespace-nowrap tabular-nums">
+                        <div className="text-[11.5px] text-slate-600 flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                           <span>{batch.harvest_date}</span>
                         </div>
-                        <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5 mt-0.5">
-                          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <div
+                          className={`text-[11px] font-semibold flex items-center gap-1 mt-1 ${
+                            batch.days_until_expiry < 0
+                              ? "text-red-600"
+                              : batch.days_until_expiry <= 2
+                                ? "text-amber-700"
+                                : "text-slate-700"
+                          }`}
+                        >
+                          <Clock className="w-3 h-3 text-slate-400 shrink-0" />
                           <span>HSD: {batch.expiry_date}</span>
                         </div>
                       </td>
 
                       {/* Tồn Kho */}
-                      <td className="py-3 px-4 tabular-nums">
-                        <div className="flex items-center justify-between gap-2 text-xs mb-1">
-                          <span className="font-bold text-slate-800">
-                            {batch.remaining_quantity} / {batch.harvest_quantity} {batch.product_unit}
+                      <td className="py-2.5 px-2.5 align-middle tabular-nums">
+                        <div className="flex items-center justify-between gap-1 text-[11.5px] mb-1">
+                          <span className="font-bold text-slate-800 truncate">
+                            {batch.remaining_quantity}/{batch.harvest_quantity} {batch.product_unit}
                           </span>
-                          <span className="text-[10px] text-slate-400">{percentLeft}%</span>
+                          <span className="text-[10px] text-slate-400 shrink-0">{percentLeft}%</span>
                         </div>
-                        <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
                               percentLeft > 40
@@ -151,10 +149,10 @@ export default function BatchTable({
                       </td>
 
                       {/* Trạng Thái & Mũi tên chọn */}
-                      <td className="py-3 px-4 sm:px-5 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-2">
+                      <td className="py-2.5 px-3.5 align-middle text-right whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end gap-1.5">
                           <span
-                            className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+                            className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full border ${
                               batch.status === "Con_hang"
                                 ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                                 : batch.status === "Sap_het_han"
@@ -167,7 +165,7 @@ export default function BatchTable({
                             {batch.status_label}
                           </span>
                           <ChevronRight
-                            className={`w-4 h-4 transition-transform ${
+                            className={`w-4 h-4 shrink-0 transition-transform ${
                               isSelected
                                 ? "text-emerald-700 translate-x-0.5"
                                 : "text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5"
@@ -197,7 +195,7 @@ export default function BatchTable({
                   role="button"
                   tabIndex={0}
                   onClick={() => handleSelectBatch(batch)}
-                  className={`p-4 space-y-3 cursor-pointer transition-colors ${
+                  className={`p-3.5 space-y-2.5 cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-emerald-50/80 ring-1 ring-inset ring-emerald-200"
                       : "hover:bg-slate-50"
@@ -275,7 +273,7 @@ export default function BatchTable({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end text-xs text-emerald-700 font-bold gap-1 pt-1">
+                  <div className="flex items-center justify-end text-xs text-emerald-700 font-bold gap-1 pt-0.5">
                     <span>
                       {isSelected
                         ? "Đang chọn xem chi tiết"

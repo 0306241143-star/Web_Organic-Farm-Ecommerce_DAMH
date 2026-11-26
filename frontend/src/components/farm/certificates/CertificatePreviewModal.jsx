@@ -7,17 +7,16 @@ export default function CertificatePreviewModal({
 }) {
   return (
     <>
-      {/* Modal: Xem trước Bản Scan / PDF Chứng nhận */}
       {previewCert && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Xem bản scan chứng nhận"
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-5"
           onClick={(e) => e.target === e.currentTarget && setPreviewCert(null)}
         >
-          <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-5 sm:px-6 py-4 bg-[#064e2e] text-white flex items-center justify-between gap-3 shrink-0">
+          <div className="relative w-full sm:max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88dvh] sm:max-h-[92vh] animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150">
+            <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#064e2e] text-white flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <Award className="w-5 h-5 text-emerald-300 shrink-0" />
                 <div className="min-w-0">
@@ -32,21 +31,21 @@ export default function CertificatePreviewModal({
               <button
                 type="button"
                 onClick={() => setPreviewCert(null)}
-                className="text-emerald-200 hover:text-white p-1.5 rounded-full cursor-pointer shrink-0"
+                className="text-emerald-200 hover:text-white p-2 rounded-xl bg-white/10 sm:bg-transparent cursor-pointer shrink-0"
                 aria-label="Đóng cửa sổ xem tệp"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-4 flex-1 min-h-0">
+            <div className="p-3.5 sm:p-5 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1 min-h-0">
               {/* Metadata bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 bg-slate-50 p-3 sm:p-3.5 rounded-2xl border border-slate-200/70 text-xs">
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">
                     Lô hàng gắn
                   </span>
-                  <strong className="text-emerald-800 font-mono">
+                  <strong className="text-emerald-800 font-mono block truncate">
                     {previewCert.batch_code || "Áp dụng chung"}
                   </strong>
                 </div>
@@ -54,19 +53,23 @@ export default function CertificatePreviewModal({
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">
                     Sản phẩm
                   </span>
-                  <strong className="text-slate-800">{previewCert.product_name}</strong>
+                  <strong className="text-slate-800 block truncate">
+                    {previewCert.product_name}
+                  </strong>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">
                     Ngày cấp
                   </span>
-                  <strong className="text-slate-800 tabular-nums">{previewCert.issued_date}</strong>
+                  <strong className="text-slate-800 tabular-nums block">
+                    {previewCert.issued_date}
+                  </strong>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-400 block">
                     Hạn hiệu lực
                   </span>
-                  <strong className="text-slate-800 tabular-nums">
+                  <strong className="text-slate-800 tabular-nums block">
                     {previewCert.expiry_date || "Theo đợt kiểm định"}
                   </strong>
                 </div>
@@ -79,7 +82,7 @@ export default function CertificatePreviewModal({
                     <img
                       src={previewCert.file_url}
                       alt={previewCert.name}
-                      className="max-h-[58vh] w-auto object-contain rounded-xl"
+                      className="max-h-[46dvh] sm:max-h-[58vh] w-auto object-contain rounded-xl"
                     />
                   </div>
                 ) : (
@@ -87,19 +90,20 @@ export default function CertificatePreviewModal({
                     <iframe
                       title={previewCert.name}
                       src={previewCert.file_url}
-                      className="w-full h-[58vh]"
+                      className="w-full h-[46dvh] sm:h-[58vh]"
                     />
                   </div>
                 )
               ) : (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-6 text-center space-y-3">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 sm:p-6 text-center space-y-3">
                   <FileText className="w-10 h-10 text-amber-600 mx-auto" />
                   <div>
                     <h4 className="text-sm font-bold text-slate-800">
                       Hồ sơ mẫu chưa có tệp bản scan thực tế trên máy chủ
                     </h4>
                     <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto">
-                      Đường dẫn lưu trong CSDL là <code className="font-mono">{previewCert.file_path}</code>. Bạn có thể tải tệp PDF hoặc ảnh chụp bản scan thật lên để thay thế ngay.
+                      Đường dẫn lưu trong CSDL là{" "}
+                      <code className="font-mono break-all">{previewCert.file_path}</code>. Bạn có thể tải tệp PDF hoặc ảnh chụp bản scan thật lên để thay thế ngay.
                     </p>
                   </div>
                   <button
@@ -118,13 +122,13 @@ export default function CertificatePreviewModal({
               )}
             </div>
 
-            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
+            <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2.5 shrink-0">
               {previewCert.file_available ? (
                 <a
                   href={previewCert.file_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Mở / Tải Bản Scan</span>

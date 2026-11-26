@@ -10,7 +10,7 @@ import CreateBatchModal from "../../components/farm/modals/CreateBatchModal";
 import QrPrintPreviewModal from "../../components/farm/modals/QrPrintPreviewModal";
 import BatchTable from "../../components/farm/batches/BatchTable";
 import BatchDetailPanel from "../../components/farm/batches/BatchDetailPanel";
-import BatchStatCards from "../../components/farm/batches/BatchStatCards";
+
 
 const PER_PAGE = 10;
 
@@ -53,29 +53,7 @@ export default function BatchHarvestPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailSubTab, setDetailSubTab] = useState("certificates");
 
-  // Tính các chỉ số thống kê 4 thẻ KPI nhanh
-  const batchStats = useMemo(() => {
-    let totalAvailable = 0;
-    let expiringSoon = 0;
-    let depleted = 0;
 
-    batches.forEach((b) => {
-      totalAvailable += Number(b.remaining_quantity || 0);
-      if (b.status === "Sap_het_han" || b.is_expiring_soon) {
-        expiringSoon += 1;
-      }
-      if (b.status === "Het_hang") {
-        depleted += 1;
-      }
-    });
-
-    return {
-      total_batches: batches.length,
-      total_available_qty: totalAvailable,
-      expiring_soon_batches: expiringSoon,
-      depleted_batches: depleted,
-    };
-  }, [batches]);
 
   // Tải danh sách lô hàng thu hoạch
   const fetchBatches = useCallback(async (isSilent = false) => {
@@ -250,93 +228,57 @@ export default function BatchHarvestPage() {
   ];
 
   return (
-    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mb-3.5 sm:-mb-6 lg:-mb-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
-      {/* KHỐI CỐ ĐỊNH SÁT MÉP TRÊN */}
-      <div className="relative shrink-0 z-30 bg-white border-b border-slate-200/90 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 pb-2.5 space-y-2.5">
-          {/* Hàng 1: Tiêu đề + Nút làm mới & Tạo Lô Hàng */}
-          <div className="flex items-center justify-between gap-2.5">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                <span>Phân Hệ Nông Trại</span>
-                <span className="text-slate-300">•</span>
-                <span className="normal-case font-semibold text-emerald-800">
-                  Lô thu hoạch & Mã QR truy xuất
-                </span>
-              </div>
-              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 mt-0.5">
-                <PackageCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 shrink-0" />
-                <span>Quản Lý Lô Hàng Thu Hoạch</span>
-              </h1>
-            </div>
+    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mb-3.5 sm:-mb-6 lg:-mb-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100dvh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
+      {/* 1. KHỐI HEADER CỐ ĐỊNH SÁT MÉP TRÊN */}
+{/* 1. KHỐI HEADER CỐ ĐỊNH SÁT MÉP TRÊN */}
+   <div className="relative shrink-0 z-30 bg-white border-b border-slate-200/90 shadow-2xs">
+     <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3">
+       {/* Hàng 1: Tiêu đề + Nút làm mới & Tạo Lô Hàng */}
+       <div className="flex items-center justify-between gap-2">
+         <h1 className="text-sm sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 min-w-0">
+           <PackageCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 shrink-0" />
+           <span className="truncate">Quản Lý Lô Thu Hoạch &amp; QR</span>
+         </h1>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => fetchBatches(true)}
-                disabled={refreshing}
-                className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer"
-                title="Làm mới dữ liệu"
-                aria-label="Làm mới dữ liệu"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`}
-                />
-              </button>
+         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+           <button
+             type="button"
+             onClick={() => fetchBatches(true)}
+             disabled={refreshing}
+             className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer"
+             title="Làm mới dữ liệu"
+             aria-label="Làm mới dữ liệu"
+           >
+             <RefreshCw
+               className={`w-4 h-4 ${refreshing ? "animate-spin text-emerald-600" : ""}`}
+             />
+           </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateInitialPlot(null);
-                  setCreateInitialDate(null);
-                  setIsCreateOpen(true);
-                }}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tạo Lô Hàng</span>
-              </button>
-            </div>
-          </div>
+           <button
+             type="button"
+             onClick={() => {
+               setCreateInitialPlot(null);
+               setCreateInitialDate(null);
+               setIsCreateOpen(true);
+             }}
+             className="px-3 py-2 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+           >
+             <Plus className="w-4 h-4" />
+             <span>Tạo Lô Hàng</span>
+           </button>
+         </div>
+       </div>
+     </div>
+   </div>
 
-          {/* Hàng 1.5: 4 Thẻ KPI thống kê lô hàng trực quan (Co giãn 2 cột Mobile -> 4 cột Desktop) */}
-          <div className="pt-2">
-            <BatchStatCards stats={batchStats} />
-          </div>
-
-          {/* Hàng 2: Tabs lọc trạng thái & Ô tìm kiếm */}
-          <div className="pt-2 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-              {filterTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setStatusFilter(tab.id);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                    statusFilter === tab.id
-                      ? "bg-emerald-600 text-white shadow-2xs"
-                      : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`text-[10px] px-1.5 rounded-full tabular-nums ${
-                      statusFilter === tab.id
-                        ? "bg-white/25 text-white"
-                        : "bg-white text-slate-600 border border-slate-200/80"
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full md:w-72">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      {/* 2. KHỐI NỘI DUNG 2 CỘT CAO BẰNG NHAU SÁT MÉP DƯỚI */}
+      <div className="flex-1 min-h-0 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-2.5 pb-2.5 sm:pt-3 sm:pb-3 grid grid-cols-1 lg:grid-cols-12 items-stretch gap-3.5 overflow-hidden">
+        {/* CỘT TRÁI: BỘ LỌC + DANH SÁCH LÔ THU HOẠCH CUỘN ĐỘC LẬP */}
+        <div className="lg:col-span-7 min-w-0 flex flex-col h-full min-h-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          {/* Thanh tìm kiếm & Tabs lọc trạng thái đứng yên ở đỉnh cột trái */}
+          <div className="p-2.5 sm:p-3 border-b border-slate-100 bg-slate-50/70 shrink-0 space-y-2">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="search"
                 value={searchTerm}
@@ -344,8 +286,8 @@ export default function BatchHarvestPage() {
                   setSearchTerm(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Tìm mã lô, nông sản, lô đất..."
-                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
+                placeholder="Tìm mã lô, nông sản hoặc lô đất..."
+                className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
               />
               {searchTerm && (
                 <button
@@ -354,58 +296,77 @@ export default function BatchHarvestPage() {
                     setSearchTerm("");
                     setPage(1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
                   aria-label="Xóa từ khóa"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* VÙNG NỘI DUNG CUỘN ĐỘC LẬP BÊN DƯỚI */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 space-y-4">
-          <div
-            className={
-              selectedBatch
-                ? "grid grid-cols-1 xl:grid-cols-12 gap-5 items-start"
-                : "block"
-            }
-          >
-            <div className={selectedBatch ? "xl:col-span-7 space-y-4" : "space-y-4"}>
-              <BatchTable
-                selectedBatch={selectedBatch}
-                filteredBatches={paginatedBatches}
-                totalFilteredCount={filteredBatches.length}
-                loading={loading}
-                handleSelectBatch={handleSelectBatch}
-              />
-
-              <Pagination
-                currentPage={paginationMeta.current_page}
-                lastPage={paginationMeta.last_page}
-                total={paginationMeta.total}
-                perPage={paginationMeta.per_page}
-                onPageChange={(nextPage) => setPage(nextPage)}
-                itemLabel="lô hàng"
-              />
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              {filterTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(tab.id);
+                    setPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    statusFilter === tab.id
+                      ? "bg-emerald-600 text-white shadow-2xs"
+                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 rounded-full tabular-nums ${
+                      statusFilter === tab.id
+                        ? "bg-white/25 text-white"
+                        : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
             </div>
+          </div>
 
-            <BatchDetailPanel
+          {/* Vùng danh sách lô thu hoạch & phân trang cuộn độc lập */}
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-3.5 space-y-3 scrollbar-thin">
+            <BatchTable
               selectedBatch={selectedBatch}
-              detailBatch={detailBatch}
-              loadingDetail={loadingDetail}
-              detailSubTab={detailSubTab}
-              setDetailSubTab={setDetailSubTab}
+              filteredBatches={paginatedBatches}
+              totalFilteredCount={filteredBatches.length}
+              loading={loading}
               handleSelectBatch={handleSelectBatch}
-              setActiveQrBatch={setActiveQrBatch}
-              handleOpenWastage={handleNavigateToWastage}
+            />
+
+            <Pagination
+              currentPage={paginationMeta.current_page}
+              lastPage={paginationMeta.last_page}
+              total={paginationMeta.total}
+              perPage={paginationMeta.per_page}
+              onPageChange={(nextPage) => setPage(nextPage)}
+              itemLabel="lô hàng"
             />
           </div>
         </div>
+
+        {/* CỘT PHẢI: CHI TIẾT LÔ HÀNG & IN TEM QR (BOTTOM SHEET TRÊN MOBILE, CỐ ĐỊNH TRÊN DESKTOP) */}
+        <BatchDetailPanel
+          selectedBatch={selectedBatch}
+          detailBatch={detailBatch}
+          loadingDetail={loadingDetail}
+          detailSubTab={detailSubTab}
+          setDetailSubTab={setDetailSubTab}
+          allBatches={filteredBatches}
+          handleSelectBatch={handleSelectBatch}
+          setActiveQrBatch={setActiveQrBatch}
+          handleOpenWastage={handleNavigateToWastage}
+        />
       </div>
 
       {/* Hộp thoại: Tạo Lô Thu Hoạch Mới */}

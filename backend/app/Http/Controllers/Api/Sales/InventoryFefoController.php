@@ -54,6 +54,9 @@ class InventoryFefoController extends Controller
             ->where('So_luong_con_lai', '>', 0)
             ->whereDate('Han_su_dung', '>=', now()->toDateString())
             ->whereDate('Han_su_dung', '<=', $lastWarningDate)
+            ->whereDoesntHave('chiTietFlashSales.flashSale', fn ($query) => $query
+                ->where('Trang_thai', '!=', 'Da_ket_thuc')
+                ->where('Thoi_gian_ket_thuc', '>', now()))
             ->orderBy('Han_su_dung')
             ->orderBy('Ma_lo_hang')
             ->paginate((int) ($validated['per_page'] ?? 10));
@@ -88,6 +91,11 @@ class InventoryFefoController extends Controller
     {
         return LoHang::query()->with([
             'loCanhTac.sanPham:Ma_san_pham,Ten_san_pham,Don_vi_tinh,Gia_ban,Hinh_anh_dai_dien',
+            'chiTietFlashSales' => fn ($query) => $query
+                ->whereHas('flashSale', fn ($campaignQuery) => $campaignQuery
+                    ->where('Trang_thai', '!=', 'Da_ket_thuc')
+                    ->where('Thoi_gian_ket_thuc', '>', now()))
+                ->with('flashSale:Ma_flash_sale,Ten_chuong_trinh,Trang_thai,Thoi_gian_bat_dau,Thoi_gian_ket_thuc'),
         ]);
     }
 
@@ -96,6 +104,7 @@ class InventoryFefoController extends Controller
         $expiryDate = Carbon::parse($batch->Han_su_dung)->startOfDay();
         $daysUntilExpiry = (int) Carbon::today()->diffInDays($expiryDate, false);
         $product = $batch->loCanhTac?->sanPham;
+        $activeCampaign = $batch->chiTietFlashSales->first()?->flashSale;
 
         return [
             'batch_id' => (int) $batch->Ma_lo_hang,
@@ -114,6 +123,13 @@ class InventoryFefoController extends Controller
             'is_expiring_soon' => $daysUntilExpiry >= 0
                 && $daysUntilExpiry <= self::EXPIRY_WARNING_DAYS
                 && (float) $batch->So_luong_con_lai > 0,
+            'has_active_flash_sale' => $activeCampaign !== null,
+            'active_flash_sale' => $activeCampaign ? [
+                'campaign_id' => (int) $activeCampaign->Ma_flash_sale,
+                'title' => $activeCampaign->Ten_chuong_trinh,
+                'status' => $activeCampaign->Trang_thai,
+                'end_time' => $activeCampaign->Thoi_gian_ket_thuc,
+            ] : null,
         ];
     }
 }

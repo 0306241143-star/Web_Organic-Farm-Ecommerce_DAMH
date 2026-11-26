@@ -30,21 +30,48 @@ export default function FlashSalePage() {
   const [campaignLoading, setCampaignLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [batches, setBatches] = useState(() =>
-    prefillBatchFromState ? [prefillBatchFromState] : []
+    prefillBatchFromState && !prefillBatchFromState.has_active_flash_sale
+      ? [prefillBatchFromState]
+      : []
   );
   const [batchLoading, setBatchLoading] = useState(true);
 
-  const [isModalOpen, setIsModalOpen] = useState(() => Boolean(prefillBatchId));
+  const [isModalOpen, setIsModalOpen] = useState(() =>
+    Boolean(prefillBatchId && !prefillBatchFromState?.has_active_flash_sale)
+  );
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
   const [busyCampaignId, setBusyCampaignId] = useState(null);
   const [error, setError] = useState("");
 
+  const isPrefillBatchAlreadyActive = useMemo(() => {
+    if (!prefillBatchId) return false;
+    if (prefillBatchFromState?.has_active_flash_sale) return true;
+    return allCampaigns.some(
+      (c) =>
+        c.status !== "Da_ket_thuc" &&
+        (c.items || []).some(
+          (item) => String(item.batch_id) === String(prefillBatchId)
+        )
+    );
+  }, [prefillBatchId, prefillBatchFromState, allCampaigns]);
+
   useEffect(() => {
-    if (prefillBatchId) {
-      setIsModalOpen(true);
+    if (!prefillBatchId) return;
+
+    if (isPrefillBatchAlreadyActive) {
+      showGlobalToast(
+        "Lô hàng này đã thuộc một chương trình Flash Sale đang hoạt động."
+      );
+      setIsModalOpen(false);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("batch_id");
+      setSearchParams(nextParams, { replace: true });
+      return;
     }
-  }, [prefillBatchId]);
+
+    setIsModalOpen(true);
+  }, [prefillBatchId, isPrefillBatchAlreadyActive, searchParams, setSearchParams]);
 
   const fetchCampaigns = useCallback(async (isSilent = false) => {
     const startedAt = Date.now();
@@ -102,6 +129,7 @@ export default function FlashSalePage() {
       const fetched = response.data || [];
       if (
         prefillBatchFromState &&
+        !prefillBatchFromState.has_active_flash_sale &&
         !fetched.some(
           (b) => String(b.batch_id) === String(prefillBatchFromState.batch_id)
         )
@@ -182,7 +210,7 @@ export default function FlashSalePage() {
   }, [filteredCampaigns, paginationMeta.current_page]);
 
   const initialBatch = useMemo(() => {
-    if (!prefillBatchId) return null;
+    if (!prefillBatchId || isPrefillBatchAlreadyActive) return null;
     if (
       prefillBatchFromState &&
       String(prefillBatchFromState.batch_id) === String(prefillBatchId)
@@ -190,9 +218,18 @@ export default function FlashSalePage() {
       return prefillBatchFromState;
     }
     return (
-      batches.find((b) => String(b.batch_id) === String(prefillBatchId)) || null
+      batches.find(
+        (b) =>
+          !b.has_active_flash_sale &&
+          String(b.batch_id) === String(prefillBatchId)
+      ) || null
     );
-  }, [prefillBatchId, prefillBatchFromState, batches]);
+  }, [
+    prefillBatchId,
+    isPrefillBatchAlreadyActive,
+    prefillBatchFromState,
+    batches,
+  ]);
 
   const clearPrefillQuery = () => {
     if (!prefillBatchId) return;
@@ -259,7 +296,9 @@ export default function FlashSalePage() {
       );
       showGlobalToast(
         response.message ||
-          (enabled ? "Đã bật chương trình Flash Sale." : "Đã tắt chương trình Flash Sale.")
+          (enabled
+            ? "Đã bật chương trình Flash Sale."
+            : "Đã tắt chương trình Flash Sale.")
       );
     } catch (requestError) {
       setError(

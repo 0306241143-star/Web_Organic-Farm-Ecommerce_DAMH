@@ -256,7 +256,10 @@ export default function CertificateManagePage() {
   const filteredCertificates = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     return certificates.filter((item) => {
-      if (statusFilter === "valid" && !["valid", "no_expiry"].includes(item.validity_status)) {
+      if (
+        statusFilter === "valid" &&
+        !["valid", "no_expiry"].includes(item.validity_status)
+      ) {
         return false;
       }
       if (statusFilter === "expiring_soon" && item.validity_status !== "expiring_soon") {
@@ -308,31 +311,31 @@ export default function CertificateManagePage() {
   const renderValidityBadge = (cert) => {
     if (cert.validity_status === "expired") {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap">
-          <XCircle className="w-3.5 h-3.5 shrink-0" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10.5px] sm:text-[11px] font-bold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap shrink-0">
+          <XCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
           <span>Đã hết hạn</span>
         </span>
       );
     }
     if (cert.validity_status === "expiring_soon") {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10.5px] sm:text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap shrink-0">
+          <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
           <span>Còn {cert.days_remaining} ngày</span>
         </span>
       );
     }
     if (cert.validity_status === "no_expiry") {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
-          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10.5px] sm:text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap shrink-0">
+          <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
           <span>Theo đợt kiểm định</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10.5px] sm:text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap shrink-0">
+        <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
         <span>Còn hiệu lực</span>
       </span>
     );
@@ -346,30 +349,30 @@ export default function CertificateManagePage() {
   ];
 
   // =========================================================================
-  // 6. GIAO DIỆN ĐỒNG BỘ BỐ CỤC LÔ THU HOẠCH (KHÔNG THANH CUỘN NGOÀI)
+  // 6. GIAO DIỆN ĐỒNG BỘ BỐ CỤC GỐC — TỐI ƯU MOBILE-FIRST
   // =========================================================================
   return (
-    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mb-3.5 sm:-mb-6 lg:-mb-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
+    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mb-3.5 sm:-mb-6 lg:-mb-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100dvh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
       {/* 6.1 KHỐI HEADER CỐ ĐỊNH SÁT MÉP TRÊN */}
       <div className="relative shrink-0 z-30 bg-white border-b border-slate-200/90 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 pb-2.5 space-y-2.5">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-2.5 pb-2 sm:pt-3 sm:pb-2.5 space-y-2 sm:space-y-2.5">
           {/* Hàng 1: Tiêu đề + Nút làm mới & Tải Chứng Nhận */}
-          <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+              <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
                 <span>Phân Hệ Nông Trại</span>
                 <span className="text-slate-300">•</span>
                 <span className="normal-case font-semibold text-emerald-800">
-                  Chứng nhận chất lượng & Hồ sơ kiểm định
+                  Chứng nhận chất lượng &amp; Hồ sơ kiểm định
                 </span>
               </div>
-              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 mt-0.5">
+              <h1 className="text-sm sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 sm:mt-0.5 truncate">
                 <Award className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 shrink-0" />
-                <span>Chứng Nhận & Kiểm Định</span>
+                <span className="truncate">Chứng Nhận &amp; Kiểm Định</span>
               </h1>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => fetchCertificates(true)}
@@ -386,45 +389,47 @@ export default function CertificateManagePage() {
               <button
                 type="button"
                 onClick={() => openCreateModal("")}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-3 py-2 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Tải Chứng Nhận</span>
               </button>
             </div>
           </div>
 
-          {/* Hàng 2: Tabs lọc hiệu lực, phạm vi & Ô tìm kiếm */}
+          {/* Hàng 2: Tabs lọc hiệu lực, phạm vi & Ô tìm kiếm (lướt ngang gọn trên Mobile) */}
           <div className="pt-2 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0">
-                {filterTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter(tab.id);
-                      setPage(1);
-                    }}
-                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${statusFilter === tab.id
-                        ? "bg-emerald-600 text-white shadow-2xs"
-                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-                      }`}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0 no-scrollbar">
+              {filterTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(tab.id);
+                    setPage(1);
+                  }}
+                  className={`px-2.5 py-1 sm:px-3 rounded-full text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    statusFilter === tab.id
+                      ? "bg-emerald-600 text-white shadow-2xs"
+                      : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 rounded-full tabular-nums ${
+                      statusFilter === tab.id
+                        ? "bg-white/25 text-white"
+                        : "bg-white text-slate-600 border border-slate-200/80"
+                    }`}
                   >
-                    <span>{tab.label}</span>
-                    <span
-                      className={`text-[10px] px-1.5 rounded-full tabular-nums ${statusFilter === tab.id
-                          ? "bg-white/25 text-white"
-                          : "bg-white text-slate-600 border border-slate-200/80"
-                        }`}
-                    >
-                      {tab.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
 
-              <div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-full border border-slate-200">
+              <span className="text-slate-300 px-0.5 shrink-0">|</span>
+
+              <div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-full border border-slate-200 shrink-0">
                 {[
                   { id: "ALL", label: "Mọi phạm vi" },
                   { id: "batch", label: "Gắn lô hàng" },
@@ -437,10 +442,11 @@ export default function CertificateManagePage() {
                       setScopeFilter(s.id);
                       setPage(1);
                     }}
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${scopeFilter === s.id
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                      scopeFilter === s.id
                         ? "bg-white text-emerald-800 font-bold shadow-2xs"
                         : "text-slate-500 hover:text-slate-800"
-                      }`}
+                    }`}
                   >
                     {s.label}
                   </button>
@@ -458,7 +464,7 @@ export default function CertificateManagePage() {
                   setPage(1);
                 }}
                 placeholder="Tìm tên chứng nhận, đơn vị, mã lô..."
-                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
+                className="w-full pl-8 pr-8 py-1.5 sm:py-2 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
               />
               {searchTerm && (
                 <button
@@ -467,7 +473,7 @@ export default function CertificateManagePage() {
                     setSearchTerm("");
                     setPage(1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
                   aria-label="Xóa từ khóa tìm kiếm"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -480,7 +486,7 @@ export default function CertificateManagePage() {
 
       {/* 6.2 VÙNG NỘI DUNG CUỘN ĐỘC LẬP BÊN DƯỚI */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 space-y-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4 space-y-3 sm:space-y-4">
           <CertificateTable
             loading={loading}
             filteredCertificates={paginatedCertificates}

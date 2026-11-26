@@ -27,6 +27,7 @@ export default function Pagination({
   perPage = 12,
   onPageChange,
   itemLabel = "sản phẩm",
+  compact = false,
 }) {
   if (total <= 0 || typeof onPageChange !== "function") {
     return null;
@@ -37,6 +38,76 @@ export default function Pagination({
   const pages = buildPageRange(safeCurrentPage, safeLastPage);
   const startItem = (safeCurrentPage - 1) * perPage + 1;
   const endItem = Math.min(total, safeCurrentPage * perPage);
+
+  if (compact) {
+    return (
+      <nav
+        aria-label="Phân trang danh sách"
+        className="flex flex-wrap items-center justify-between gap-2 text-[11px] sm:text-xs"
+      >
+        <p className="text-slate-500 tabular-nums">
+          <span className="font-bold text-slate-800">
+            {startItem}–{endItem}
+          </span>{" "}
+          / <span className="font-bold text-slate-800">{total}</span> {itemLabel}
+        </p>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, safeCurrentPage - 1))}
+            disabled={safeCurrentPage <= 1}
+            aria-label="Trang trước"
+            className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-emerald-600 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center cursor-pointer"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+
+          {pages.map((entry) => {
+            if (typeof entry !== "number") {
+              return (
+                <span
+                  key={entry}
+                  className="px-1 text-[11px] font-semibold text-slate-400 select-none"
+                >
+                  ...
+                </span>
+              );
+            }
+
+            const isActive = entry === safeCurrentPage;
+            return (
+              <button
+                key={entry}
+                type="button"
+                onClick={() => onPageChange(entry)}
+                aria-current={isActive ? "page" : undefined}
+                className={`min-w-[28px] h-7 px-2 rounded-lg text-[11.5px] font-bold tabular-nums transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-[#00450d] text-white shadow-2xs"
+                    : "bg-white text-slate-600 border border-slate-200 hover:border-emerald-600 hover:text-emerald-700"
+                }`}
+              >
+                {entry}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() =>
+              onPageChange(Math.min(safeLastPage, safeCurrentPage + 1))
+            }
+            disabled={safeCurrentPage >= safeLastPage}
+            aria-label="Trang kế tiếp"
+            className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-emerald-600 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center cursor-pointer"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav

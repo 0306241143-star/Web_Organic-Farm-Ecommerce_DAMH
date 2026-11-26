@@ -460,21 +460,22 @@ const handleOpenCreateBatchFromLog = (plotOrLog, logDate) => {
   // =========================================================================
   // 6. GIAO DIỆN CHÍNH (SÁT MÉP TOP & BOTTOM, 2 CỘT CAO BẰNG NHAU)
   // =========================================================================
+// =========================================================================
+  // 6. GIAO DIỆN CHÍNH (MOBILE-FIRST GỌN GÀNG + DESKTOP 2 CỘT CAO BẰNG NHAU)
+  // =========================================================================
   return (
-    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mb-3.5 sm:-mb-6 lg:-mb-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100vh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
+    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mb-3.5 sm:-mb-6 lg:-mb-8 -mx-3.5 sm:-mx-6 lg:-mx-8 h-[calc(100dvh-3.25rem)] lg:h-screen flex flex-col overflow-hidden bg-[#f8faf8]">
       {/* 6.1 KHỐI HEADER CỐ ĐỊNH SÁT MÉP TRÊN */}
       <div className="relative shrink-0 z-30 bg-white border-b border-slate-200/90 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 pb-2.5 space-y-2.5">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-2.5 pb-2.5 sm:pt-3 sm:pb-3 space-y-2.5">
           {/* Hàng 1: Tiêu đề + Nút Làm mới & Thêm Mùa Vụ */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-                <Sprout className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 shrink-0" />
-                <span>Quản Lý Mùa Vụ & Canh Tác</span>
-              </h1>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-sm sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 min-w-0">
+              <Sprout className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 shrink-0" />
+              <span className="truncate">Quản Lý Mùa Vụ & Canh Tác</span>
+            </h1>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => fetchAllData(true, true)}
@@ -494,7 +495,7 @@ const handleOpenCreateBatchFromLog = (plotOrLog, logDate) => {
                   setSeasonError("");
                   setIsAddSeasonOpen(true);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-3 py-2 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Thêm Mùa Vụ</span>
@@ -502,90 +503,63 @@ const handleOpenCreateBatchFromLog = (plotOrLog, logDate) => {
             </div>
           </div>
 
-          {/* Hàng 2: 4 thẻ KPI nhỏ gọn trực quan (2 cột Mobile -> 4 cột Desktop, thiết kế 2 tầng chống dính chữ) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
-            <div className="p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between min-h-[58px]">
-              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500 truncate">
-                Mùa vụ đang chạy
+          {/* Hàng 2: Dải KPI - lướt ngang 1 hàng gọn nhẹ trên Mobile, lưới 4 cột trên Desktop */}
+          <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-2 overflow-x-auto pb-0.5 sm:pb-0 no-scrollbar">
+            <div className="min-w-[128px] sm:min-w-0 shrink-0 px-3 py-2 rounded-xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between sm:flex-col sm:items-start gap-2 sm:gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Vụ đang chạy
               </span>
-              <div className="text-base sm:text-lg font-black text-slate-900 tabular-nums leading-none mt-1">
+              <div className="text-sm sm:text-lg font-black text-slate-900 tabular-nums leading-none">
                 {kpiStats.activeSeasons}{" "}
-                <span className="text-xs font-semibold text-slate-500">vụ</span>
+                <span className="text-[11px] font-semibold text-slate-500">vụ</span>
               </div>
             </div>
 
-            <div className="p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/70 flex flex-col justify-between min-h-[58px]">
-              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-emerald-800 truncate">
-                Lô đang canh tác
+            <div className="min-w-[132px] sm:min-w-0 shrink-0 px-3 py-2 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between sm:flex-col sm:items-start gap-2 sm:gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                Đang canh tác
               </span>
-              <div className="text-base sm:text-lg font-black text-emerald-700 tabular-nums leading-none mt-1">
+              <div className="text-sm sm:text-lg font-black text-emerald-700 tabular-nums leading-none">
                 {kpiStats.activePlots}{" "}
-                <span className="text-xs font-semibold text-emerald-700/80">lô</span>
+                <span className="text-[11px] font-semibold text-emerald-700/80">lô</span>
               </div>
             </div>
 
-            <div className="p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between min-h-[58px]">
-              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500 truncate">
-                Tổng diện tích
+            <div className="min-w-[148px] sm:min-w-0 shrink-0 px-3 py-2 rounded-xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between sm:flex-col sm:items-start gap-2 sm:gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Diện tích
               </span>
-              <div className="text-base sm:text-lg font-black text-slate-900 tabular-nums leading-none mt-1">
+              <div className="text-sm sm:text-lg font-black text-slate-900 tabular-nums leading-none">
                 {kpiStats.totalArea.toLocaleString("vi-VN")}{" "}
-                <span className="text-xs font-semibold text-slate-500">m²</span>
+                <span className="text-[11px] font-semibold text-slate-500">m²</span>
               </div>
             </div>
 
             <div
-              className={`p-2.5 sm:px-3 sm:py-2.5 rounded-xl border flex flex-col justify-between min-h-[58px] transition-colors ${
+              className={`min-w-[136px] sm:min-w-0 shrink-0 px-3 py-2 rounded-xl border flex items-center justify-between sm:flex-col sm:items-start gap-2 sm:gap-1 transition-colors ${
                 selectedPlot
                   ? "bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400/40"
-                  : "bg-slate-50/80 border-slate-200/80"
+                  : "bg-slate-50/90 border-slate-200/80"
               }`}
             >
-              <span className="text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider text-slate-500 truncate">
-                {selectedPlot ? "Lô đang chọn" : "Tổng số lô"}
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                {selectedPlot ? "Đang xem" : "Tổng số lô"}
               </span>
-              <div className="text-sm sm:text-base font-black text-emerald-800 tabular-nums leading-none mt-1 truncate">
+              <div className="text-xs sm:text-base font-black text-emerald-800 tabular-nums leading-none truncate max-w-[120px] sm:max-w-full">
                 {selectedPlot ? selectedPlot.plot_name : `${kpiStats.totalPlots} lô`}
               </div>
             </div>
           </div>
-
-          {/* Hàng 3: Segmented Switcher chuyển đổi 2 cột trên Mobile/Tablet (lg:hidden) */}
-          <div className="lg:hidden flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold gap-1">
-            <button
-              type="button"
-              onClick={() => setMobileTab("plots")}
-              className={`flex-1 py-1.5 px-3 rounded-lg transition-all text-center cursor-pointer ${
-                mobileTab === "plots"
-                  ? "bg-white text-emerald-800 shadow-2xs font-extrabold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Lô Canh Tác ({kpiStats.totalPlots})
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileTab("timeline")}
-              className={`flex-1 py-1.5 px-3 rounded-lg transition-all text-center cursor-pointer ${
-                mobileTab === "timeline"
-                  ? "bg-white text-emerald-800 shadow-2xs font-extrabold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Nhật Ký {selectedPlot ? `(${selectedPlot.plot_name})` : ""}
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* 6.2 KHỐI NỘI DUNG 2 CỘT CAO BẰNG NHAU SÁT MÉP DƯỚI */}
-      <div className="flex-1 min-h-0 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 pb-3 grid grid-cols-1 lg:grid-cols-12 items-stretch gap-3.5 overflow-hidden">
+      {/* 6.2 KHỐI NỘI DUNG CHÍNH: DANH SÁCH MÙA VỤ + PANEL NHẬT KÝ */}
+      <div className="flex-1 min-h-0 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-2.5 pb-2.5 sm:pt-3 sm:pb-3 grid grid-cols-1 lg:grid-cols-12 items-stretch gap-3.5 overflow-hidden">
         <SeasonListSection
           loading={loading}
           filteredSeasons={filteredSeasons}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          mobileTab={mobileTab}
           selectedPlot={selectedPlot}
           handleToggleSeasonStatus={handleToggleSeasonStatus}
           setActiveSeasonForPlot={setActiveSeasonForPlot}
@@ -602,9 +576,8 @@ const handleOpenCreateBatchFromLog = (plotOrLog, logDate) => {
           setLogs={setLogs}
           logs={logs}
           logsLoading={logsLoading}
-          mobileTab={mobileTab}
-          setMobileTab={setMobileTab}
           allPlots={allPlots}
+          onSelectPlot={handleSelectPlot}
           setIsAddLogOpen={setIsAddLogOpen}
           handleDeleteLog={handleDeleteLog}
           handleOpenCreateBatchFromLog={handleOpenCreateBatchFromLog}

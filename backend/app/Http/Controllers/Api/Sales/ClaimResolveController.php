@@ -49,7 +49,7 @@ class ClaimResolveController extends Controller
             ])
             ->when(
                 $validated['status'] ?? null,
-                fn (Builder $builder, string $status) => $builder->where('Trang_thai', $status)
+                fn(Builder $builder, string $status) => $builder->where('Trang_thai', $status)
             )
             ->when(
                 trim((string) ($validated['search'] ?? '')) !== '',
@@ -78,14 +78,14 @@ class ClaimResolveController extends Controller
             ->groupBy('Trang_thai')
             ->pluck('tong', 'Trang_thai');
         $statusCounts = collect(['Cho_xu_ly', 'Dang_xu_ly', 'Da_giai_quyet', 'Tu_choi'])
-            ->mapWithKeys(fn (string $status) => [$status => (int) $counts->get($status, 0)])
+            ->mapWithKeys(fn(string $status) => [$status => (int) $counts->get($status, 0)])
             ->all();
 
         return $this->successResponse(
             message: 'Lấy danh sách khiếu nại thành công.',
             data: [
                 'claims' => $paginator->getCollection()
-                    ->map(fn (KhieuNai $claim): array => $this->formatClaim($claim))
+                    ->map(fn(KhieuNai $claim): array => $this->formatClaim($claim))
                     ->all(),
                 'counts' => $statusCounts,
             ],
@@ -201,18 +201,14 @@ class ClaimResolveController extends Controller
     private function formatClaim(KhieuNai $claim, bool $detailed = false): array
     {
         $order = $claim->donHang;
-        $replacement = $claim->Ma_don_giao_bu
+        $replacement = $claim->Hinh_thuc_xu_ly === 'Giao_bu'
             ? DonHang::query()
-                ->with(['chiTiets.sanPham', 'thanhToans', 'giaoHang'])
-                ->find($claim->Ma_don_giao_bu)
-            : ($claim->Hinh_thuc_xu_ly === 'Giao_bu'
-                ? DonHang::query()
-                    ->with(['chiTiets.sanPham', 'thanhToans', 'giaoHang'])
-                    ->where('Ma_khieu_nai', $claim->Ma_khieu_nai)
-                    ->where('Ma_don_goc', $claim->Ma_don_hang)
-                    ->where('Loai_don', 'Giao_bu')
-                    ->first()
-                : null);
+            ->with(['chiTiets.sanPham', 'thanhToans', 'giaoHang'])
+            ->where('Ma_khieu_nai', $claim->Ma_khieu_nai)
+            ->where('Ma_don_goc', $claim->Ma_don_hang)
+            ->where('Loai_don', 'Giao_bu')
+            ->first()
+            : null;
 
         return [
             'claim_id' => (int) $claim->Ma_khieu_nai,
@@ -221,16 +217,14 @@ class ClaimResolveController extends Controller
             'description' => $claim->Mo_ta_chi_tiet,
             'status' => $claim->Trang_thai,
             'resolution' => $claim->Hinh_thuc_xu_ly,
-            'refund_amount' => $claim->So_tien_hoan !== null
-                ? (float) $claim->So_tien_hoan
-                : ($claim->hoanTien ? (float) $claim->hoanTien->So_tien : null),
+            'refund_amount' => $claim->hoanTien ? (float) $claim->hoanTien->So_tien : null,
             'refund_status' => $claim->hoanTien?->Trang_thai,
-            'feedback' => $claim->Phan_hoi_cskh,
+            'feedback' => null,
             'replacement_order_id' => $replacement === null
                 ? null
                 : (int) $replacement->Ma_don_hang,
             'handler' => $claim->nhanVienXuLy?->Ho_ten,
-            'received_at' => $claim->Ngay_tiep_nhan,
+            'received_at' => $claim->Trang_thai !== 'Cho_xu_ly' ? $claim->updated_at : null,
             'submitted_at' => $claim->created_at,
             'resolved_at' => $claim->Ngay_xu_ly,
             'customer' => [
@@ -243,7 +237,7 @@ class ClaimResolveController extends Controller
                 ? $this->formatOrder($replacement, $detailed)
                 : null,
             'evidence' => $claim->tepBangChungs->map(
-                fn (TepBangChung $evidence): array => [
+                fn(TepBangChung $evidence): array => [
                     'id' => (int) $evidence->Ma_tep,
                     'type' => $this->mediaType($evidence),
                     'url' => $evidence->Duong_dan,
@@ -273,7 +267,7 @@ class ClaimResolveController extends Controller
                     $address->Tinh_thanh,
                 ])),
             ] : null,
-            'payments' => $order->thanhToans->map(fn ($payment): array => [
+            'payments' => $order->thanhToans->map(fn($payment): array => [
                 'method' => $payment->Phuong_thuc,
                 'status' => $payment->Trang_thai,
                 'amount' => (float) $payment->So_tien,
@@ -286,7 +280,7 @@ class ClaimResolveController extends Controller
         ];
 
         if ($detailed) {
-            $data['items'] = $order->chiTiets->map(fn ($item): array => [
+            $data['items'] = $order->chiTiets->map(fn($item): array => [
                 'detail_id' => (int) $item->Ma_ct_don_hang,
                 'product_id' => (int) $item->Ma_san_pham,
                 'name' => $item->sanPham?->Ten_san_pham ?? 'Sản phẩm không còn trong danh mục',

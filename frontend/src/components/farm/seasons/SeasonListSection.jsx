@@ -16,16 +16,12 @@ export default function SeasonListSection({
   filteredSeasons,
   searchTerm,
   setSearchTerm,
-  mobileTab,
   selectedPlot,
   handleToggleSeasonStatus,
   setActiveSeasonForPlot,
   setIsAddPlotOpen,
   handleDeleteSeason,
   handleSelectPlot,
-  setSelectedPlot,
-  fetchLogs,
-  setIsAddLogOpen,
   handleOpenEditPlot,
   handleDeletePlot,
 }) {
@@ -55,18 +51,14 @@ export default function SeasonListSection({
   };
 
   return (
-    <div
-      className={`lg:col-span-7 min-w-0 flex flex-col h-full min-h-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden ${
-        mobileTab === "timeline" ? "hidden lg:flex" : "flex"
-      }`}
-    >
-      {/* Thanh tìm kiếm & nút Thu gọn / Mở tất cả đứng yên ở đỉnh cột trái */}
-      <div className="p-3 sm:p-3.5 border-b border-slate-100 bg-slate-50/70 shrink-0 flex items-center gap-2">
+    <div className="lg:col-span-7 min-w-0 flex flex-col h-full min-h-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* Thanh tìm kiếm & nút Thu gọn / Mở tất cả */}
+      <div className="p-2.5 sm:p-3.5 border-b border-slate-100 bg-slate-50/70 shrink-0 flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Tìm mùa vụ, tên lô đất hoặc nông sản..."
+            placeholder="Tìm mùa vụ, lô đất hoặc nông sản..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
@@ -75,7 +67,7 @@ export default function SeasonListSection({
             <button
               type="button"
               onClick={() => setSearchTerm("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
               aria-label="Xóa từ khóa tìm kiếm"
             >
               <X className="w-3.5 h-3.5" />
@@ -93,26 +85,26 @@ export default function SeasonListSection({
             {areAllCollapsed ? (
               <>
                 <ChevronsUpDown className="w-3.5 h-3.5 text-emerald-700" />
-                <span className="hidden sm:inline">Mở tất cả</span>
+                <span>Mở</span>
               </>
             ) : (
               <>
                 <ChevronsDownUp className="w-3.5 h-3.5 text-slate-500" />
-                <span className="hidden sm:inline">Thu gọn</span>
+                <span>Thu gọn</span>
               </>
             )}
           </button>
         )}
       </div>
 
-      {/* Vùng danh sách mùa vụ: tự động chỉ hiện thanh cuộn khi nội dung vượt quá khung */}
-      <div className="flex-1 overflow-y-auto min-h-0 p-3.5 sm:p-4 space-y-3.5 scrollbar-thin">
+      {/* Vùng danh sách mùa vụ cuộn độc lập */}
+      <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-4 space-y-3.5 scrollbar-thin">
         {loading ? (
           <div className="space-y-3.5">
             {[1, 2].map((i) => (
               <div
                 key={i}
-                className="bg-slate-50/60 p-5 rounded-2xl border border-slate-100 animate-pulse space-y-3"
+                className="bg-slate-50/60 p-4 rounded-2xl border border-slate-100 animate-pulse space-y-3"
               >
                 <div className="h-4 bg-slate-200 rounded w-1/3" />
                 <div className="h-3.5 bg-slate-100 rounded w-1/2" />
@@ -121,7 +113,7 @@ export default function SeasonListSection({
             ))}
           </div>
         ) : filteredSeasons.length === 0 ? (
-          <div className="h-full min-h-[260px] flex flex-col items-center justify-center text-center p-8">
+          <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center p-6">
             <Calendar className="w-11 h-11 text-slate-300 mb-2" />
             <h3 className="text-sm font-bold text-slate-700">Chưa tìm thấy mùa vụ nào</h3>
             <p className="text-xs text-slate-500 mt-1">
@@ -138,7 +130,7 @@ export default function SeasonListSection({
                 key={season.id}
                 className="rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all hover:border-emerald-300"
               >
-                {/* Header của từng thẻ Mùa vụ (kèm nút dropdown thu gọn - tự xếp 2 tầng trên Mobile chống đè chữ) */}
+                {/* Header thẻ Mùa vụ */}
                 <div
                   className={`p-3 sm:px-4 sm:py-3 bg-slate-50/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
                     !isCollapsed ? "border-b border-slate-100" : ""
@@ -150,14 +142,7 @@ export default function SeasonListSection({
                       onClick={() => toggleSeasonCollapse(season.id)}
                       aria-expanded={!isCollapsed}
                       aria-label={
-                        isCollapsed
-                          ? `Mở rộng ${season.name}`
-                          : `Thu gọn ${season.name}`
-                      }
-                      title={
-                        isCollapsed
-                          ? "Mở rộng danh sách lô canh tác"
-                          : "Thu gọn mùa vụ"
+                        isCollapsed ? `Mở rộng ${season.name}` : `Thu gọn ${season.name}`
                       }
                       className="mt-0.5 p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-600 hover:text-emerald-800 transition-colors cursor-pointer shrink-0"
                     >
@@ -187,21 +172,22 @@ export default function SeasonListSection({
                         </span>
                         {isCollapsed && (
                           <span className="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200/80 tabular-nums whitespace-nowrap">
-                            {plotsCount} lô canh tác
+                            {plotsCount} lô
                           </span>
                         )}
                       </div>
-                      <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
+                      <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">
                         {season.name}
                       </h3>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                  {/* Thanh thao tác mùa vụ: chia đều độ rộng dễ bấm trên Mobile */}
+                  <div className="flex items-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                     <button
                       type="button"
                       onClick={() => handleToggleSeasonStatus(season)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                      className={`flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap text-center ${
                         season.status === "Dang_dien_ra"
                           ? "bg-slate-200/80 hover:bg-slate-300 text-slate-700"
                           : "bg-emerald-100 hover:bg-emerald-200 text-emerald-800"
@@ -220,7 +206,7 @@ export default function SeasonListSection({
                         setActiveSeasonForPlot(season);
                         setIsAddPlotOpen(true);
                       }}
-                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                      className="flex-1 sm:flex-initial px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs inline-flex items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Thêm Lô</span>
@@ -229,26 +215,27 @@ export default function SeasonListSection({
                     <button
                       type="button"
                       onClick={() => handleDeleteSeason(season)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                      className="p-2 sm:p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
                       title="Xóa mùa vụ này"
+                      aria-label="Xóa mùa vụ này"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Danh sách các lô dạng List bên trong mùa vụ (ẩn khi thu gọn) */}
-              {!isCollapsed && (
-                <PlotListSection
-                  season={season}
-                  selectedPlot={selectedPlot}
-                  handleSelectPlot={handleSelectPlot}
-                  setActiveSeasonForPlot={setActiveSeasonForPlot}
-                  setIsAddPlotOpen={setIsAddPlotOpen}
-                  handleOpenEditPlot={handleOpenEditPlot}
-                  handleDeletePlot={handleDeletePlot}
-                />
-              )}
+                {/* Danh sách lô bên trong mùa vụ */}
+                {!isCollapsed && (
+                  <PlotListSection
+                    season={season}
+                    selectedPlot={selectedPlot}
+                    handleSelectPlot={handleSelectPlot}
+                    setActiveSeasonForPlot={setActiveSeasonForPlot}
+                    setIsAddPlotOpen={setIsAddPlotOpen}
+                    handleOpenEditPlot={handleOpenEditPlot}
+                    handleDeletePlot={handleDeletePlot}
+                  />
+                )}
               </div>
             );
           })

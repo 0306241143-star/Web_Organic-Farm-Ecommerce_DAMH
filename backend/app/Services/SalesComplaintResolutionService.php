@@ -13,9 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class SalesComplaintResolutionService
 {
-    public function __construct(private FefoStockService $stock)
-    {
-    }
+    public function __construct(private FefoStockService $stock) {}
 
     public function receive(int $claimId, int $staffId): KhieuNai
     {
@@ -34,7 +32,6 @@ class SalesComplaintResolutionService
             $claim->update([
                 'Trang_thai' => 'Dang_xu_ly',
                 'Ma_nhan_vien_xu_ly' => $staffId,
-                'Ngay_tiep_nhan' => now(),
             ]);
 
             return $claim->refresh();
@@ -63,7 +60,6 @@ class SalesComplaintResolutionService
             $resolution = [
                 'Trang_thai' => $data['ket_qua'] === 'tu_choi' ? 'Tu_choi' : 'Da_giai_quyet',
                 'Hinh_thuc_xu_ly' => 'Tu_choi',
-                'Phan_hoi_cskh' => $data['phan_hoi_cskh'],
                 'Ma_nhan_vien_xu_ly' => $staffId,
                 'Ngay_xu_ly' => now(),
             ];
@@ -75,16 +71,15 @@ class SalesComplaintResolutionService
             }
 
             if ($data['phuong_an_xu_ly'] === 'hoan_tien') {
-                $refund = $this->createRefund($claim, $order, (float) $data['so_tien_hoan']);
+                $this->createRefund($claim, $order, (float) $data['so_tien_hoan']);
                 $claim->update(array_merge($resolution, [
                     'Hinh_thuc_xu_ly' => 'Hoan_tien',
-                    'So_tien_hoan' => $refund->So_tien,
                 ]));
 
                 return $claim->refresh();
             }
 
-            $replacementOrder = $this->createReplacementOrder(
+            $this->createReplacementOrder(
                 $claim,
                 $order,
                 $staffId,
@@ -92,7 +87,6 @@ class SalesComplaintResolutionService
             );
             $claim->update(array_merge($resolution, [
                 'Hinh_thuc_xu_ly' => 'Giao_bu',
-                'Ma_don_giao_bu' => $replacementOrder->Ma_don_hang,
             ]));
 
             return $claim->refresh();
