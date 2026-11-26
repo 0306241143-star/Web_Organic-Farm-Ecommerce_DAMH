@@ -1,8 +1,8 @@
+// Thay thế toàn bộ file src/src/components/navigation/header/HeaderUserMenu.jsx
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Award,
-  Calendar,
   ChevronDown,
   LayoutDashboard,
   LogOut,
@@ -44,14 +44,14 @@ export default function HeaderUserMenu({
   return (
     <div className={isCompactStorefrontPage ? "hidden sm:block" : ""}>
       {!user ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => {
               closeMenus();
               openLoginModal();
             }}
-            className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-[#00450d] bg-[#f2f4f2] hover:bg-[#e6eae6] transition-colors whitespace-nowrap cursor-pointer"
+            className="px-3 py-1.5 sm:py-2 xl:px-4 rounded-xl text-[13px] xl:text-[13.5px] font-semibold text-[#00450d] bg-[#f2f4f2] hover:bg-[#e6eae6] transition-colors whitespace-nowrap cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00450d]"
           >
             Đăng nhập
           </button>
@@ -61,7 +61,7 @@ export default function HeaderUserMenu({
               closeMenus();
               openRegisterModal();
             }}
-            className="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-white bg-[#00450d] hover:bg-[#006e1c] transition-colors shadow-2xs whitespace-nowrap cursor-pointer"
+            className="hidden sm:inline-flex px-3 py-2 xl:px-4 rounded-xl text-[13px] xl:text-[13.5px] font-semibold text-white bg-[#00450d] hover:bg-[#006e1c] transition-colors shadow-2xs whitespace-nowrap cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00450d]"
           >
             Đăng ký
           </button>
@@ -114,20 +114,12 @@ export default function HeaderUserMenu({
                 {!isInternalStaff && (
                   <>
                     <Link
-                      to="/orders"
+                      to="/rewards?tab=orders"
                       onClick={closeMenus}
                       className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
                     >
                       <Receipt className="w-4 h-4 text-[#5a6357]" />
                       <span>Đơn hàng của tôi</span>
-                    </Link>
-                    <Link
-                      to="/subscriptions"
-                      onClick={closeMenus}
-                      className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#41493e] hover:text-[#00450d] hover:bg-[#f2f4f2] transition-colors"
-                    >
-                      <Calendar className="w-4 h-4 text-[#5a6357]" />
-                      <span>Gói rau định kỳ</span>
                     </Link>
                     <Link
                       to="/rewards?tab=rewards"

@@ -6,6 +6,8 @@ export const salesApi = {
   confirmOrder: (orderId) => axiosClient.post(`/sales/orders/${orderId}/confirm`),
   confirmCodPayment: (orderId) =>
     axiosClient.post(`/sales/orders/${orderId}/confirm-cod-payment`),
+  dispatchOrder: (orderId, data) =>
+    axiosClient.post(`/sales/orders/${orderId}/delivery`, data),
   getInventory: (params) => axiosClient.get("/sales/inventory", { params }),
   getExpiringBatches: (params) =>
     axiosClient.get("/sales/expiring-batches", { params }),
@@ -13,6 +15,9 @@ export const salesApi = {
   createFlashSale: (data) => axiosClient.post("/sales/flash-sales", data),
   setFlashSaleEnabled: (campaignId, enabled) =>
     axiosClient.patch(`/sales/flash-sales/${campaignId}/status`, { enabled }),
-  getClaims: () => axiosClient.get("/sales/claims"),
+  getClaims: (params) => axiosClient.get("/sales/claims", { params }),
+  getClaim: (claimId) => axiosClient.get(`/sales/claims/${claimId}`),
+  receiveClaim: (claimId) => axiosClient.patch(`/sales/claims/${claimId}/receive`),
   resolveClaim: (claimId, data) => axiosClient.post(`/sales/claims/${claimId}/resolve`, data),
+  getOrder: (orderId) => axiosClient.get(`/sales/orders/${orderId}`),
 };

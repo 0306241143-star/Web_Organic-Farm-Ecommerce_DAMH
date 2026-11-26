@@ -60,28 +60,28 @@ export default function StorefrontHeader() {
 
   return (
     <header
-      className={`sticky top-0 z-40 w-full transition-all duration-200 bg-white/95 backdrop-blur-md ${
+      className={`sticky top-0 z-40 w-full transition-all duration-200 backdrop-blur-md ${
         isScrolled
-          ? "border-b border-[#c0c9bb]/40 shadow-xs"
-          : "border-b border-[#c0c9bb]/20"
+          ? "bg-white/95 border-b border-[#c0c9bb]/50 shadow-xs"
+          : "bg-[#f8faf8]/95 border-b border-[#c0c9bb]/35"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
-          className={`h-20 flex items-center justify-between ${
-            isCompactStorefrontPage ? "gap-2 sm:gap-4" : "gap-4"
+          className={`h-[72px] sm:h-[76px] flex items-center justify-between xl:grid xl:grid-cols-[250px_1fr_250px] ${
+            isCompactStorefrontPage ? "gap-2 sm:gap-4" : "gap-2 sm:gap-4"
           }`}
         >
           {/* ================= ZONE 1: BRAND LOGO (LEFT) ================= */}
           <Link
             to="/"
             onClick={closeMenus}
-            className="flex items-center gap-2.5 shrink-0 group focus:outline-none select-none"
+            className="flex items-center gap-2 sm:gap-2.5 shrink-0 justify-self-start group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00450d] rounded-xl select-none"
             aria-label="XanhFarm Trang Chủ"
           >
-            <div className="w-10 h-10 rounded-2xl bg-[#00450d] flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#00450d] flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform shrink-0">
               <svg
-                className="w-5 h-5 text-white"
+                className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-white"
                 viewBox="0 0 24 24"
                 fill="currentColor"
               >
@@ -89,10 +89,13 @@ export default function StorefrontHeader() {
               </svg>
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-extrabold text-[20px] text-[#00450d] tracking-tight leading-tight group-hover:text-[#006e1c] transition-colors">
+              <span
+                className="font-extrabold text-[18px] sm:text-[20px] text-[#00450d] tracking-tight leading-tight group-hover:text-[#006e1c] transition-colors"
+                style={{ fontFamily: "var(--font-headline)" }}
+              >
                 XanhFarm
               </span>
-              <span className="text-[10px] font-bold tracking-wider text-[#00450d] uppercase mt-0.5 whitespace-nowrap">
+              <span className="hidden sm:block text-[9.5px] font-bold tracking-wider text-[#006e1c] uppercase mt-0.5 whitespace-nowrap">
                 NÔNG SẢN HỮU CƠ SẠCH
               </span>
             </div>
@@ -101,11 +104,11 @@ export default function StorefrontHeader() {
           {/* ================= ZONE 2: NAVIGATION LINKS (CENTER) ================= */}
           <nav
             aria-label="Điều hướng chính"
-            className="hidden lg:flex items-center gap-6 xl:gap-8"
+            className="hidden lg:flex items-center justify-center gap-4 xl:gap-7"
           >
             <Link
               to="/"
-              className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap ${
+              className={`relative py-1.5 text-[13.5px] xl:text-[14px] font-semibold transition-colors duration-150 whitespace-nowrap rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00450d] ${
                 isCurrentActive("/")
                   ? "text-[#00450d] font-bold"
                   : "text-[#41493e] hover:text-[#00450d]"
@@ -113,14 +116,14 @@ export default function StorefrontHeader() {
             >
               <span>Trang Chủ</span>
               {isCurrentActive("/") && (
-                <span className="absolute -bottom-2 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
+                <span className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
               )}
             </Link>
 
             <Link
               to="/products"
               onMouseEnter={prefetchCatalog}
-              className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap ${
+              className={`relative py-1.5 text-[13.5px] xl:text-[14px] font-semibold transition-colors duration-150 whitespace-nowrap rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00450d] ${
                 isCurrentActive("/products")
                   ? "text-[#00450d] font-bold"
                   : "text-[#41493e] hover:text-[#00450d]"
@@ -128,40 +131,40 @@ export default function StorefrontHeader() {
             >
               <span>Nông Sản</span>
               {isCurrentActive("/products") && (
-                <span className="absolute -bottom-2 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
+                <span className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
               )}
             </Link>
 
             <Link
               to="/brand"
-              className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${
+              className={`relative py-1.5 text-[13.5px] xl:text-[14px] font-semibold transition-colors duration-150 whitespace-nowrap flex items-center gap-1.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00450d] ${
                 isCurrentActive("/brand")
                   ? "text-[#00450d] font-bold"
                   : "text-[#41493e] hover:text-[#00450d]"
               }`}
             >
-              <BadgeCheck className="w-4 h-4 text-[#006e1c] shrink-0" />
-              <span>Câu Chuyện & Chứng Nhận</span>
+              <BadgeCheck className="hidden xl:block w-4 h-4 text-[#006e1c] shrink-0" />
+              <span>Câu Chuyện &amp; Chứng Nhận</span>
               {isCurrentActive("/brand") && (
-                <span className="absolute -bottom-2 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
+                <span className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
               )}
             </Link>
 
-            {(!user || user.role === "customer" || user.role === "admin") && (
+            {(!user ||
+              ["customer", "admin", "farm_staff", "sales"].includes(
+                user.role
+              )) && (
               <Link
                 to="/subscriptions"
-                className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${
+                className={`relative py-1.5 text-[13.5px] xl:text-[14px] font-semibold transition-colors duration-150 whitespace-nowrap flex items-center gap-1.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00450d] ${
                   isCurrentActive("/subscriptions")
                     ? "text-[#00450d] font-bold"
                     : "text-[#006e1c] hover:text-[#00450d]"
                 }`}
               >
                 <span>Gói Định Kỳ</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-[#86efac]/35 text-[#00450d] border border-[#86efac]/60 leading-none">
-                  -20%
-                </span>
                 {isCurrentActive("/subscriptions") && (
-                  <span className="absolute -bottom-2 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
+                  <span className="absolute -bottom-1 left-0 right-0 h-[2.5px] bg-[#00450d] rounded-full" />
                 )}
               </Link>
             )}
@@ -175,7 +178,7 @@ export default function StorefrontHeader() {
                   footerEl.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="relative py-1 text-[14px] font-semibold text-[#41493e] hover:text-[#00450d] transition-colors duration-150 whitespace-nowrap"
+              className="relative py-1.5 text-[13.5px] xl:text-[14px] font-semibold text-[#41493e] hover:text-[#00450d] transition-colors duration-150 whitespace-nowrap rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#00450d]"
             >
               <span>Liên Hệ</span>
             </a>
@@ -183,8 +186,8 @@ export default function StorefrontHeader() {
 
           {/* ================= ZONE 3: ACTIONS & AUTH (RIGHT) ================= */}
           <div
-            className={`flex items-center shrink-0 ${
-              isCompactStorefrontPage ? "gap-1 sm:gap-3" : "gap-2 sm:gap-3"
+            className={`flex items-center justify-end shrink-0 justify-self-end ${
+              isCompactStorefrontPage ? "gap-1.5 sm:gap-2.5" : "gap-1.5 sm:gap-3"
             }`}
           >
             {!isInternalStaff && (

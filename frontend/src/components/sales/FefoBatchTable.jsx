@@ -1,5 +1,6 @@
 import {
   Calendar,
+  CheckCircle2,
   ChevronRight,
   Clock,
   Flame,
@@ -177,17 +178,32 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
 
                       <td className="py-3 px-4 sm:px-5 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
-                          {batch.is_expiring_soon && !expired && (
-                            <Link
-                              to={`/sales/flash-sales?batch_id=${batch.batch_id}`}
-                              state={{ prefillBatch: batch }}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 hover:bg-amber-500 hover:text-white border border-amber-300/70 transition-colors"
-                              title="Gán lô này vào form tạo Flash Sale xả hàng"
-                            >
-                              <Flame className="w-3 h-3" />
-                              <span>Xả hàng</span>
-                            </Link>
-                          )}
+                          {batch.is_expiring_soon &&
+                            !expired &&
+                            (batch.has_active_flash_sale ? (
+                              <Link
+                                to="/sales/flash-sales"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                                title={
+                                  batch.active_flash_sale?.title
+                                    ? `Đang thuộc chương trình: ${batch.active_flash_sale.title}`
+                                    : "Lô này đã được tạo chương trình Flash Sale"
+                                }
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Đã tạo Flash Sale</span>
+                              </Link>
+                            ) : (
+                              <Link
+                                to={`/sales/flash-sales?batch_id=${batch.batch_id}`}
+                                state={{ prefillBatch: batch }}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 hover:bg-amber-500 hover:text-white border border-amber-300/70 transition-colors"
+                                title="Gán lô này vào form tạo Flash Sale xả hàng"
+                              >
+                                <Flame className="w-3 h-3" />
+                                <span>Xả hàng</span>
+                              </Link>
+                            ))}
 
                           <span
                             className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${badgeClass}`}
@@ -298,17 +314,28 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
                     </div>
                   </div>
 
-                  {batch.is_expiring_soon && !expired && (
-                    <Link
-                      to={`/sales/flash-sales?batch_id=${batch.batch_id}`}
-                      state={{ prefillBatch: batch }}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300/80 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 active:bg-amber-100 transition-colors"
-                    >
-                      <Flame className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>Xả hàng lô cận hạn này</span>
-                      <ChevronRight className="w-4 h-4 shrink-0" />
-                    </Link>
-                  )}
+                  {batch.is_expiring_soon &&
+                    !expired &&
+                    (batch.has_active_flash_sale ? (
+                      <Link
+                        to="/sales/flash-sales"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 active:bg-emerald-100 transition-colors"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Đã tạo Flash Sale · Xem chương trình</span>
+                        <ChevronRight className="w-4 h-4 shrink-0" />
+                      </Link>
+                    ) : (
+                      <Link
+                        to={`/sales/flash-sales?batch_id=${batch.batch_id}`}
+                        state={{ prefillBatch: batch }}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300/80 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 active:bg-amber-100 transition-colors"
+                      >
+                        <Flame className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Xả hàng lô cận hạn này</span>
+                        <ChevronRight className="w-4 h-4 shrink-0" />
+                      </Link>
+                    ))}
                 </div>
               );
             })}

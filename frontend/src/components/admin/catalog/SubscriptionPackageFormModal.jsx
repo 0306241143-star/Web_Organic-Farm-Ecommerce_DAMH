@@ -307,21 +307,22 @@ export default function SubscriptionPackageFormModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-4"
+      aria-label={editingPackage ? "Chỉnh sửa gói định kỳ" : "Thêm gói định kỳ"}
+      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
     >
-      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="relative w-full sm:max-w-2xl max-h-[92dvh] sm:max-h-[92vh] flex flex-col bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
-        <div className="shrink-0 px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 to-white">
+        <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 to-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#064e2e] text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-[#064e2e] text-white flex items-center justify-center shrink-0">
               <CalendarCheck2 className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-bold text-slate-800">
                 {editingPackage ? "Chỉnh Sửa Gói Rau Định Kỳ" : "Thêm Gói Rau Định Kỳ Mới"}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
                 Chọn danh sách nông sản, số lần giao và thiết lập ưu đãi giảm giá tự động
               </p>
             </div>
@@ -329,14 +330,20 @@ export default function SubscriptionPackageFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+            disabled={submitting}
+            aria-label="Đóng biểu mẫu"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer shrink-0 disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+        <form
+          id="admin-subscription-form"
+          onSubmit={handleSubmit}
+          className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4"
+        >
           {formError && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
@@ -728,26 +735,26 @@ export default function SubscriptionPackageFormModal({
             </div>
           </div>
 
-          {/* Footer nút lưu */}
-          <div className="pt-2 flex items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs sm:text-sm font-semibold cursor-pointer"
-            >
-              Hủy Bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] text-white text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              <span>{editingPackage ? "Lưu Thay Đổi" : "Tạo Gói Định Kỳ"}</span>
-            </button>
-          </div>
         </form>
+        <div className="shrink-0 px-4 sm:px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs sm:text-sm font-semibold cursor-pointer disabled:opacity-50"
+          >
+            Hủy Bỏ
+          </button>
+          <button
+            type="submit"
+            form="admin-subscription-form"
+            disabled={submitting}
+            className="w-full sm:w-auto px-5 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{editingPackage ? "Lưu Thay Đổi" : "Tạo Gói Định Kỳ"}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
