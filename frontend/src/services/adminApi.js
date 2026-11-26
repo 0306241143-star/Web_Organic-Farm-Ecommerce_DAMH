@@ -13,6 +13,8 @@ export const adminApi = {
     dashboardMetricsCache = res;
     return res;
   },
+  getReportDashboard: (params) =>
+    axiosClient.get("/admin/reports/dashboard", { params }),
 
   // Quản lý người dùng & phân quyền
   getUsers: (params) => axiosClient.get("/admin/users", { params }),
@@ -78,4 +80,16 @@ export const adminApi = {
 
   geocodeFarmAddress: (address) =>
     axiosClient.post("/admin/settings/farm/geocode", { address }),
+
+  // Quản lý người dùng & phân quyền
+  getUsers: (params) => axiosClient.get("/admin/users", { params }),
+  createUser: (data) => axiosClient.post("/admin/users", data),
+  updateUser: (userId, data) => axiosClient.put(`/admin/users/${userId}`, data),
+  updateUserStatus: (userId, status) =>
+    axiosClient.put(`/admin/users/${userId}/status`, { status }),
+  getRolesAndPermissions: () => axiosClient.get("/admin/roles-permissions"),
+  updateRolePermissions: (roleId, permissionIds) =>
+    axiosClient.put(`/admin/roles/${roleId}/permissions`, {
+      permission_ids: permissionIds,
+    }),
 };

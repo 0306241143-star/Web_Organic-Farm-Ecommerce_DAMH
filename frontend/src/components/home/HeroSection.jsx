@@ -77,7 +77,7 @@ export default function HeroSection() {
               className="min-h-12 px-5 py-3 rounded-xl bg-white hover:bg-[#f2f4f2] text-[#00450d] border border-[#c0c9bb] hover:border-[#00450d]/50 font-bold text-sm inline-flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00450d]"
             >
               <CalendarCheck2 className="w-4 h-4 text-[#006e1c] shrink-0" aria-hidden="true" />
-              <span>Gói Rau Định Kỳ (-20%)</span>
+              <span>Gói Rau Định Kỳ ( Tiết kiệm hơn )</span>
             </Link>
           </div>
         </div>
