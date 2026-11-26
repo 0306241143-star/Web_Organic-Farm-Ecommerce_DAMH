@@ -1,418 +1,156 @@
-# 🌿 Hệ Thống Website Thương Mại Điện Tử Nông Sản Sạch
+# XanhFarm — Website thương mại điện tử nông sản sạch
 
-## 1. Giới thiệu đồ án
+XanhFarm là ứng dụng web kết nối nông trại với người tiêu dùng. Hệ thống hỗ trợ bán nông sản, quản lý quy trình canh tác và kho theo lô, truy xuất nguồn gốc bằng QR, đồng thời cung cấp các công cụ vận hành cho nhân viên và quản trị viên.
 
-**Website Thương mại điện tử Nông sản sạch** là nền tảng kết nối trực tiếp nông trại với người tiêu dùng cuối, kết hợp quy trình bán lẻ, đăng ký gói rau củ định kỳ và hệ thống **truy xuất nguồn gốc minh bạch qua mã QR**.
+## Chức năng
 
-### Các nhóm vai trò & Nghiệp vụ cốt lõi
-1. **Khách vãng lai (Guest):**
-   - Xem danh mục, tìm kiếm và lọc nông sản theo khoảng giá, chứng nhận chất lượng (VietGAP, Organic).
-   - Xem trang Câu chuyện thương hiệu, triết lý canh tác và hồ sơ năng lực nông trại.
-   - Quét mã QR trên bao bì để truy xuất nguồn gốc lô hàng (ngày thu hoạch, người phụ trách, hạn sử dụng, nhật ký chăm sóc và giấy kiểm định đất/nước).
-2. **Khách hàng (Customer):**
-   - Quản lý giỏ hàng, đặt mua lẻ với phí vận chuyển tính tự động theo khoảng cách thực tế (km) từ nông trại đến địa chỉ nhận.
-   - Thanh toán trực tuyến qua **ApiPay** (Open Banking/chuyển khoản ngân hàng).
-   - Đăng ký gói nông sản định kỳ theo tháng (ví dụ: 3kg/lần vào Thứ 3 & Thứ 6 hằng tuần) để hệ thống tự động sinh đơn theo lịch.
-   - Theo dõi đơn hàng và gửi yêu cầu khiếu nại/hoàn tiền kèm bằng chứng hình ảnh hoặc video.
-3. **Nhân viên Nông trại (Farm Staff):**
-   - Quản lý mùa vụ, cập nhật nhật ký canh tác theo mốc (gieo hạt, bón phân, tưới tiêu, thu hoạch) đính kèm hình ảnh/video thực tế.
-   - Tạo lô hàng thu hoạch, tải lên chứng nhận chất lượng, kết quả kiểm định định kỳ và sinh/in tem mã QR cho từng lô.
-   - *Ràng buộc bảo mật:* Không có quyền xem báo cáo doanh thu hoặc thông tin cá nhân của khách hàng.
-4. **Nhân viên Bán hàng & CSKH (Sales):**
-   - Xác nhận đơn hàng mua lẻ và đơn tự động sinh từ gói định kỳ.
-   - Quản lý tồn kho theo lô áp dụng nguyên tắc **FEFO** (ưu tiên xuất lô có hạn sử dụng gần nhất), ghi nhận hao hụt/xuất hủy và cấu hình **Flash Sale** cho lô cận hạn.
-   - Điều phối giao nhận và tiếp nhận, xử lý khiếu nại (hoàn tiền theo phương thức được hỗ trợ hoặc tạo đơn giao bù).
-5. **Quản trị viên (Admin):**
-   - Quản lý tài khoản và thiết lập ma trận phân quyền người dùng (RBAC).
-   - Cấu hình tham số vận hành hệ thống (đơn giá ship/km, tỷ lệ điểm thưởng, ngưỡng cảnh báo cận hạn).
-   - Xem báo cáo thống kê tổng quan: Doanh thu, số lượng đơn hàng, tỷ lệ hao hụt hàng hóa và tỷ lệ khách hàng mua lại.
+| Khu vực | Chức năng chính |
+| --- | --- |
+| Khách vãng lai | Xem trang chủ, danh mục và chi tiết sản phẩm; tìm kiếm, lọc sản phẩm; xem câu chuyện nông trại; tra cứu nguồn gốc bằng mã QR. |
+| Khách hàng | Quản lý giỏ hàng và địa chỉ; đặt hàng; đăng ký gói định kỳ; theo dõi đơn hàng, điểm thưởng và gửi khiếu nại kèm bằng chứng. |
+| Nhân viên nông trại | Quản lý mùa vụ, lô canh tác, nhật ký, lô thu hoạch, chứng nhận và hồ sơ kiểm định; ghi nhận hao hụt và truy xuất lô. |
+| Nhân viên bán hàng (Sales) | Xử lý đơn hàng, điều phối giao hàng, quản lý tồn kho theo FEFO, chương trình Flash Sale và khiếu nại khách hàng. |
+| Quản trị viên (Admin) | Quản lý sản phẩm, danh mục, gói định kỳ, tài khoản và phân quyền; cấu hình hệ thống; xem báo cáo doanh thu, đơn hàng, hao hụt và khách mua lại. |
 
----
+Giao diện React được thiết kế responsive theo hướng mobile-first. API Laravel kiểm soát truy cập bằng Sanctum và RBAC; các API được tổ chức theo nhóm vai trò.
 
-## 2. Thành viên thực hiện
+## Công nghệ
 
-| STT | Họ và Tên | Nhiệm vụ chính |
-| :---: | :--- | :--- |
-| 1 | **Nguyễn Hoài Linh** | Khởi tạo cấu trúc dự án (Laravel & React), kết nối API, cấu hình Cloudflare R2, xây dựng luồng Xác thực & Phân quyền RBAC. |
-| 2 | **Ngô Gia Bảo** | Thiết kế CSDL MySQL (Migration & Model), luồng Chi tiết sản phẩm, Truy xuất QR, Quản lý đơn hàng & Tồn kho FEFO / Flash Sale. |
-| 3 | **Lê Minh Quân** | Phụ trách tích hợp ApiPay & Goong Maps API và luồng Khách hàng (triển khai chức năng theo các giai đoạn dự án). |
-| 4 | **Nguyễn Vũ Anh Khoa** | Thiết kế Storefront Layout, Dashboard Layout (Menu động) và xây dựng toàn bộ phân hệ Nhân viên Nông trại (Mùa vụ, Nhật ký, Lô hàng, In QR). |
-| 5 | **Lê Minh Tài** | Xây dựng Trang chủ, Danh mục, Bộ lọc tìm kiếm, Câu chuyện thương hiệu, Điều phối giao nhận và Trung tâm xử lý khiếu nại CSKH. |
+- **Frontend:** React 19, Vite 8, Tailwind CSS 4, React Router, Axios.
+- **Backend:** PHP 8.2+, Laravel 12, Laravel Sanctum.
+- **Cơ sở dữ liệu:** MySQL 8+ được khuyến nghị; SQLite có thể dùng cho môi trường phát triển và kiểm thử.
+- **Tích hợp tùy chọn:** ApiPay cho thanh toán, Goong Maps cho tính khoảng cách, Cloudflare R2 cho lưu trữ media.
 
----
-
-## 3. Công nghệ & Các cấu hình đã cài đặt
-
-### Backend (`backend/`)
-- **Framework:** Laravel (PHP >= 8.2) theo kiến trúc RESTful API.
-- **Xác thực & Phân quyền:**
-  - `laravel/breeze` (chế độ API) + `laravel/sanctum`: Xác thực Stateless bằng Bearer Token (`auth:sanctum`).
-  - Hệ thống phân quyền RBAC tùy biến (`nguoi_dung`, `vai_tro`, `quyen`, `vai_tro_quyen`) kết hợp Middleware `role`, `permission`, `role_or_permission`.
-- **Dịch vụ Email & Hàng đợi (Queue):**
-  - **Mailpit** (SMTP cục bộ cổng `1025`, giao diện web cổng `8025`) kết hợp **Laravel Queue** (`database` driver) để gửi email khôi phục mật khẩu bất đồng bộ nhanh chóng.
-- **Quản lý Media & Lưu trữ đám mây:**
-  - `league/flysystem-aws-s3-v3` + `spatie/laravel-medialibrary`: Kết nối **Cloudflare R2** lưu trữ ảnh/video nhật ký canh tác, bằng chứng khiếu nại và bản scan kiểm định.
-- **Tiện ích nghiệp vụ:**
-  - `spatie/laravel-query-builder`: Tìm kiếm và lọc sản phẩm/đơn hàng đa tiêu chí.
-  - `simplesoftwareio/simple-qrcode` & `barryvdh/laravel-dompdf`: Sinh mã QR lô hàng và xuất file PDF in tem nhãn.
-  - `maatwebsite/excel`: Xuất báo cáo thống kê quản trị ra Excel.
-- **Tích hợp bên thứ ba:** Backend khởi tạo yêu cầu thanh toán ApiPay và xác nhận giao dịch qua webhook có chữ ký HMAC; cấu hình Goong Maps Distance Matrix API đã sẵn sàng, phần tính khoảng cách sẽ được triển khai riêng.
-
-### Frontend (`frontend/`)
-- **Core:** React.js (khởi tạo bằng Vite) & **Tailwind CSS v4** (`@tailwindcss/vite`).
-- **Định tuyến & Bảo mật UI:** `react-router-dom` kết hợp `ProtectedRoute` và `RoleGuard` bảo vệ khu vực giao diện theo từng vai trò.
-- **Kết nối API:** `axios` cấu hình Interceptors tự động đính kèm Token, hỗ trợ `FormData` upload media và bắt lỗi tập trung (`401`, `403`, `422`, `500`).
-- **Icon:** `lucide-react`.
-
----
-
-## 4. Cấu trúc thư mục dự án
-
-*(Đã lược bỏ các tệp cấu hình mặc định của IDE, cache hệ thống và thư viện `vendor`/`node_modules`)*
+## Cấu trúc dự án
 
 ```text
-nong-san-sach/
-├── backend/                                        # Mã nguồn Backend Laravel API
-│   ├── app/
-│   │   ├── Console/Commands/
-│   │   │   └── GenerateRecurringOrders.php         # Cronjob tự động sinh đơn hàng định kỳ theo lịch gói tháng
-│   │   ├── Http/
-│   │   │   ├── Controllers/
-│   │   │   │   ├── Auth/                           # Bộ Controller xác thực Stateless API
-│   │   │   │   │   ├── AuthenticatedSessionController.php  # Đăng nhập (trả Token + Roles/Permissions) & Đăng xuất
-│   │   │   │   │   ├── RegisteredUserController.php        # Đăng ký tài khoản Khách hàng mới
-│   │   │   │   │   ├── PasswordResetLinkController.php     # Gửi yêu cầu quên mật khẩu qua Email
-│   │   │   │   │   ├── NewPasswordController.php           # Đặt lại mật khẩu mới
-│   │   │   │   │   ├── EmailVerificationNotificationController.php # Gửi lại email xác thực
-│   │   │   │   │   └── VerifyEmailController.php           # Xác nhận liên kết kích hoạt email
-│   │   │   │   └── Api/
-│   │   │   │       ├── Public/                     # Nhóm API công khai (Guest & Customer)
-│   │   │   │       │   ├── CategoryController.php  # Lấy danh sách danh mục nông sản
-│   │   │   │       │   ├── ProductController.php   # Danh sách, tìm kiếm, lọc theo giá/chứng nhận & chi tiết SP
-│   │   │   │       │   ├── BrandStoryController.php# Lấy nội dung câu chuyện thương hiệu & hồ sơ nông trại
-│   │   │   │       │   ├── StorefrontController.php# Dữ liệu tổng hợp trang chủ (Flash sale, gói rau, sản phẩm nổi bật)
-│   │   │   │       │   └── QrTraceController.php   # Tra cứu thông tin lô hàng, nhật ký & kiểm định qua mã QR
-│   │   │   │       ├── Customer/                   # Nhóm API Khách hàng (yêu cầu role:customer)
-│   │   │   │       │   ├── CartController.php      # Thêm, sửa số lượng, xóa giỏ hàng & kiểm tra tồn kho
-│   │   │   │       │   ├── CheckoutController.php  # Tạo yêu cầu thanh toán ApiPay cho đơn hàng chờ thanh toán
-│   │   │   │       │   ├── OrderController.php     # Xem lịch sử đơn hàng & tiến trình giao nhận
-│   │   │   │       │   ├── RetailOrderController.php # Xử lý đặt mua lẻ nông sản & hủy đơn hàng
-│   │   │   │       │   ├── SubscriptionController.php # Đăng ký & quản lý gói rau củ định kỳ theo tháng
-│   │   │   │       │   ├── RewardPointController.php # Xem ví điểm thưởng & quy đổi điểm ưu đãi
-│   │   │   │       │   └── ClaimController.php     # Gửi yêu cầu khiếu nại/hoàn tiền kèm bằng chứng ảnh/video
-│   │   │   │       ├── FarmStaff/                  # Nhóm API Kỹ sư Nông trại (chặn doanh thu & thông tin khách)
-│   │   │   │       │   ├── SeasonController.php    # Quản lý thông tin mùa vụ canh tác
-│   │   │   │       │   ├── CultivationPlotController.php # Quản lý danh sách lô đất, diện tích & tình trạng canh tác
-│   │   │   │       │   ├── FarmingLogController.php# Ghi nhật ký (gieo hạt, bón phân, tưới, thu hoạch) + media R2
-│   │   │   │       │   ├── BatchController.php     # Tạo lô thu hoạch (ngày thu hoạch, người phụ trách, HSD)
-│   │   │   │       │   ├── CertificateController.php # Upload chứng nhận chất lượng & bản scan kiểm định đất/nước
-│   │   │   │       │   ├── BatchQrController.php   # Sinh mã QR duy nhất cho lô & xuất dữ liệu in tem nhãn
-│   │   │   │       │   └── FarmInfoController.php  # Cập nhật thông tin cơ sở nông trại (tên, địa chỉ)
-│   │   │   │       ├── Sales/                      # Nhóm API Nhân viên Bán hàng & CSKH
-│   │   │   │       │   ├── OrderProcessController.php # Xem & xác nhận đơn mua lẻ và đơn tự sinh từ gói định kỳ
-│   │   │   │       │   ├── InventoryFefoController.php # Quản lý kho theo lô FEFO, ghi nhận hao hụt & xuất hủy
-│   │   │   │       │   ├── FlashSaleController.php # Nhận cảnh báo lô cận hạn & cấu hình giảm giá Flash Sale
-│   │   │   │       │   ├── DeliveryController.php  # Cấu hình điều phối giao hàng & cập nhật trạng thái vận chuyển
-│   │   │   │       │   └── ClaimResolveController.php # Xem bằng chứng khiếu nại, duyệt hoàn tiền hoặc tạo đơn giao bù
-│   │   │   │       ├── Admin/                      # Nhóm API Quản trị viên
-│   │   │   │       │   ├── CategoryController.php  # Quản lý danh mục sản phẩm (thêm, sửa, trạng thái)
-│   │   │   │       │   ├── ProductController.php   # Quản trị danh sách nông sản & bảng giá
-│   │   │   │       │   ├── SubscriptionPackageController.php # Quản lý gói nông sản định kỳ theo tháng
-│   │   │   │       │   ├── UserRoleController.php  # Quản lý tài khoản & gán vai trò/quyền hạn (RBAC)
-│   │   │   │       │   ├── SystemSettingController.php # Cấu hình đơn giá ship/km, tỷ lệ điểm thưởng, cảnh báo HSD
-│   │   │   │       │   └── ReportController.php    # Thống kê doanh thu, số đơn, tỷ lệ hao hụt & tỷ lệ mua lại
-│   │   │   │       └── Webhook/
-│   │   │   │           └── ApiPayWebhookController.php # Xác minh webhook và cập nhật trạng thái thanh toán
-│   │   │   ├── Middleware/
-│   │   │   │   ├── CheckRole.php                   # Kiểm tra vai trò người dùng (admin, sales, farm_staff, customer)
-│   │   │   │   ├── CheckPermission.php             # Kiểm tra quyền hạn chi tiết theo ma trận RBAC
-│   │   │   │   ├── CheckRoleOrPermission.php       # Kiểm tra kết hợp vai trò hoặc quyền hạn
-│   │   │   │   └── EnsureEmailIsVerified.php       # Kiểm tra trạng thái xác thực email của tài khoản
-│   │   │   └── Requests/                           # Lớp kiểm tra tính hợp lệ dữ liệu đầu vào (Validation)
-│   │   │       ├── Auth/LoginRequest.php           # Validate thông tin đăng nhập & giới hạn số lần thử sai
-│   │   │       ├── Customer/                       # StoreOrderRequest, StoreSubscriptionRequest, StoreClaimRequest
-│   │   │       ├── FarmStaff/                      # StoreFarmingLogRequest, StoreBatchRequest, UploadCertificateRequest
-│   │   │       └── Sales/                          # RecordWastageRequest, StoreFlashSaleRequest, ResolveClaimRequest
-│   │   ├── Models/
-│   │   │   ├── NguoiDung.php                       # Model người dùng (Sanctum HasApiTokens, RBAC & Password Reset)
-│   │   │   ├── VaiTro.php                          # Model vai trò hệ thống
-│   │   │   └── Quyen.php                           # Model quyền hạn chi tiết
-│   │   ├── Notifications/
-│   │   │   └── QueuedResetPasswordNotification.php # Notification gửi email khôi phục mật khẩu qua hàng đợi Queue
-│   │   ├── Providers/
-│   │   │   └── AppServiceProvider.php              # Đăng ký các Service, URL đặt lại mật khẩu & cấu hình dùng chung
-│   │   └── Services/                               # Tầng xử lý logic nghiệp vụ chuyên sâu
-│   │       ├── FefoStockService.php                # Thuật toán chọn lô có HSD gần nhất & trừ tồn kho tự động
-│   │       ├── ApiPayPaymentService.php             # Gọi API ApiPay để tạo và tra cứu yêu cầu thanh toán
-│   │       ├── QrCodeGeneratorService.php          # Sinh mã QR định danh truy xuất nguồn gốc từng lô hàng
-│   │       ├── CultivationPlotService.php          # Tính toán tình trạng sử dụng và sản lượng lô đất
-│   │       ├── CartPricingService.php              # Tính toán tổng tiền giỏ hàng, ưu đãi và tồn kho khả dụng
-│   │       ├── RewardPointService.php              # Xử lý cộng/trừ và lịch sử biến động điểm thưởng
-│   │       ├── R2StorageService.php                # Quản lý tải lên, sinh URL ký tạm thời lưu trữ media R2
-│   │       ├── ShippingDistanceService.php         # Tính toán khoảng cách địa lý và ước tính phí giao hàng
-│   │       ├── GoongGeocodingService.php           # Tích hợp dịch vụ bản đồ Goong Maps định vị tọa độ
-│   │       ├── SubscriptionGeneratorService.php    # Logic tự động khởi tạo đơn hàng khi đến kỳ giao gói tháng
-│   │       ├── Catalog/ProductCatalogService.php   # Xử lý nghiệp vụ lọc, tìm kiếm và phân loại sản phẩm
-│   │       └── Order/                              # OrderCreationService, OrderCancellationService
-│   ├── bootstrap/
-│   │   └── app.php                                 # Khai báo routing, alias middleware RBAC & chuẩn hóa JSON lỗi
-│   ├── config/
-│   │   ├── cors.php                                # Cấu hình cho phép Frontend React truy cập API
-│   │   ├── database.php                            # Cấu hình kết nối cơ sở dữ liệu MySQL
-│   │   ├── filesystems.php                         # Khai báo disk 'r2' kết nối Cloudflare R2 Storage
-│   │   ├── sanctum.php                             # Cấu hình thời hạn & cơ chế hoạt động của Access Token
-│   │   └── services.php                            # Khai báo thông số kết nối ApiPay & Goong Maps API
-│   ├── database/
-│   │   ├── migrations/                             # Các tệp tạo cấu trúc bảng MySQL, chỉ mục & Stored Functions
-│   │   └── seeders/
-│   │       ├── DatabaseSeeder.php                  # Nạp dữ liệu mẫu từ tệp SQL vào cơ sở dữ liệu
-│   │       └── sql/seed_nong_san_sach.sql          # Dữ liệu mẫu vai trò, quyền hạn, tài khoản, nông trại & đơn hàng
-│   ├── routes/
-│   │   ├── api.php                                 # Định tuyến toàn bộ RESTful API chia theo 5 nhóm quyền & Auth
-│   │   ├── api/                                    # Tách tuyến API theo vai trò (admin, farm, customer, sales, public)
-│   │   └── console.php                             # Khai báo lịch chạy Cronjob tự động sinh đơn định kỳ
-│   ├── .env.example                                # Tệp mẫu các biến môi trường cần cấu hình
-│   └── composer.json                               # Danh sách các gói thư viện PHP/Laravel của dự án
-│
-└── frontend/                                       # Mã nguồn Frontend React.js + Tailwind CSS
-    ├── src/
-    │   ├── components/
-    │   │   ├── admin/                              # Thành phần giao diện dành cho Quản trị viên
-    │   │   │   ├── catalog/                        # Quản lý danh mục, nông sản & gói tháng định kỳ
-    │   │   │   │   ├── AdminCategoryListTab.jsx, AdminProductListTab.jsx, AdminSubscriptionListTab.jsx
-    │   │   │   │   ├── CategoryFormModal.jsx, ProductFormModal.jsx, SubscriptionPackageFormModal.jsx
-    │   │   │   │   └── CategoryDropdown.jsx
-    │   │   │   ├── modals/UserPermissionModal.jsx  # Hộp thoại cấp tài khoản & thiết lập phân quyền vai trò
-    │   │   │   ├── KpiStatCards.jsx                # Thẻ hiển thị chỉ số doanh thu, số đơn, hao hụt, mua lại
-    │   │   │   └── RevenueAndWastageCharts.jsx     # Biểu đồ thống kê doanh thu & tỷ lệ hao hụt kho
-    │   │   ├── auth/                               # Thành phần đăng nhập & đăng ký
-    │   │   │   ├── LoginModal.jsx                  # Hộp thoại đăng nhập nhanh
-    │   │   │   └── RegisterModal.jsx               # Hộp thoại đăng ký tài khoản khách hàng
-    │   │   ├── common/                             # Các thành phần UI tái sử dụng toàn hệ thống
-    │   │   │   ├── Badge.jsx, Button.jsx, EmptyState.jsx, Pagination.jsx
-    │   │   │   ├── FileUploader.jsx                # Thành phần tải lên nhiều ảnh/video/PDF
-    │   │   │   └── MediaViewer.jsx                 # Trình xem trước hình ảnh, video & tài liệu kiểm định
-    │   │   ├── customer/                           # Thành phần giao diện dành cho Khách hàng
-    │   │   │   ├── checkout/                       # Quy trình thanh toán đơn hàng (giỏ hàng, giao hàng, tóm tắt)
-    │   │   │   │   ├── CheckoutDeliveryAndPayment.jsx, CheckoutItemList.jsx
-    │   │   │   │   └── CheckoutPendingPayment.jsx, CheckoutSummaryCard.jsx
-    │   │   │   ├── orders/                         # Lịch sử đơn hàng, gói định kỳ & khiếu nại
-    │   │   │   │   ├── OrderHistoryCard.jsx, SubscriptionHistoryCard.jsx, ClaimHistoryCard.jsx
-    │   │   │   │   └── orderHistoryUtils.jsx
-    │   │   │   ├── profile/                        # Sổ địa chỉ, thông tin cá nhân & lịch sử điểm thưởng
-    │   │   │   │   └── AddressBookTab.jsx, ProfileInfoTab.jsx, RewardHistoryTab.jsx
-    │   │   │   ├── modals/CreateClaimModal.jsx     # Hộp thoại gửi khiếu nại kèm tải lên bằng chứng ảnh/video
-    │   │   │   ├── AddressDistancePicker.jsx       # Nhập địa chỉ & hiển thị khoảng cách km tính phí ship
-    │   │   │   ├── CartSummaryBox.jsx              # Bảng tóm tắt giỏ hàng & kiểm tra tồn kho khả dụng
-    │   │   │   └── SubscriptionScheduleForm.jsx    # Biểu mẫu chọn gói rau tháng & ngày giao trong tuần
-    │   │   ├── farm/                               # Thành phần giao diện dành cho Kỹ sư Nông trại
-    │   │   │   ├── batches/                        # Quản lý lô thu hoạch, bảng dữ liệu & bảng chi tiết
-    │   │   │   │   ├── BatchTable.jsx              # Bảng danh sách lô hàng thu hoạch & trạng thái FEFO
-    │   │   │   │   ├── BatchDetailPanel.jsx        # Bảng chi tiết lô hàng Master-Detail (nhật ký, hao hụt, chứng nhận)
-    │   │   │   │   ├── BatchStatCards.jsx          # Thẻ chỉ số KPI sản lượng & tồn kho lô hàng
-    │   │   │   │   ├── BatchFilterBar.jsx          # Thanh lọc & tìm kiếm lô thu hoạch
-    │   │   │   │   ├── BatchWastageModal.jsx       # Hộp thoại ghi nhận hao hụt từ lô thu hoạch
-    │   │   │   │   └── BatchTraceModal.jsx         # Hộp thoại xem nhanh thông tin truy xuất nguồn gốc
-    │   │   │   ├── certificates/                   # Quản lý chứng nhận VietGAP & hồ sơ kiểm định
-    │   │   │   │   ├── CertificateTable.jsx        # Bảng danh sách chứng nhận & bộ lọc trạng thái hiệu lực
-    │   │   │   │   ├── CertificateStatCards.jsx    # Thẻ thống kê chứng nhận còn hạn, cận hạn & hết hạn
-    │   │   │   │   ├── CertificateFormModal.jsx    # Hộp thoại tải lên và cập nhật chứng nhận/hồ sơ kiểm nghiệm
-    │   │   │   │   ├── CertificatePreviewModal.jsx # Hộp thoại xem trước file PDF/ảnh chứng nhận
-    │   │   │   │   ├── CertificateDeleteModal.jsx  # Hộp thoại xác nhận xóa/thu hồi chứng nhận
-    │   │   │   │   └── InspectionResultModal.jsx   # Hộp thoại chi tiết chỉ số kiểm định mẫu đất/nước
-    │   │   │   ├── modals/                         # Hộp thoại tác vụ nông trại
-    │   │   │   │   ├── AddFarmingLogModal.jsx      # Hộp thoại ghi mốc nhật ký canh tác & upload media R2
-    │   │   │   │   ├── CreateBatchModal.jsx        # Hộp thoại tạo lô thu hoạch, HSD, phụ trách & tự sinh QR
-    │   │   │   │   └── QrPrintPreviewModal.jsx     # Hộp thoại xem trước & xuất in tem mã QR dán bao bì
-    │   │   │   ├── seasons/                        # Quản lý mùa vụ, lô đất & dòng thời gian canh tác
-    │   │   │   │   ├── SeasonListSection.jsx       # Danh sách mùa vụ canh tác & bộ lọc
-    │   │   │   │   ├── SeasonFormModal.jsx         # Hộp thoại tạo mới & cập nhật mùa vụ
-    │   │   │   │   ├── PlotListSection.jsx         # Danh sách lô đất canh tác & loại đất
-    │   │   │   │   ├── PlotFormModal.jsx           # Hộp thoại thêm mới/chỉnh sửa lô canh tác
-    │   │   │   │   ├── PlotTimelinePanel.jsx       # Panel hiển thị dòng thời gian nhật ký lô đang chọn
-    │   │   │   │   └── FarmInfoModal.jsx           # Hộp thoại cập nhật tên & địa chỉ cơ sở nông trại
-    │   │   │   ├── wastage/                        # Kiểm kê kho & xử lý hao hụt
-    │   │   │   │   ├── InventoryAuditTab.jsx       # Tab kiểm kho thực tế theo lô & cảnh báo cận hạn
-    │   │   │   │   ├── WastageHistoryTab.jsx       # Tab sổ lịch sử biến động & lý do xuất hủy
-    │   │   │   │   ├── WastageStatCards.jsx        # Thẻ chỉ số tổng tồn kho, cận hạn & xuất hủy
-    │   │   │   │   └── RecordWastageModal.jsx      # Hộp thoại ghi phiếu xuất hủy/hao hụt kiểm kho
-    │   │   │   └── FarmingLogTimeline.jsx          # Dòng thời gian hiển thị các mốc chăm sóc mùa vụ
-    │   │   ├── home/                               # Các khối giao diện trang chủ
-    │   │   │   ├── HeroSection.jsx, FeaturedProductsSection.jsx, FlashSaleSection.jsx
-    │   │   │   ├── SubscriptionPackagesSection.jsx, FarmJourneySection.jsx, GreenhouseShowcaseSection.jsx
-    │   │   │   └── CategoryGridSection.jsx, TrustBadgesSection.jsx
-    │   │   ├── navigation/                         # Thành phần điều hướng chính của 2 Layout
-    │   │   │   ├── StorefrontHeader.jsx            # Header khu vực mua sắm (tự đổi trạng thái khi đăng nhập)
-    │   │   │   ├── StorefrontFooter.jsx            # Chân trang thông tin nông trại & chứng nhận chất lượng
-    │   │   │   ├── DynamicSidebar.jsx              # Thanh menu bên trái tự động ẩn/hiện mục theo quyền RBAC
-    │   │   │   └── header/                         # HeaderUserMenu.jsx, MobileNavDrawer.jsx
-    │   │   ├── public/                             # Thành phần giao diện khu vực Công khai
-    │   │   │   ├── ProductCard.jsx                 # Thẻ hiển thị thông tin tóm tắt sản phẩm nông sản
-    │   │   │   ├── ProductFilterSidebar.jsx        # Bộ lọc tìm kiếm theo khoảng giá & chứng nhận an toàn
-    │   │   │   ├── QrTraceTimeline.jsx             # Hiển thị chi tiết nguồn gốc lô & nhật ký khi quét QR
-    │   │   │   ├── QrCodeScanner.jsx               # Trình quét mã QR trực tiếp trên trình duyệt
-    │   │   │   └── product-detail/                 # ProductDetailGallery.jsx, ProductPurchasePanel.jsx, ProductQualityDetails.jsx
-    │   │   └── sales/                              # Thành phần giao diện dành cho Nhân viên Sales / CSKH
-    │   │       ├── modals/DispatchOrderModal.jsx   # Hộp thoại cấu hình điều phối vận chuyển đơn hàng
-    │   │       ├── modals/RecordWastageModal.jsx   # Hộp thoại ghi nhận số lượng dập nát/hao hụt hoặc xuất hủy
-    │   │       ├── modals/ResolveClaimModal.jsx    # Hộp thoại xem bằng chứng & duyệt hoàn tiền / tạo đơn bù
-    │   │       ├── ExpiringAlertBanner.jsx         # Thông báo cảnh báo lô hàng sắp hết hạn để chạy Flash Sale
-    │   │       └── FefoBatchTable.jsx              # Bảng quản lý tồn kho theo lô sắp xếp ưu tiên HSD gần nhất
-    │   ├── context/                                # Quản lý trạng thái toàn cục (React Context)
-    │   │   ├── AuthContext.jsx, authStateContext.js, useAuth.js # Lưu phiên đăng nhập, Token, Role & điều hướng
-    │   │   └── CartContext.jsx, cartStateContext.js, useCart.js # Đồng bộ dữ liệu giỏ hàng mua lẻ
-    │   ├── layouts/                                # Hai khung giao diện chính của hệ thống
-    │   │   ├── StorefrontLayout.jsx                # Khung giao diện công khai & khách hàng (Mobile-first)
-    │   │   └── DashboardLayout.jsx                 # Khung làm việc nội bộ dùng chung cho Farm Staff, Sales, Admin
-    │   ├── pages/                                  # Các trang màn hình chính chia theo 5 khu vực + Auth
-    │   │   ├── auth/                               # LoginPage, RegisterPage, ForgotPasswordPage
-    │   │   ├── public/                             # HomePage, ProductCatalogPage, ProductDetailPage, BrandStoryPage, QrTraceabilityPage
-    │   │   ├── customer/                           # CartPage, CheckoutPage, SubscriptionRegisterPage, OrderHistoryPage, RewardWalletPage
-    │   │   ├── farm/                               # SeasonManagePage, BatchHarvestPage, CertificateManagePage, InventoryWastagePage
-    │   │   ├── sales/                              # SalesOrderPage, InventoryFefoPage, FlashSalePage, CustomerClaimPage
-    │   │   ├── admin/                              # AdminDashboardPage, CatalogManagePage, SystemSettingsPage, UserManagementPage
-    │   │   └── ApiTestPage.jsx                     # Trang kiểm thử kết nối API nội bộ
-    │   ├── routes/                                 # Cấu hình định tuyến & bảo vệ truy cập trang
-    │   │   ├── AppRouter.jsx                       # Khai báo toàn bộ đường dẫn URL của ứng dụng
-    │   │   ├── ProtectedRoute.jsx                  # Chặn người dùng chưa đăng nhập vào trang nội bộ/cá nhân
-    │   │   └── RoleGuard.jsx                       # Ngăn chặn truy cập trái vai trò (tránh vượt quyền URL)
-    │   └── services/                               # Lớp giao tiếp API ánh xạ trực tiếp với Backend Laravel
-    │       ├── axiosClient.js                      # Cấu hình Axios, đính kèm Bearer Token & chuẩn hóa bắt lỗi
-    │       ├── authApi.js, publicApi.js, customerApi.js, farmApi.js, salesApi.js, adminApi.js
-    ├── index.html                                  # Tệp HTML gốc khởi chạy ứng dụng React
-    ├── package.json                                # Danh sách thư viện Frontend & các lệnh chạy Vite
-    └── vite.config.js                              # Cấu hình Vite tích hợp plugin Tailwind CSS
+.
+├── backend/
+│   ├── app/                 # API controllers, models, services, middleware
+│   ├── database/            # Migrations, seeders và dữ liệu mẫu
+│   ├── routes/              # API routes, phân nhóm theo nghiệp vụ
+│   └── tests/               # Feature và unit tests
+└── frontend/
+    └── src/
+        ├── components/      # UI components theo nghiệp vụ
+        ├── context/         # Trạng thái xác thực và giỏ hàng
+        ├── layouts/         # Storefront và dashboard layouts
+        ├── pages/           # Giao diện public, customer, farm, sales, admin
+        ├── routes/          # Routing và bảo vệ trang theo vai trò
+        └── services/        # API clients
 ```
 
----
+## Cài đặt và chạy local
 
-## 5. Hướng dẫn cấu hình và chạy dự án khi tải từ Git về
+### Yêu cầu
 
-### Yêu cầu môi trường trên máy
-- **PHP** >= 8.2 và **Composer**
-- **Node.js** >= 18.x và **npm**
-- **MySQL** >= 8.0 / MariaDB (XAMPP, Laragon hoặc Docker)
-- **Mailpit** (khuyến nghị để kiểm thử gửi/nhận email khôi phục mật khẩu tại cục bộ)
+- PHP **8.2 trở lên** và Composer.
+- Node.js **20.19+** hoặc **22.13+**, cùng npm.
+- MySQL 8+ nếu dùng MySQL; SQLite có sẵn trong PHP nếu chọn SQLite.
 
----
+### 1. Cấu hình Backend
 
-### Bước 1: Tải mã nguồn từ GitHub
-```bash
-git clone https://github.com/<ten-tai-khoan>/<ten-repo>.git
-cd nong-san-sach
-```
+Mở PowerShell tại thư mục gốc dự án:
 
----
-
-### Bước 2: Cài đặt và cấu hình Backend (Laravel)
-
-1. Di chuyển vào thư mục `backend` và cài đặt các gói thư viện PHP:
-```bash
+```powershell
 cd backend
 composer install
-```
-
-2. Tạo tệp biến môi trường `.env` từ tệp mẫu `.env.example` và sinh khóa bảo mật ứng dụng:
-```bash
-cp .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 php artisan key:generate
 ```
 
-3. Mở tệp `backend/.env` và cập nhật các thông số kết nối thực tế của bạn:
-Nội dung file lấy trong Page 1 của GoogleSheet phân công (Link: https://docs.google.com/spreadsheets/d/1ZZi2E22fx_av9RZEKb9CaVfWUn_D-lV-Y-HPzRZE2Ks/edit?gid=1813174237#gid=1813174237&range=B20:G20 )
+Mặc định, `.env.example` chọn SQLite. Tạo tệp cơ sở dữ liệu nếu chưa có rồi chạy migrations và dữ liệu mẫu:
 
-4. Chuẩn bị thông tin dịch vụ cho **Giai đoạn 4** trong `backend/.env`:
-   - **ApiPay:** `APIPAY_DASHBOARD_URL` chỉ là trang quản lý; API base URL mặc định là `https://app.apipay.vn/v1/client`. Điền `APIPAY_ACCESS_KEY` và `APIPAY_SECRET_KEY` lấy từ dashboard vào `.env` (không đưa lên Git). Tạo webhook trên dashboard trỏ đến `https://<backend-domain>/api/webhooks/apipay`, rồi đặt signing secret của webhook tương ứng vào `APIPAY_WEBHOOK_SECRET` và URL đó vào `APIPAY_WEBHOOK_URL`. ApiPay yêu cầu HTTPS truy cập công khai cho webhook; URL tunnel dùng thử có thể thay đổi nên cần cập nhật lại URL trên dashboard và `.env` khi tunnel đổi.
-   - **Goong Maps:** điền `GOONG_API_KEY` từ Goong Platform; `GOONG_DISTANCE_MATRIX_URL` đã đặt endpoint Distance Matrix mặc định. Giới hạn key theo các API cần dùng và không đưa key này vào biến `VITE_*` hoặc mã frontend.
-   - **Checkout bán lẻ:** cấu hình `don_gia_ship_km` trong `cau_hinh_he_thong`; nếu chưa có thì dùng `SHIPPING_PRICE_PER_KM` (mặc định 2.000đ/km, khớp dữ liệu mẫu 25.000đ cho 12,5km). Điểm xuất phát giao hàng cấu hình riêng bằng `SHIPPING_ORIGIN_NAME`, `SHIPPING_ORIGIN_ADDRESS`, `SHIPPING_ORIGIN_LATITUDE` và `SHIPPING_ORIGIN_LONGITUDE` (mặc định Nhà C – Trường Cao đẳng Kỹ thuật Cao Thắng, 65 Huỳnh Thúc Kháng, Phường Sài Gòn, TP.HCM; tọa độ 10.771687, 106.701978), không làm thay đổi địa chỉ vật lý của nông trại. Đơn giá và khoảng cách được xử lý ở backend; không nhận phí giao do frontend gửi.
-   - **Ngân hàng ApiPay:** đặt `APIPAY_BANK_PUBLIC_ID` và tên hiển thị tùy chọn `APIPAY_BANK_NAME`; đây là cấu hình server-side cho ngân hàng nhận tiền, không đưa khóa ApiPay vào frontend. Lấy ID trong dashboard ApiPay ở mục **Ngân hàng**: chọn tài khoản ngân hàng nhận tiền đã liên kết và sao chép trường **Public ID** của tài khoản đó (nếu chưa có tài khoản thì liên kết/tạo tài khoản trước). Dùng đúng ID ngân hàng này, không dùng **Webhook ID**, **Access Key**, **Secret Key** hoặc `publicId` trả về sau khi tạo yêu cầu thanh toán. Đặt giá trị vào `APIPAY_BANK_PUBLIC_ID` trong `backend/.env`.
-   - Sau khi sửa `backend/.env`, chạy `php artisan config:clear` trong thư mục `backend` để Laravel nạp lại cấu hình. Có thể kiểm tra trạng thái cấu hình mà không in thông tin bí mật bằng `php artisan tinker --execute='$s = app(App\\Services\\ApiPayPaymentService::class); echo json_encode($s->configurationStatus()), PHP_EOL;'`; `ready` phải là `true`.
-   - Ảnh chụp dashboard có thể làm lộ Access Key, Secret Key hoặc signing secret. Nếu ảnh đã được chia sẻ, hãy thu hồi/tạo lại các khóa đó trong dashboard rồi cập nhật `.env`; không đưa giá trị khóa vào chat, README, Git hoặc biến frontend `VITE_*`.
-   - Không commit thông tin xác thực thật. Luồng thanh toán ApiPay đã được nối cho đơn hàng đã tồn tại; giao dịch chỉ được xác nhận sau webhook đã xác minh chữ ký, nội dung và số tiền.
-   - Luồng checkout khách hàng: `GET /api/customer/addresses` lấy địa chỉ của tài khoản hiện tại, `POST /api/customer/checkout/quote` tính báo giá Goong, `POST /api/customer/checkout/orders` xác thực lại giỏ và tạo đơn, rồi `POST /api/customer/checkout` tạo/lấy lại yêu cầu ApiPay cho đơn chờ thanh toán. `GET /api/customer/checkout/orders/{orderId}` kiểm tra trạng thái; URL thanh toán trả về trong `data.pay_url`, còn trạng thái thành công chỉ được xác nhận bằng webhook hợp lệ.
-   - Webhook sandbox và webhook kiểm tra trực tiếp không cập nhật đơn hàng; chỉ webhook giao dịch thật đã xác minh mới có thể xác nhận thanh toán. Nếu yêu cầu tạo thanh toán bị timeout/lỗi không rõ kết quả, bản ghi vẫn ở trạng thái khởi tạo để chờ webhook/đối soát, không nên thử tạo yêu cầu mới ngay.
-   - Chạy `php artisan migrate` để chuyển schema thanh toán hoàn toàn sang ApiPay (bao gồm SQLite); mã giao dịch cũ được lưu dưới dạng tham chiếu lưu trữ. ApiPay hiện chỉ xác nhận tiền vào, chưa triển khai hoàn tiền.
-
-5. Khởi tạo các bảng dữ liệu, hàm lưu trữ (Stored Functions) trong MySQL và dữ liệu mẫu phân quyền:
-```bash
-php artisan migrate:fresh --seed
+```powershell
+if (-not (Test-Path database\database.sqlite)) {
+    New-Item -ItemType File -Path database\database.sqlite | Out-Null
+}
+php artisan migrate --seed
 ```
 
-6. Khởi chạy máy chủ Backend API (mặc định chạy tại `http://127.0.0.1:8000`):
-```bash
+Nếu dùng MySQL, cập nhật `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` và `DB_PASSWORD` trong `backend/.env`, tạo database trước, sau đó chạy `php artisan migrate --seed`.
+
+Khởi động API:
+
+```powershell
 php artisan serve
 ```
 
-*(Tùy chọn)* Mở thêm một cửa sổ terminal khác tại thư mục `backend/` để chạy tiến trình tự động tạo đơn hàng định kỳ theo lịch:
-```bash
-php artisan schedule:work
-```
+Backend mặc định chạy tại `http://127.0.0.1:8000`.
 
----
+### 2. Cấu hình Frontend
 
-### Bước 3: Cấu hình và chạy dịch vụ Email (Mailpit & Queue Worker)
+Mở một terminal khác tại thư mục gốc:
 
-Để sử dụng chức năng **Quên mật khẩu / Đặt lại mật khẩu** và nhận email kiểm thử cục bộ mà không bị chậm khi gửi:
-
-1. **Kiểm tra cấu hình SMTP & Queue trong `backend/.env`:**
-```env
-FRONTEND_URL=http://localhost:5173
-QUEUE_CONNECTION=database
-
-MAIL_MAILER=smtp
-MAIL_SCHEME=null
-MAIL_HOST=127.0.0.1
-MAIL_PORT=1025
-MAIL_EHLO_DOMAIN=127.0.0.1
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_FROM_ADDRESS="no-reply@xanhfarm.vn"
-MAIL_FROM_NAME="XanhFarm Nông Sản Sạch"
-```
-*(Nếu vừa chỉnh sửa `.env`, chạy `php artisan config:clear` trong thư mục `backend`.)*
-
-2. **Khởi động máy chủ Mailpit:**
-   - **Nếu dùng Laragon:** Chuột phải vào khay hệ thống Laragon → **Mailpit → Start Mailpit** (hoặc bật trong *Menu → Preferences → Services & Ports*).
-   - **Nếu dùng Docker:**
-     ```bash
-     docker run -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
-     ```
-   - **Nếu dùng tệp thực thi độc lập:** Mở terminal tại thư mục chứa `mailpit.exe` và chạy `./mailpit.exe`.
-   - Kiểm tra hòm thư điện tử giả lập tại trình duyệt: **`http://127.0.0.1:8025`**.
-
-3. **Khởi chạy Queue Worker để xử lý gửi email bất đồng bộ:**
-   Mở một cửa sổ terminal riêng tại thư mục `backend` và chạy:
-   ```bash
-   php artisan queue:work --tries=3
-   ```
-   *(Lưu ý: Phải giữ tiến trình `queue:work` này chạy nền thì các email trong hàng đợi mới được đẩy sang Mailpit.)*
-
----
-
-### Bước 4: Cài đặt và cấu hình Frontend (React)
-
-1. Mở một cửa sổ terminal mới, di chuyển vào thư mục `frontend` và cài đặt thư viện:
-```bash
+```powershell
 cd frontend
-npm install
-```
-
-2. Tạo tệp `frontend/.env` và khai báo địa chỉ máy chủ Backend API:
-```env
-VITE_API_URL=http://127.0.0.1:8000/api
-```
-
-3. Khởi chạy ứng dụng React (mặc định chạy tại `http://localhost:5173`):
-```bash
+npm ci
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 npm run dev
 ```
 
-Truy cập trình duyệt tại địa chỉ **`http://localhost:5173`** để bắt đầu sử dụng hệ thống.
+`frontend/.env.example` đã cấu hình `VITE_API_URL=http://127.0.0.1:8000/api`. Nếu backend chạy ở địa chỉ khác, cập nhật biến này trong `frontend/.env`. Mở URL Vite hiển thị trong terminal (thường là `http://localhost:5173`).
 
-### Tài khoản mẫu sau khi chạy `--seed` (Mật khẩu chung: `password`)
-| Vai trò | Email đăng nhập | Đường dẫn mặc định |
-| :--- | :--- | :--- |
-| **Quản trị viên (Admin)** | `admin@nongsansach.vn` | `/admin` |
-| **Bán hàng & CSKH (Sales)** | `sales.ha@nongsansach.vn` | `/sales/orders` |
-| **Kỹ sư Nông trại (Farm Staff)** | `farm.kythuat@nongsansach.vn` | `/farm/seasons` |
-| **Khách hàng (Customer)** | `ngocanh.khach@gmail.com` | `/` |
+### Dịch vụ nền tùy chọn
+
+Các terminal dưới đây chạy từ thư mục `backend`:
+
+```powershell
+php artisan queue:work --tries=3
+```
+
+Để chạy các lịch tác vụ tự động (đơn định kỳ, đơn chờ thanh toán và trạng thái hạn sử dụng lô):
+
+```powershell
+php artisan schedule:work
+```
+
+Để kiểm thử email cục bộ, có thể chạy Mailpit và cấu hình SMTP trong `backend/.env` (Mailpit mặc định dùng cổng SMTP `1025`, giao diện xem thư `8025`). Nếu không cấu hình SMTP, email dùng cấu hình mặc định trong `.env`.
+
+## Tích hợp bên thứ ba
+
+Các khóa sau chỉ đặt trong `backend/.env`, không đưa vào frontend hoặc Git:
+
+- **ApiPay:** cấu hình `APIPAY_ACCESS_KEY`, `APIPAY_SECRET_KEY`, `APIPAY_WEBHOOK_SECRET`, `APIPAY_WEBHOOK_URL` và `APIPAY_BANK_PUBLIC_ID` để bật luồng thanh toán. Webhook cần URL HTTPS có thể truy cập từ ApiPay.
+- **Goong Maps:** cấu hình `GOONG_API_KEY` để sử dụng các chức năng geocoding và tính khoảng cách giao hàng.
+- **Cloudflare R2:** thêm `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT` và các giá trị phù hợp cho `R2_DEFAULT_REGION`, `R2_URL`, `R2_USE_PATH_STYLE_ENDPOINT` vào `backend/.env` để lưu trữ ảnh, video và tài liệu.
+
+Các biến môi trường cơ bản được liệt kê trong [`backend/.env.example`](backend/.env.example) và [`frontend/.env.example`](frontend/.env.example). Không commit tệp `.env` hoặc khóa API thật.
+
+## Kiểm thử và build
+
+Chạy các lệnh từ thư mục tương ứng:
+
+```powershell
+# Backend
+cd backend
+php artisan test
+
+# Frontend (terminal riêng)
+cd frontend
+npm run lint
+npm run build
+```
+
+## Tài khoản dữ liệu mẫu
+
+Sau khi chạy `php artisan migrate --seed`, có thể đăng nhập bằng các tài khoản dưới đây. Mật khẩu seed chung là `password`; chỉ sử dụng trong môi trường local và đổi thông tin trước khi triển khai.
+
+| Vai trò | Email | Khu vực |
+| --- | --- | --- |
+| Admin | `admin@nongsansach.vn` | `/admin` |
+| Sales | `sales.ha@nongsansach.vn` | `/sales/orders` |
+| Nhân viên nông trại | `farm.kythuat@nongsansach.vn` | `/farm/seasons` |
+| Khách hàng | `ngocanh.khach@gmail.com` | Trang cửa hàng |
+
+> **Lưu ý:** `php artisan migrate:fresh --seed` sẽ xóa toàn bộ bảng và dữ liệu hiện có trước khi tạo lại. Chỉ dùng lệnh này khi có chủ đích làm mới database local.
+
+## Thành viên thực hiện
+
+| Họ và tên | Đóng góp chính |
+| --- | --- |
+| Nguyễn Hoài Linh | Khởi tạo ứng dụng, tích hợp API, xác thực và RBAC. |
+| Ngô Gia Bảo | Cơ sở dữ liệu, danh mục, truy xuất QR, đơn hàng và kho FEFO/Flash Sale. |
+| Lê Minh Quân | Tích hợp ApiPay, Goong Maps và chức năng khách hàng. |
+| Nguyễn Vũ Anh Khoa | Layout, điều hướng và chức năng quản lý nông trại. |
+| Lê Minh Tài | Trang cửa hàng, danh mục, câu chuyện thương hiệu, giao hàng và khiếu nại. |
