@@ -147,7 +147,10 @@ export default function StorefrontHeader() {
               )}
             </Link>
 
-            {(!user || user.role === "customer" || user.role === "admin") && (
+            {(!user ||
+              ["customer", "admin", "farm_staff", "sales"].includes(
+                user.role
+              )) && (
               <Link
                 to="/subscriptions"
                 className={`relative py-1 text-[14px] font-semibold transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${

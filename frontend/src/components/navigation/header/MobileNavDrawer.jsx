@@ -73,7 +73,8 @@ export default function MobileNavDrawer({ isOpen, closeMenus, prefetchCatalog })
           <span>Câu Chuyện &amp; Chứng Nhận</span>
         </Link>
 
-        {(!user || user.role === "customer" || user.role === "admin") && (
+        {(!user ||
+          ["customer", "admin", "farm_staff", "sales"].includes(user.role)) && (
           <Link
             to="/subscriptions"
             onClick={closeMenus}

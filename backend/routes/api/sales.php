@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Controllers\Api\Sales\OrderProcessController;
 use App\Http\Controllers\Api\Sales\ClaimResolveController;
+use App\Http\Controllers\Api\Sales\DeliveryController;
 use App\Http\Controllers\Api\Sales\FlashSaleController;
 use App\Http\Controllers\Api\Sales\InventoryFefoController;
+use App\Http\Controllers\Api\Sales\OrderProcessController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'role:sales'])->prefix('sales')->group(function () {
@@ -11,6 +12,7 @@ Route::middleware(['auth:sanctum', 'role:sales'])->prefix('sales')->group(functi
     Route::get('/orders/{orderId}', [OrderProcessController::class, 'show'])->whereNumber('orderId');
     Route::post('/orders/{orderId}/confirm', [OrderProcessController::class, 'confirm'])->whereNumber('orderId');
     Route::post('/orders/{orderId}/confirm-cod-payment', [OrderProcessController::class, 'confirmCodPayment'])->whereNumber('orderId');
+    Route::post('/orders/{orderId}/delivery', [DeliveryController::class, 'dispatch'])->whereNumber('orderId');
     Route::get('/inventory', [InventoryFefoController::class, 'index']);
     Route::get('/expiring-batches', [InventoryFefoController::class, 'expiringBatches']);
     Route::get('/flash-sales', [FlashSaleController::class, 'index']);

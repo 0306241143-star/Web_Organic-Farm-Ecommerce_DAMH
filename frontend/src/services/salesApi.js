@@ -6,6 +6,8 @@ export const salesApi = {
   confirmOrder: (orderId) => axiosClient.post(`/sales/orders/${orderId}/confirm`),
   confirmCodPayment: (orderId) =>
     axiosClient.post(`/sales/orders/${orderId}/confirm-cod-payment`),
+  dispatchOrder: (orderId, data) =>
+    axiosClient.post(`/sales/orders/${orderId}/delivery`, data),
   getInventory: (params) => axiosClient.get("/sales/inventory", { params }),
   getExpiringBatches: (params) =>
     axiosClient.get("/sales/expiring-batches", { params }),

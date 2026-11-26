@@ -83,8 +83,9 @@ export default function FlashSaleFormModal({
 
   if (!isOpen) return null;
 
-  const eligibleBatches = batches.filter(
+const eligibleBatches = batches.filter(
     (batch) =>
+      !batch.has_active_flash_sale &&
       batch.remaining_quantity > 0 &&
       batch.days_until_expiry >= 0 &&
       batch.days_until_expiry <= 2 &&

@@ -56,7 +56,13 @@ export default function AppRouter() {
             <Route path="register" element={<RegisterPage />} />
             <Route path="forgot-password" element={<ForgotPasswordPage />} />
             <Route element={<ProtectedRoute />}>
-              <Route element={<RoleGuard roles={["customer", "admin"]} />}>
+              <Route
+                element={
+                  <RoleGuard
+                    roles={["customer", "admin", "farm_staff", "sales"]}
+                  />
+                }
+              >
                 <Route path="subscriptions" element={<SubscriptionRegisterPage />} />
               </Route>
               <Route element={<RoleGuard roles={["customer"]} />}>

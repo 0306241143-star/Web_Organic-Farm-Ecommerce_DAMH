@@ -1,83 +1,189 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ClipboardList, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  ClipboardList,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
 import Pagination from "../../components/common/Pagination";
-import SalesOrderCard from "../../components/sales/SalesOrderCard";
-import SalesOrderFilters from "../../components/sales/SalesOrderFilters";
+import { showGlobalToast } from "../../components/GlobalToast";
+import DispatchOrderModal from "../../components/sales/modals/DispatchOrderModal";
+import SalesOrderDetailPanel from "../../components/sales/orders/SalesOrderDetailPanel";
+import SalesOrderTable from "../../components/sales/orders/SalesOrderTable";
+import { notifyApiErrorToast } from "../../services/axiosClient";
 import { salesApi } from "../../services/salesApi";
 
+const PER_PAGE = 10;
+
+const STATUS_TABS = [
+  { id: "", label: "Tất cả" },
+  { id: "Cho_xac_nhan", label: "Chờ xác nhận" },
+  { id: "Da_xac_nhan", label: "Đã xác nhận" },
+  { id: "Dang_giao", label: "Đang giao" },
+  { id: "Hoan_thanh", label: "Hoàn thành" },
+  { id: "Cho_thanh_toan", label: "Chờ thanh toán" },
+  { id: "Da_huy", label: "Đã hủy" },
+];
+
+const PAYMENT_OPTIONS = [
+  { value: "", label: "Tất cả thanh toán" },
+  { value: "ApiPay", label: "ApiPay" },
+  { value: "COD", label: "COD" },
+  { value: "Mien_phi_goi", label: "Miễn phí gói" },
+  { value: "Giao_bu", label: "Giao bù" },
+];
+
 export default function SalesOrderPage() {
-  const [searchParams] = useSearchParams();
-  const orderId = searchParams.get("order_id") || "";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const orderIdParam = searchParams.get("order_id") || "";
+
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, per_page: 10, total: 0 });
+  const [meta, setMeta] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: PER_PAGE,
+    total: 0,
+  });
+
   const [loading, setLoading] = useState(true);
-  const [busyAction, setBusyAction] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [busyAction, setBusyAction] = useState("");
+  const [dispatchingOrder, setDispatchingOrder] = useState(null);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+
+  const [selectedOrderId, setSelectedOrderId] = useState(() =>
+    orderIdParam ? Number(orderIdParam) : null
+  );
+  const [detailSubTab, setDetailSubTab] = useState("items");
+
+  const fetchOrders = useCallback(
+    async (isSilent = false) => {
+      if (!isSilent) setLoading(true);
+      else setRefreshing(true);
+      setError("");
+
+      try {
+        const response = await salesApi.getOrders({
+          status: status || undefined,
+          payment_method: paymentMethod || undefined,
+          order_id: orderIdParam || undefined,
+          page,
+          per_page: PER_PAGE,
+        });
+
+        const list = response.data || [];
+        setOrders(list);
+        setMeta(
+          response.meta || {
+            current_page: 1,
+            last_page: 1,
+            per_page: PER_PAGE,
+            total: list.length,
+          }
+        );
+
+        setSelectedOrderId((prevId) => {
+          if (orderIdParam) {
+            const target = list.find(
+              (o) => Number(o.order_id) === Number(orderIdParam)
+            );
+            if (target) return target.order_id;
+          }
+          if (prevId && list.some((o) => o.order_id === prevId)) {
+            return prevId;
+          }
+          return list[0]?.order_id ?? null;
+        });
+
+        if (isSilent) {
+          showGlobalToast("Đã cập nhật danh sách đơn hàng!");
+        }
+      } catch (requestError) {
+        setError(
+          requestError.message || "Không thể tải danh sách đơn hàng."
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [status, paymentMethod, orderIdParam, page]
+  );
 
   useEffect(() => {
-    let active = true;
+    fetchOrders(false);
+  }, [fetchOrders]);
 
-    salesApi
-      .getOrders({
-        status: status || undefined,
-        payment_method: paymentMethod || undefined,
-        order_id: orderId || undefined,
-        page,
-        per_page: 10,
-      })
-      .then((response) => {
-        if (!active) return;
-        setOrders(response.data || []);
-        setMeta(response.meta || { current_page: 1, last_page: 1, per_page: 10, total: 0 });
-      })
-      .catch((requestError) => {
-        if (active) setError(requestError.message || "Không thể tải danh sách đơn hàng.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+  const filteredOrders = useMemo(() => {
+    const kw = searchInput.trim().toLowerCase();
+    if (!kw) return orders;
 
-    return () => {
-      active = false;
-    };
-  }, [status, paymentMethod, orderId, page, refreshKey]);
+    return orders.filter((order) => {
+      const idMatch =
+        `#${order.order_id}`.includes(kw) ||
+        String(order.order_id).includes(kw);
+      const customerMatch =
+        String(order.customer?.name || "").toLowerCase().includes(kw) ||
+        String(order.customer?.phone || "").toLowerCase().includes(kw) ||
+        String(order.address?.recipient_name || "")
+          .toLowerCase()
+          .includes(kw) ||
+        String(order.address?.phone || "").toLowerCase().includes(kw);
+      const itemMatch = (order.items || []).some((item) =>
+        String(item.name || "").toLowerCase().includes(kw)
+      );
+      return idMatch || customerMatch || itemMatch;
+    });
+  }, [orders, searchInput]);
 
-  const updateStatus = (value) => {
-    setLoading(true);
-    setError("");
-    setStatus(value);
-    setPage(1);
-    setNotice("");
+  const selectedOrder = useMemo(() => {
+    if (!filteredOrders.length) return null;
+    return (
+      filteredOrders.find((o) => o.order_id === selectedOrderId) ||
+      filteredOrders[0]
+    );
+  }, [filteredOrders, selectedOrderId]);
+
+  const handleSelectOrder = (order) => {
+    if (!order) {
+      setIsMobileDetailOpen(false);
+      return;
+    }
+    const id = typeof order === "object" ? order.order_id ?? order.id : order;
+    setSelectedOrderId(id);
+    setIsMobileDetailOpen(true);
   };
 
-  const updatePaymentMethod = (value) => {
-    setLoading(true);
-    setError("");
-    setPaymentMethod(value);
+  const handleCloseMobileDetail = () => {
+    setIsMobileDetailOpen(false);
+  };
+
+  const clearOrderIdFilter = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("order_id");
+    setSearchParams(nextParams, { replace: true });
     setPage(1);
-    setNotice("");
   };
 
   const runOrderAction = async (order, action, successMessage) => {
     const key = `${action}:${order.order_id}`;
     setBusyAction(key);
     setError("");
-    setNotice("");
     try {
       if (action === "confirm") {
         await salesApi.confirmOrder(order.order_id);
       } else {
         await salesApi.confirmCodPayment(order.order_id);
       }
-      setNotice(successMessage);
-      setLoading(true);
-      setRefreshKey((value) => value + 1);
+      showGlobalToast(successMessage);
+      await fetchOrders(true);
     } catch (requestError) {
       setError(requestError.message || "Không thể cập nhật đơn hàng.");
     } finally {
@@ -85,95 +191,254 @@ export default function SalesOrderPage() {
     }
   };
 
+  const handleDispatchSubmit = async (payload) => {
+    if (!dispatchingOrder?.order_id) return;
+    const targetOrder = dispatchingOrder;
+    setBusyAction(`dispatch:${targetOrder.order_id}`);
+    try {
+      await salesApi.dispatchOrder(targetOrder.order_id, payload);
+      showGlobalToast(
+        `Đã cập nhật điều phối giao hàng cho đơn #${targetOrder.order_id}!`
+      );
+      setDispatchingOrder(null);
+      await fetchOrders(false);
+    } catch (requestError) {
+      notifyApiErrorToast(
+        requestError,
+        "Không thể cập nhật điều phối giao hàng."
+      );
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handlePageChange = (nextPage) => {
+    setPage(nextPage);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#006e1c]">
-            Bán hàng & chăm sóc khách hàng
-          </p>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-[#00450d]">
-            <ClipboardList className="h-6 w-6" />
-            Quản lý đơn hàng
-          </h1>
-          <p className="mt-1 text-sm text-[#5a6357]">
-            Phê duyệt đơn, kiểm tra phân bổ kho FEFO và ghi nhận tiền COD.
-          </p>
+    <div className="-mt-3.5 sm:-mt-6 lg:-mt-8 -mx-3.5 sm:-mx-6 lg:-mx-8 min-h-full lg:h-screen flex flex-col lg:overflow-hidden bg-[#f8faf8]">
+      {/* THANH TIÊU ĐỀ & BỘ LỌC */}
+      <div className="relative shrink-0 z-20 bg-white border-b border-slate-200/90 shadow-2xs">
+        <div className="max-w-[1440px] mx-auto px-3.5 sm:px-6 pt-3 pb-2.5 space-y-2.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                <span>Bán Hàng & CSKH</span>
+                <span className="text-slate-300">•</span>
+                <span className="normal-case font-semibold text-emerald-800 truncate">
+                  Phê duyệt đơn, đối soát tiền & điều phối giao nhận
+                </span>
+              </div>
+              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5 mt-0.5">
+                <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 shrink-0" />
+                <span>Quản Lý Đơn Hàng & Giao Nhận</span>
+                {orderIdParam && (
+                  <button
+                    type="button"
+                    onClick={clearOrderIdFilter}
+                    className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 cursor-pointer"
+                  >
+                    Đơn #{orderIdParam}
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="hidden sm:inline-block text-xs font-semibold text-slate-500 tabular-nums">
+                Tổng: <strong className="text-slate-800">{meta.total}</strong> đơn
+              </span>
+              <button
+                type="button"
+                onClick={() => fetchOrders(true)}
+                disabled={refreshing}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer"
+                title="Làm mới danh sách"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${
+                    refreshing ? "animate-spin text-emerald-600" : ""
+                  }`}
+                />
+                <span className="hidden sm:inline">Làm mới</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Hàng lọc trạng thái + phương thức thanh toán + ô tìm kiếm */}
+          <div className="pt-2 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 sm:mx-0 sm:px-0">
+              {STATUS_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setStatus(tab.id);
+                    setPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+                    status === tab.id
+                      ? "bg-emerald-600 text-white shadow-2xs"
+                      : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <select
+                value={paymentMethod}
+                onChange={(e) => {
+                  setPaymentMethod(e.target.value);
+                  setPage(1);
+                }}
+                aria-label="Lọc theo phương thức thanh toán"
+                className="px-3 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                {PAYMENT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="search"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Tìm #mã đơn, khách, SĐT, SP..."
+                  className="w-full pl-8 pr-7 py-1.5 bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    aria-label="Xóa từ khóa"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setLoading(true);
-            setError("");
-            setRefreshKey((value) => value + 1);
-          }}
-          disabled={loading}
-          className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-xl border border-[#c0c9bb]/60 bg-white px-3 py-2 text-sm font-bold text-[#00450d] hover:bg-[#f2f4f2] disabled:opacity-50 sm:self-auto"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Làm mới
-        </button>
-      </header>
-
-      <SalesOrderFilters
-        status={status}
-        paymentMethod={paymentMethod}
-        onStatusChange={updateStatus}
-        onPaymentMethodChange={updatePaymentMethod}
-      />
-
-      {error && (
-        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {notice}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between text-sm text-[#5a6357]">
-        <span>{meta.total} đơn hàng</span>
-        <span>{loading ? "Đang tải..." : `Trang ${meta.current_page} / ${meta.last_page}`}</span>
       </div>
 
-      {loading ? (
-        <div className="rounded-2xl border border-[#c0c9bb]/40 bg-white py-14 text-center text-sm text-[#5a6357]">
-          Đang tải danh sách đơn hàng...
-        </div>
-      ) : orders.length > 0 ? (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <SalesOrderCard
-              key={order.order_id}
-              order={order}
+      {/* Khu vực nội dung chính: Mobile cuộn tự nhiên, Desktop (lg+) chia 2 cột */}
+      <div className="flex-1 lg:min-h-0 max-w-[1440px] w-full mx-auto px-3.5 sm:px-6 py-3 sm:py-4 lg:overflow-hidden">
+        <div className="grid lg:h-full lg:min-h-0 grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-stretch">
+          <div className="lg:col-span-7 min-w-0 lg:min-h-0 flex flex-col gap-3">
+            <div className="lg:flex-1 lg:min-h-0 flex flex-col rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs">
+              {error && (
+                <div
+                  role="alert"
+                  className="m-3 mb-0 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2 text-xs font-medium text-red-700 flex items-center gap-2 shrink-0"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto scrollbar-thin">
+                <SalesOrderTable
+                  orders={filteredOrders}
+                  totalCount={meta.total}
+                  loading={loading}
+                  selectedOrder={selectedOrder}
+                  onSelectOrder={handleSelectOrder}
+                />
+              </div>
+            </div>
+
+            {meta.total > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200/80 px-3.5 py-3 shadow-2xs shrink-0">
+                <Pagination
+                  currentPage={meta.current_page}
+                  lastPage={meta.last_page}
+                  total={meta.total}
+                  perPage={meta.per_page}
+                  onPageChange={handlePageChange}
+                  itemLabel="đơn hàng"
+                />
+              </div>
+            )}
+          </div>
+
+          <aside className="hidden lg:block lg:col-span-5 min-w-0 min-h-0 h-full">
+            <SalesOrderDetailPanel
+              selectedOrder={selectedOrder}
+              detailOrder={selectedOrder}
+              loadingDetail={false}
+              detailSubTab={detailSubTab}
+              setDetailSubTab={setDetailSubTab}
+              allOrders={filteredOrders}
+              onSelectOrder={handleSelectOrder}
               busyAction={busyAction}
-              onConfirm={(selectedOrder) =>
-                runOrderAction(selectedOrder, "confirm", "Đơn hàng đã được phê duyệt.")
+              onConfirmOrder={(order) =>
+                runOrderAction(order, "confirm", "Đơn hàng đã được phê duyệt.")
               }
-              onConfirmCodPayment={(selectedOrder) =>
-                runOrderAction(selectedOrder, "cod", "Đã ghi nhận thu tiền COD.")
+              onConfirmCodPayment={(order) =>
+                runOrderAction(order, "cod", "Đã ghi nhận thu tiền COD.")
               }
+              onOpenDispatch={setDispatchingOrder}
             />
-          ))}
+          </aside>
         </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-[#c0c9bb]/60 bg-white py-14 text-center text-sm text-[#5a6357]">
-          Không tìm thấy đơn hàng phù hợp với bộ lọc.
+      </div>
+
+      {/* Bottom-Sheet Modal chi tiết đơn hàng trên Mobile */}
+      {isMobileDetailOpen && selectedOrder && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Chi tiết đơn hàng #${selectedOrder.order_id}`}
+          className="fixed inset-0 z-40 lg:hidden flex items-end justify-center p-0 bg-slate-900/55 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseMobileDetail();
+          }}
+        >
+          <div className="w-full max-h-[92dvh] bg-white rounded-t-3xl border-t border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-150">
+            <SalesOrderDetailPanel
+              selectedOrder={selectedOrder}
+              detailOrder={selectedOrder}
+              loadingDetail={false}
+              detailSubTab={detailSubTab}
+              setDetailSubTab={setDetailSubTab}
+              allOrders={filteredOrders}
+              onSelectOrder={handleSelectOrder}
+              onCloseMobile={handleCloseMobileDetail}
+              busyAction={busyAction}
+              onConfirmOrder={(order) =>
+                runOrderAction(order, "confirm", "Đơn hàng đã được phê duyệt.")
+              }
+              onConfirmCodPayment={(order) =>
+                runOrderAction(order, "cod", "Đã ghi nhận thu tiền COD.")
+              }
+              onOpenDispatch={setDispatchingOrder}
+            />
+          </div>
         </div>
       )}
 
-      <Pagination
-        currentPage={meta.current_page}
-        lastPage={meta.last_page}
-        total={meta.total}
-        perPage={meta.per_page}
-        onPageChange={(nextPage) => {
-          setLoading(true);
-          setPage(nextPage);
-        }}
-        itemLabel="đơn hàng"
+      <DispatchOrderModal
+        open={Boolean(dispatchingOrder)}
+        order={dispatchingOrder}
+        submitting={
+          Boolean(dispatchingOrder) &&
+          busyAction === `dispatch:${dispatchingOrder.order_id}`
+        }
+        onClose={() => setDispatchingOrder(null)}
+        onSubmit={handleDispatchSubmit}
       />
     </div>
   );
