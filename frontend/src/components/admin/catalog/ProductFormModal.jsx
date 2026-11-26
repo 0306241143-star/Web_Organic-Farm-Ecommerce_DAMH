@@ -253,20 +253,21 @@ export default function ProductFormModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+      aria-label={editingProduct ? "Cập nhật sản phẩm" : "Thêm sản phẩm"}
+      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
     >
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 to-white shrink-0">
+      <div className="relative w-full sm:max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
+        <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 to-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#064e2e] text-white flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-[#064e2e] text-white flex items-center justify-center shrink-0">
               <PackageSearch className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-800">
+            <div className="min-w-0">
+              <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
                 {editingProduct ? "Cập Nhật Sản Phẩm Nông Sản" : "Thêm Sản Phẩm Nông Sản Mới"}
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
                 Thông tin niêm yết trên cửa hàng & bộ sưu tập hình ảnh sản phẩm
               </p>
             </div>
@@ -275,7 +276,8 @@ export default function ProductFormModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+            aria-label="Đóng biểu mẫu"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer shrink-0 disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -284,7 +286,7 @@ export default function ProductFormModal({
         <form
           id="admin-product-form"
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4"
+          className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4"
         >
           {formError && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
@@ -529,12 +531,12 @@ export default function ProductFormModal({
           </div>
         </form>
 
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5 shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs sm:text-sm font-semibold cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs sm:text-sm font-semibold cursor-pointer disabled:opacity-50"
           >
             Hủy Bỏ
           </button>
@@ -542,7 +544,7 @@ export default function ProductFormModal({
             type="submit"
             form="admin-product-form"
             disabled={submitting}
-            className="px-5 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] text-white text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-2 rounded-xl bg-[#064e2e] hover:bg-[#043821] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             <span>{editingProduct ? "Lưu Thay Đổi" : "Tạo Sản Phẩm"}</span>
