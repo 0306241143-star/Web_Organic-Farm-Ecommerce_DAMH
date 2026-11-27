@@ -143,12 +143,10 @@ return new class extends Migration
         });
     }
 
-
     public function down(): void
     {
-
-        Schema::dropIfExists ('bien_dong_kho');
-        Schema::dropIfExists ('chung_nhan');
+        Schema::dropIfExists('bien_dong_kho');
+        Schema::dropIfExists('chung_nhan');
         Schema::dropIfExists('ma_qr_truy_xuat');
         Schema::dropIfExists('lo_hang');
         Schema::dropIfExists('tep_nhat_ky');

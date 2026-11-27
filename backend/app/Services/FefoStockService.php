@@ -12,6 +12,15 @@ use Illuminate\Validation\ValidationException;
 
 class FefoStockService
 {
+    public function availableQuantity(int $productId, bool $lockForUpdate = false): float
+    {
+        return round(
+            (float) $this->availableBatches($productId, $lockForUpdate)
+                ->sum(fn (LoHang $batch): float => (float) $batch->So_luong_con_lai),
+            2
+        );
+    }
+
     /**
      * @return array<int, array{batch_id: int, quantity: float}>
      */
@@ -26,16 +35,7 @@ class FefoStockService
         return DB::transaction(function () use ($productId, $quantity, $onlyBatchId): array {
             $remaining = round($quantity, 2);
             $allocations = [];
-            $batches = LoHang::query()
-                ->whereHas('loCanhTac', fn ($query) => $query->where('Ma_san_pham', $productId))
-                ->when($onlyBatchId !== null, fn ($query) => $query->where('Ma_lo_hang', $onlyBatchId))
-                ->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])
-                ->where('So_luong_con_lai', '>', 0)
-                ->whereDate('Han_su_dung', '>=', now()->toDateString())
-                ->orderBy('Han_su_dung', 'asc')
-                ->orderBy('Ma_lo_hang', 'asc')
-                ->lockForUpdate()
-                ->get();
+            $batches = $this->availableBatches($productId, true, $onlyBatchId);
 
             foreach ($batches as $batch) {
                 if ($remaining <= 0) {
@@ -67,5 +67,19 @@ class FefoStockService
 
             return $allocations;
         });
+    }
+
+    private function availableBatches(int $productId, bool $lockForUpdate, ?int $onlyBatchId = null)
+    {
+        return LoHang::query()
+            ->whereHas('loCanhTac', fn ($query) => $query->where('Ma_san_pham', $productId))
+            ->when($onlyBatchId !== null, fn ($query) => $query->where('Ma_lo_hang', $onlyBatchId))
+            ->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])
+            ->where('So_luong_con_lai', '>', 0)
+            ->whereDate('Han_su_dung', '>=', now()->toDateString())
+            ->orderBy('Han_su_dung', 'asc')
+            ->orderBy('Ma_lo_hang', 'asc')
+            ->when($lockForUpdate, fn ($query) => $query->lockForUpdate())
+            ->get();
     }
 }

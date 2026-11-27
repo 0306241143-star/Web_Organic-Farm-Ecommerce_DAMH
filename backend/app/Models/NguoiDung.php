@@ -64,8 +64,7 @@ class NguoiDung extends Authenticatable
         };
     }
 
-
-    public   function hasRole(string|array $roles): bool
+    public function hasRole(string|array $roles): bool
     {
         $currentRole = $this->getRoleSlug();
         if (is_array($roles)) {

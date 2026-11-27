@@ -18,6 +18,6 @@ class BienDongKho extends Model
 
     public function nhanVien(): BelongsTo
     {
-        return  $this->belongsTo(NguoiDung::class, 'Ma_nhan_vien', 'Ma_nguoi_dung');
+        return $this->belongsTo(NguoiDung::class, 'Ma_nhan_vien', 'Ma_nguoi_dung');
     }
 }

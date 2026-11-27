@@ -11,14 +11,17 @@ use App\Models\DonHang;
 use App\Models\PhanBoLoHang;
 use App\Models\ThanhToan;
 use App\Services\FefoStockService;
+use App\Services\RecurringOrderStockService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SalesOrderProcessingService
 {
-    public function __construct(private FefoStockService $stock)
-    {
-    }
+    public function __construct(
+        private FefoStockService $stock,
+        private RecurringOrderStockService $recurringStock
+    ) {}
 
     public function confirmOrder(int $orderId, int $staffId): DonHang
     {
@@ -35,6 +38,13 @@ class SalesOrderProcessingService
             if ($order->Trang_thai !== 'Cho_xac_nhan') {
                 throw ValidationException::withMessages([
                     'order_id' => 'Chỉ có thể phê duyệt đơn hàng đang chờ xác nhận.',
+                ]);
+            }
+
+            $scheduledDelivery = $this->recurringStock->availableDeliveryDate($order);
+            if ($scheduledDelivery !== null && $scheduledDelivery->isAfter(CarbonImmutable::today())) {
+                throw ValidationException::withMessages([
+                    'order_id' => 'Đơn định kỳ đã được hoãn đến '.$scheduledDelivery->format('d/m/Y').'.',
                 ]);
             }
 

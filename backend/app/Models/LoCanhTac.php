@@ -34,7 +34,7 @@ class LoCanhTac extends Model
 
     public function loHangs(): HasMany
     {
-        return  $this->hasMany(LoHang::class, 'Ma_lo_canh_tac', 'Ma_lo_canh_tac');
+        return $this->hasMany(LoHang::class, 'Ma_lo_canh_tac', 'Ma_lo_canh_tac');
     }
 }
 

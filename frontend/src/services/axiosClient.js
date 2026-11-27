@@ -133,7 +133,7 @@ axiosClient.interceptors.response.use(
       !error.config?.skipGlobalToast &&
       !(status === 422 && Object.keys(fieldErrors).length > 0);
     if (toastNotified) {
-      notifyApiToast  ('error', message);
+      notifyApiToast('error', message);
     }
 
     return Promise.reject(
@@ -161,6 +161,5 @@ export const postMultipart = (url, payload, config = {}) => {
     headers: cleanHeaders,
   });
 };
-
 
 export default axiosClient;

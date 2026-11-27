@@ -22,10 +22,9 @@ const ROLE_BADGE_STYLES = {
 };
 
 export default function UserListTab({
-  users = [], 
+  users = [],
   loading = false,
-  
-  currentUserId  = null,
+  currentUserId = null,
   togglingUserId = null,
   pagination = { current_page: 1, last_page: 1, total: 0, per_page: 15 },
   onPageChange,

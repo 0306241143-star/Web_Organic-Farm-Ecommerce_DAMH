@@ -71,9 +71,6 @@ return new class extends Migration
                 ->references('Ma_nguoi_dung')->on('nguoi_dung')->onDelete('cascade');
         });
 
-
-
-
         Schema::create('cau_hinh_he_thong', function (Blueprint $table) {
             $table->string('Khoa', 100)->primary();
             $table->text('Gia_tri')->nullable();
@@ -83,7 +80,7 @@ return new class extends Migration
         });
     }
 
-    public  function down(): void
+    public function down(): void
     {
         Schema::dropIfExists('cau_hinh_he_thong');
         Schema::dropIfExists('dia_chi_giao_hang');

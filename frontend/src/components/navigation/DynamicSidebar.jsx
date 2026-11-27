@@ -350,10 +350,8 @@ export default function DynamicSidebar({ isOpen = false, onClose = () => {} }) {
   );
 
   return (
-
-    
     <>
-      <aside  className="hidden lg:block w-64 shrink-0 h-screen sticky top-0 z-30">
+      <aside className="hidden lg:block w-64 shrink-0 h-screen sticky top-0 z-30">
         {sidebarContent}
       </aside>
 

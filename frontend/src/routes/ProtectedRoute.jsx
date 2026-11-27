@@ -26,10 +26,9 @@ export default function ProtectedRoute() {
   }
 
   // Chặn tài khoản bị khóa
-  if  (user  && user.status === "Khoa") {
+  if (user && user.status === "Khoa") {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
-  
 
   return <Outlet />;
 }

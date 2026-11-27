@@ -9,9 +9,8 @@ namespace App\Console\Commands;
 use App\Models\ChiTietDonHang;
 use App\Models\DangKyGoi;
 use App\Models\DonHang;
-use App\Models\PhanBoLoHang;
 use App\Models\ThanhToan;
-use App\Services\FefoStockService;
+use App\Services\RecurringOrderStockService;
 use App\Services\ShippingDistanceService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -26,12 +25,14 @@ class GenerateRecurringOrders extends Command
     protected $description = 'Tạo đơn hàng đến kỳ giao của các gói định kỳ';
 
     public function handle(
-        FefoStockService $stock,
+        RecurringOrderStockService $recurringStock,
         ShippingDistanceService $shipping
     ): int {
         $today = CarbonImmutable::today();
         $mysqlWeekday = $today->dayOfWeek + 1;
         $generatedCount = 0;
+
+        $this->retryPendingRecurringOrders($today, $recurringStock);
 
         DangKyGoi::query()
             ->whereIn('Trang_thai', ['Dang_hoat_dong', 'Tam_dung'])
@@ -41,7 +42,7 @@ class GenerateRecurringOrders extends Command
             ->chunkById(100, function ($registrations) use (
                 $today,
                 $mysqlWeekday,
-                $stock,
+                $recurringStock,
                 $shipping,
                 &$generatedCount
             ): void {
@@ -71,7 +72,7 @@ class GenerateRecurringOrders extends Command
                             $registration,
                             $today,
                             $mysqlWeekday,
-                            $stock,
+                            $recurringStock,
                             $shipping
                         ): ?DonHang {
                             $lockedRegistration = DangKyGoi::query()
@@ -90,7 +91,10 @@ class GenerateRecurringOrders extends Command
                             $alreadyGenerated = DonHang::query()
                                 ->where('Ma_dang_ky_goi', $lockedRegistration->Ma_dang_ky)
                                 ->where('Loai_don', 'Dinh_ky')
-                                ->whereDate('Ngay_dat', $today->toDateString())
+                                ->where(function ($query) use ($today): void {
+                                    $query->whereDate('Ngay_dat', $today->toDateString())
+                                        ->orWhere('Ghi_chu', 'like', '%[[RECURRING_DELIVERY:'.$today->toDateString().']]%');
+                                })
                                 ->lockForUpdate()
                                 ->exists();
                             if ($alreadyGenerated) {
@@ -134,21 +138,21 @@ class GenerateRecurringOrders extends Command
                                 'Tien_giam_tu_diem' => 0,
                                 'Tong_tien' => 0,
                                 'Trang_thai' => 'Cho_xac_nhan',
-                                'Ghi_chu' => 'Đơn tự động sinh từ gói định kỳ' . $deliveryWindowNote,
+                                'Ghi_chu' => 'Đơn tự động sinh từ gói định kỳ'.$deliveryWindowNote,
                             ]);
 
                             ThanhToan::query()->create([
-                                'Ma_don_hang'          => $order->Ma_don_hang,
-                                'Ma_dang_ky_goi'       => null,
-                                'Phuong_thuc'          => 'Mien_phi_goi',
-                                'So_tien'              => 0,
-                                'Trang_thai'           => 'Thanh_cong',
+                                'Ma_don_hang' => $order->Ma_don_hang,
+                                'Ma_dang_ky_goi' => null,
+                                'Phuong_thuc' => 'Mien_phi_goi',
+                                'So_tien' => 0,
+                                'Trang_thai' => 'Thanh_cong',
                                 'Thoi_gian_thanh_toan' => now(),
-                                'Noi_dung_thanh_toan'  => 'GOI_DK_' . $lockedRegistration->Ma_dang_ky . '_' . $today->format('Ymd'),
+                                'Noi_dung_thanh_toan' => 'GOI_DK_'.$lockedRegistration->Ma_dang_ky.'_'.$today->format('Ymd'),
                             ]);
 
                             foreach ($lockedRegistration->goi->chiTiets as $item) {
-                                $detail = ChiTietDonHang::query()->create([
+                                ChiTietDonHang::query()->create([
                                     'Ma_don_hang' => $order->Ma_don_hang,
                                     'Ma_san_pham' => $item->Ma_san_pham,
                                     'Ma_ct_flash_sale' => null,
@@ -157,17 +161,9 @@ class GenerateRecurringOrders extends Command
                                     'Thanh_tien' => 0,
                                 ]);
 
-                                foreach ($stock->allocateBatches(
-                                    (int) $item->Ma_san_pham,
-                                    (float) $item->So_luong
-                                ) as $allocation) {
-                                    PhanBoLoHang::query()->create([
-                                        'Ma_ct_don_hang' => $detail->Ma_ct_don_hang,
-                                        'Ma_lo_hang' => $allocation['batch_id'],
-                                        'So_luong_xuat' => $allocation['quantity'],
-                                    ]);
-                                }
                             }
+
+                            $recurringStock->tryAllocateOrder($order);
 
                             return $order;
                         });
@@ -187,5 +183,32 @@ class GenerateRecurringOrders extends Command
         $this->info("Generated {$generatedCount} recurring subscription order(s).");
 
         return self::SUCCESS;
+    }
+
+    private function retryPendingRecurringOrders(
+        CarbonImmutable $today,
+        RecurringOrderStockService $recurringStock
+    ): void {
+        DonHang::query()
+            ->where('Loai_don', 'Dinh_ky')
+            ->where('Trang_thai', 'Cho_xac_nhan')
+            ->orderBy('Ma_don_hang')
+            ->chunkById(100, function ($orders) use ($today, $recurringStock): void {
+                foreach ($orders as $order) {
+                    $deliveryDate = $recurringStock->availableDeliveryDate($order);
+                    if ($deliveryDate !== null && $deliveryDate->isAfter($today)) {
+                        continue;
+                    }
+
+                    try {
+                        $recurringStock->tryAllocateOrder($order);
+                    } catch (Throwable $exception) {
+                        Log::error('Could not retry pending recurring order allocation.', [
+                            'order_id' => $order->Ma_don_hang,
+                            'exception' => $exception::class,
+                        ]);
+                    }
+                }
+            }, 'Ma_don_hang');
     }
 }

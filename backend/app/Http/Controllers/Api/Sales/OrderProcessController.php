@@ -11,6 +11,7 @@ use App\Models\DonHang;
 use App\Models\PhanBoLoHang;
 use App\Models\ThanhToan;
 use App\Services\Order\SalesOrderProcessingService;
+use App\Services\RecurringOrderStockService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 class OrderProcessController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private RecurringOrderStockService $recurringStock) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -33,18 +36,18 @@ class OrderProcessController extends Controller
         $orders = DonHang::query()
             ->when(
                 $validated['status'] ?? null,
-                fn($query, string $status) => $query->where('Trang_thai', $status)
+                fn ($query, string $status) => $query->where('Trang_thai', $status)
             )
             ->when(
                 $validated['payment_method'] ?? null,
-                fn($query, string $method) => $query->whereHas(
+                fn ($query, string $method) => $query->whereHas(
                     'thanhToans',
-                    fn($paymentQuery) => $paymentQuery->where('Phuong_thuc', $method)
+                    fn ($paymentQuery) => $paymentQuery->where('Phuong_thuc', $method)
                 )
             )
             ->when(
                 $validated['order_id'] ?? null,
-                fn($query, int $orderId) => $query->where('Ma_don_hang', $orderId)
+                fn ($query, int $orderId) => $query->where('Ma_don_hang', $orderId)
             )
             ->with([
                 'khachHang:Ma_nguoi_dung,Ho_ten,Email,So_dien_thoai',
@@ -62,7 +65,7 @@ class OrderProcessController extends Controller
         return $this->paginatedResponse(
             $orders,
             'Lấy danh sách đơn hàng thành công.',
-            $orders->getCollection()->map(fn(DonHang $order) => $this->formatOrder($order))->all()
+            $orders->getCollection()->map(fn (DonHang $order) => $this->formatOrder($order))->all()
         );
     }
 
@@ -114,6 +117,11 @@ class OrderProcessController extends Controller
         $address = $order->diaChi;
         $payments = $order->thanhToans;
         $registration = $order->dangKyGoi;
+        $scheduledDelivery = $this->recurringStock->availableDeliveryDate($order);
+        $stockAlert = $order->Loai_don === 'Dinh_ky'
+            && $order->Trang_thai === 'Cho_xac_nhan'
+                ? $this->recurringStock->alertForOrder($order)
+                : null;
 
         // Lấy đơn giá gốc từ đơn hàng gốc nếu là đơn giao bù
         $originalItemPrices = [];
@@ -153,7 +161,7 @@ class OrderProcessController extends Controller
                 'line_total' => (float) $item->Thanh_tien,
                 'reference_unit_price' => $refUnitPrice,
                 'reference_line_total' => round($refUnitPrice * $qty, 2),
-                'allocations' => $item->phanBoLoHangs->map(fn(PhanBoLoHang $allocation) => [
+                'allocations' => $item->phanBoLoHangs->map(fn (PhanBoLoHang $allocation) => [
                     'batch_id' => (int) $allocation->Ma_lo_hang,
                     'expiry_date' => $allocation->loHang?->Han_su_dung,
                     'quantity' => (float) $allocation->So_luong_xuat,
@@ -163,7 +171,7 @@ class OrderProcessController extends Controller
 
         $referenceSubtotal = array_reduce(
             $items,
-            fn(float $sum, array $row) => $sum + $row['reference_line_total'],
+            fn (float $sum, array $row) => $sum + $row['reference_line_total'],
             0.0
         );
 
@@ -172,6 +180,7 @@ class OrderProcessController extends Controller
             'order_type' => $order->Loai_don,
             'status' => $order->Trang_thai,
             'ordered_at' => $order->Ngay_dat,
+            'scheduled_delivery_at' => $scheduledDelivery?->toDateString(),
             'customer' => [
                 'name' => $order->khachHang?->Ho_ten,
                 'email' => $order->khachHang?->Email,
@@ -193,9 +202,10 @@ class OrderProcessController extends Controller
             'points_used' => (int) $order->So_diem_su_dung,
             'points_discount' => (float) $order->Tien_giam_tu_diem,
             'total' => (float) $order->Tong_tien,
-            'note' => $order->Ghi_chu,
+            'note' => $this->recurringStock->visibleNote($order->Ghi_chu),
+            'stock_alert' => $stockAlert,
             'items' => $items,
-            'payments' => $payments->map(fn(ThanhToan $payment) => [
+            'payments' => $payments->map(fn (ThanhToan $payment) => [
                 'method' => $payment->Phuong_thuc,
                 'status' => $payment->Trang_thai,
                 'amount' => (float) $payment->So_tien,
@@ -219,14 +229,14 @@ class OrderProcessController extends Controller
                 'duration_months' => (int) ($registration->goi?->Ky_han_thang ?? 0),
             ] : null,
             'complaint_history' => $this->formatComplaintHistory($order),
-            'can_confirm' => $order->Trang_thai === 'Cho_xac_nhan',
+            'can_confirm' => $order->Trang_thai === 'Cho_xac_nhan' && $stockAlert === null,
             'can_dispatch' => in_array($order->Trang_thai, ['Da_xac_nhan', 'Dang_giao'], true),
             'can_confirm_cod_collection' => in_array(
                 $order->Trang_thai,
                 ['Da_xac_nhan', 'Dang_giao', 'Hoan_thanh'],
                 true
             ) && $payments->contains(
-                fn(ThanhToan $payment) => $payment->Phuong_thuc === 'COD'
+                fn (ThanhToan $payment) => $payment->Phuong_thuc === 'COD'
                     && $payment->Trang_thai === 'Khoi_tao'
             ),
         ];
@@ -263,7 +273,7 @@ class OrderProcessController extends Controller
                 'refund.Trang_thai as refund_status',
                 'staff.Ho_ten as handler_name',
             ])
-            ->map(fn(object $claim): array => [
+            ->map(fn (object $claim): array => [
                 'claim_id' => (int) $claim->Ma_khieu_nai,
                 'original_order_id' => (int) $claim->Ma_don_hang,
                 'replacement_order_id' => $claim->Ma_don_giao_bu === null
