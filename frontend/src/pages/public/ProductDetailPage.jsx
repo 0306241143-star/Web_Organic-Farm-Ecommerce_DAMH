@@ -1,7 +1,7 @@
 /* Product detail page opened from a catalog card. */
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, QrCode, RefreshCw } from "lucide-react";
 import EmptyState from "../../components/common/EmptyState";
 import ProductDetailGallery from "../../components/public/product-detail/ProductDetailGallery";
 import ProductQualityDetails from "../../components/public/product-detail/ProductQualityDetails";
@@ -180,6 +180,23 @@ export default function ProductDetailPage() {
                   <span className="font-semibold">{detail.farm.name}</span>
                   {detail.farm.address ? ` · ${detail.farm.address}` : ""}
                 </p>
+              )}
+              {detail.trace_qr_code && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <a
+                    href="#product-traceability-section"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-[#00450d] hover:bg-emerald-100"
+                  >
+                    <QrCode className="h-3.5 w-3.5 text-[#006e1c]" />
+                    <span>Mã lô QR: {detail.trace_qr_code}</span>
+                  </a>
+                  <Link
+                    to={`/trace/${encodeURIComponent(detail.trace_qr_code)}`}
+                    className="text-xs font-bold text-[#006e1c] underline underline-offset-2 hover:text-[#00450d]"
+                  >
+                    Kiểm tra trang truy xuất →
+                  </Link>
+                </div>
               )}
             </div>
             {isInternalStaff ? (

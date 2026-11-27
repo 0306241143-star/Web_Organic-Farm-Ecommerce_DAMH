@@ -9,12 +9,14 @@ namespace App\Http\Controllers\Api\Public;
 use App\Http\Controllers\Controller;
 use App\Models\ChungNhan;
 use App\Models\SanPham;
+use App\Services\QrCodeGeneratorService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -64,7 +66,7 @@ class ProductController extends Controller
     }
 
     /**
-     * Xem chi tiết một sản phẩm nông sản kèm thông tin lô hàng FEFO, chứng nhận chất lượng và sản phẩm cùng danh mục.
+     * Xem chi tiết một sản phẩm nông sản kèm thông tin lô hàng FEFO, chứng nhận chất lượng, nhật ký canh tác, mã QR và sản phẩm cùng danh mục.
      */
     public function show(int $id): JsonResponse
     {
@@ -126,27 +128,46 @@ class ProductController extends Controller
                 'nongTrai:Ma_nong_trai,Ten_nong_trai,Dia_chi',
                 'chungNhans',
                 'loCanhTacs' => function ($plotQuery) {
-                    $plotQuery->select(['Ma_lo_canh_tac', 'Ma_san_pham', 'Ten_lo', 'Ngay_gieo_trong', 'Trang_thai'])
-                        ->with([
-                            'loHangs' => function ($batchQuery) {
-                                $batchQuery->select([
-                                    'Ma_lo_hang',
-                                    'Ma_lo_canh_tac',
-                                    'Ngay_thu_hoach',
-                                    'Han_su_dung',
-                                    'So_luong_thu_hoach',
-                                    'So_luong_con_lai',
-                                    'Trang_thai',
-                                ])->with([
-                                    'maQrTruyXuat:Ma_qr,Ma_lo_hang,Chuoi_ma_qr,So_luot_quet',
-                                    'chungNhans',
-                                    'chiTietFlashSales.flashSale',
-                                ]);
-                            },
-                        ]);
+                    $plotQuery->select([
+                        'Ma_lo_canh_tac',
+                        'Ma_san_pham',
+                        'Ma_mua_vu',
+                        'Ten_lo',
+                        'Ngay_gieo_trong',
+                        'Trang_thai',
+                    ])->with([
+                        'muaVu:Ma_mua_vu,Ten_mua_vu,Ngay_bat_dau,Ngay_ket_thuc',
+                        'nhatKyCanhTacs' => function ($logQuery) {
+                            $logQuery->select([
+                                'Ma_nhat_ky',
+                                'Ma_lo_canh_tac',
+                                'Loai_hoat_dong',
+                                'Thoi_gian_thuc_hien',
+                                'Noi_dung',
+                            ])
+                                ->orderBy('Thoi_gian_thuc_hien')
+                                ->with(['tepNhatKys:Ma_tep,Ma_nhat_ky,Loai_tep,Duong_dan,Mo_ta']);
+                        },
+                        'loHangs' => function ($batchQuery) {
+                            $batchQuery->select([
+                                'Ma_lo_hang',
+                                'Ma_lo_canh_tac',
+                                'Ngay_thu_hoach',
+                                'Han_su_dung',
+                                'So_luong_thu_hoach',
+                                'So_luong_con_lai',
+                                'Trang_thai',
+                            ])->with([
+                                'maQrTruyXuat:Ma_qr,Ma_lo_hang,Chuoi_ma_qr,So_luot_quet',
+                                'chungNhans',
+                                'chiTietFlashSales.flashSale',
+                            ]);
+                        },
+                    ]);
                 },
             ]);
     }
+
     private function loadActiveProducts(): Collection
     {
         return $this->baseProductQuery()
@@ -340,7 +361,7 @@ class ProductController extends Controller
         $latestHarvest = $fefoBatches->sortByDesc('Ngay_thu_hoach')->first()?->Ngay_thu_hoach;
 
         $traceBatch = $fefoBatches->first(fn($batch) => $batch->maQrTruyXuat !== null)
-            ?? $allBatches->first(fn($batch) => $batch->maQrTruyXuat !== null);
+            ?? $allBatches->sortByDesc('Ngay_thu_hoach')->first(fn($batch) => $batch->maQrTruyXuat !== null);
         $traceQrCode = $traceBatch?->maQrTruyXuat?->Chuoi_ma_qr;
 
         // Xác định Flash Sale đang hoạt động gắn vào lô còn hàng
@@ -420,11 +441,11 @@ class ProductController extends Controller
             ->all();
 
         $galleryUrls = collect([$this->resolveImageUrl($product->Hinh_anh_dai_dien)]);
-        if ($includeDetail && \Illuminate\Support\Facades\Schema::hasTable('hinh_anh_san_pham')) {
+        if ($includeDetail && Schema::hasTable('hinh_anh_san_pham')) {
             $query = DB::table('hinh_anh_san_pham')
                 ->where('Ma_san_pham', $product->Ma_san_pham);
 
-            if (\Illuminate\Support\Facades\Schema::hasColumn('hinh_anh_san_pham', 'La_anh_chinh')) {
+            if (Schema::hasColumn('hinh_anh_san_pham', 'La_anh_chinh')) {
                 $query->orderByDesc('La_anh_chinh');
             }
 
@@ -484,9 +505,75 @@ class ProductController extends Controller
                 'status'       => $batch->Trang_thai,
                 'qr_code'      => $batch->maQrTruyXuat?->Chuoi_ma_qr,
             ])->values()->all();
+
+            $traceUrl = null;
+            $traceQrDataUri = null;
+            if ($traceQrCode) {
+                $qrGenerator = app(QrCodeGeneratorService::class);
+                $traceUrl = $qrGenerator->buildTraceUrl($traceQrCode);
+                $traceQrDataUri = $qrGenerator->generateDataUri($traceUrl, 220);
+            }
+
+            $tracePlot = $traceBatch
+                ? $product->loCanhTacs->firstWhere('Ma_lo_canh_tac', $traceBatch->Ma_lo_canh_tac)
+                : ($product->loCanhTacs->first(fn($plot) => $plot->nhatKyCanhTacs->isNotEmpty()) ?? $product->loCanhTacs->first());
+
+            $data['trace_url'] = $traceUrl;
+            $data['trace_qr_data_uri'] = $traceQrDataUri;
+            $data['trace_batch'] = $traceBatch ? [
+                'batch_id'      => (int) $traceBatch->Ma_lo_hang,
+                'qr_code'       => $traceQrCode,
+                'scan_count'    => (int) ($traceBatch->maQrTruyXuat?->So_luot_quet ?? 0),
+                'plot_name'     => $tracePlot?->Ten_lo,
+                'season_name'   => $tracePlot?->muaVu?->Ten_mua_vu,
+                'planting_date' => $tracePlot?->Ngay_gieo_trong,
+                'harvest_date'  => $traceBatch->Ngay_thu_hoach,
+                'expiry_date'   => $traceBatch->Han_su_dung,
+                'status'        => $traceBatch->Trang_thai,
+            ] : null;
+
+            $rawLogs = $tracePlot?->nhatKyCanhTacs ?? collect();
+            if ($traceBatch?->Ngay_thu_hoach) {
+                $harvestDate = substr((string) $traceBatch->Ngay_thu_hoach, 0, 10);
+                $rawLogs = $rawLogs->filter(function ($log) use ($harvestDate): bool {
+                    if (! $log->Thoi_gian_thuc_hien) {
+                        return true;
+                    }
+
+                    return $log->Thoi_gian_thuc_hien->toDateString() <= $harvestDate;
+                });
+            }
+
+            $data['cultivation_logs'] = $rawLogs
+                ->sortBy('Thoi_gian_thuc_hien')
+                ->values()
+                ->map(fn($log) => [
+                    'id'             => (int) $log->Ma_nhat_ky,
+                    'activity_type'  => $log->Loai_hoat_dong,
+                    'activity_label' => $this->activityLabel((string) $log->Loai_hoat_dong),
+                    'occurred_at'    => $log->Thoi_gian_thuc_hien?->format('Y-m-d H:i:s'),
+                    'content'        => $log->Noi_dung,
+                    'media'          => $log->tepNhatKys->map(fn($file) => [
+                        'type'        => $file->Loai_tep,
+                        'url'         => $this->resolveImageUrl($file->Duong_dan),
+                        'description' => $file->Mo_ta,
+                    ])->values()->all(),
+                ])
+                ->all();
         }
 
         return $data;
+    }
+
+    private function activityLabel(string $activityType): string
+    {
+        return match ($activityType) {
+            'Gieo_hat'  => 'Gieo hạt & ươm cây',
+            'Bon_phan'  => 'Bón phân',
+            'Tuoi_tieu' => 'Tưới tiêu',
+            'Thu_hoach' => 'Thu hoạch',
+            default     => 'Hoạt động khác',
+        };
     }
 
     private function classifyCertificationStandard(string $certName): string
