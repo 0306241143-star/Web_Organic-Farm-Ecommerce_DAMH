@@ -336,7 +336,7 @@ const eligibleBatches = batches.filter(
                       type="number"
                       min="1"
                       max={regularPrice > 1 ? regularPrice - 1 : undefined}
-                      step="100"
+                      step="1"
                       placeholder="Nhập giá giảm"
                       value={item.sale_price}
                       onChange={(event) =>
