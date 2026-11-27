@@ -61,6 +61,8 @@ export default function SubscriptionPackageFormModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    // Khôi phục cấu hình gói cũ hoặc reset form để tạo gói mới.
+
     if (editingPackage) {
       const mappedItems = (editingPackage.items || []).map((item) => ({
         Ma_san_pham: String(item.product_id),
@@ -159,6 +161,7 @@ export default function SubscriptionPackageFormModal({
   if (!isOpen) return null;
 
   const handleToggleSelectProduct = (product) => {
+    // Bật/tắt sản phẩm trong gói và tính lại giá cuối sau mỗi thay đổi.
     const prodId = String(product.id);
     const exists = selectedProductIds.has(prodId);
 
@@ -174,6 +177,7 @@ export default function SubscriptionPackageFormModal({
   };
 
   const handleQuantityChange = (index, value) => {
+    // Cập nhật số lượng từng dòng và tính lại giá gói theo tỷ lệ giảm hiện tại.
     const nextItems = form.items.map((row, idx) =>
       idx === index ? { ...row, So_luong: value } : row
     );
@@ -185,6 +189,7 @@ export default function SubscriptionPackageFormModal({
   };
 
   const handleRemoveItemRow = (index) => {
+    // Loại sản phẩm khỏi gói và đồng thời làm mới tổng giá.
     const nextItems = form.items.filter((_, idx) => idx !== index);
     setForm((prev) => ({
       ...prev,
@@ -194,6 +199,7 @@ export default function SubscriptionPackageFormModal({
   };
 
   const handleDurationChange = (rawMonths) => {
+    // Thời hạn mới tự động đổi số lần giao theo quy tắc 4 lần/tháng.
     const months = Math.max(1, Math.floor(Number(rawMonths) || 1));
     const autoDeliveries = String(months * 4);
     setDeliveryCount(autoDeliveries);
@@ -205,6 +211,7 @@ export default function SubscriptionPackageFormModal({
   };
 
   const handleDeliveryCountChange = (rawCount) => {
+    // Số lần giao thay đổi thì tổng giá gốc và giá bán được tính lại.
     setDeliveryCount(rawCount);
     setForm((prev) => ({
       ...prev,
@@ -213,6 +220,7 @@ export default function SubscriptionPackageFormModal({
   };
 
   const handleDiscountChange = (rawValue) => {
+    // Giới hạn tỷ lệ giảm trong 0–100% và áp dụng cho giá gói.
     if (rawValue === "") {
       setDiscountPercent("");
       setForm((prev) => ({
@@ -231,6 +239,7 @@ export default function SubscriptionPackageFormModal({
   };
 
   const handleManualPriceChange = (rawPrice) => {
+    // Khi nhập giá thủ công, suy ra tỷ lệ giảm so với tổng giá gốc.
     const numericPrice = Math.max(0, Number(rawPrice) || 0);
     setForm((prev) => ({ ...prev, Gia_goi: rawPrice }));
 
@@ -243,6 +252,7 @@ export default function SubscriptionPackageFormModal({
   };
 
   const handleSubmit = async (e) => {
+    // Kiểm tra gói, tính payload và gọi API tạo hoặc cập nhật.
     e.preventDefault();
     setFormError("");
 

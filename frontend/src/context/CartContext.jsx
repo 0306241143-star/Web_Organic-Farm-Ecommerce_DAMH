@@ -1,4 +1,4 @@
-/* Shares the server-backed retail cart across storefront pages and components. */
+/* Cung cấp giỏ mua lẻ đồng bộ máy chủ cho các trang và thành phần cửa hàng. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CartContext from "./cartStateContext";
 import { useAuth } from "./useAuth";
@@ -23,6 +23,7 @@ function CartStateProvider({ children, user }) {
   const cartRevision = useRef(0);
   const mutationQueue = useRef(Promise.resolve());
 
+  // Chuẩn hóa phản hồi giỏ hàng và xóa lỗi cũ khi dữ liệu tải thành công.
   const applyCartResponse = useCallback((response) => {
     const nextItems = response?.data?.items;
     setItems(Array.isArray(nextItems) ? nextItems : []);

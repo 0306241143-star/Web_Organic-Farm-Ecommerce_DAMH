@@ -25,6 +25,7 @@ class OrderProcessController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Kiểm tra bộ lọc trạng thái, thanh toán, mã đơn và phân trang.
         $validated = $request->validate([
             'status' => ['nullable', 'in:Cho_thanh_toan,Cho_xac_nhan,Da_xac_nhan,Dang_giao,Hoan_thanh,Da_huy'],
             'payment_method' => ['nullable', 'in:ApiPay,COD,Mien_phi_goi,Giao_bu'],

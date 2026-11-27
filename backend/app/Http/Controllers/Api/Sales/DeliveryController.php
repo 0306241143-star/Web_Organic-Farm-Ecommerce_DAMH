@@ -21,6 +21,7 @@ class DeliveryController extends Controller
 
     public function dispatch(int $orderId, Request $request): JsonResponse
     {
+        // Xác thực đơn vị vận chuyển, mã vận đơn và trạng thái giao hàng.
         $validated = $request->validate([
             'carrier' => ['required', 'string', 'max:100'],
             'tracking_number' => ['nullable', 'string', 'max:100'],
@@ -35,6 +36,7 @@ class DeliveryController extends Controller
 
         $staffId = (int) $request->user()->getAuthIdentifier();
 
+        // Cập nhật bản ghi giao hàng và trạng thái đơn trong cùng một transaction.
         $delivery = DB::transaction(function () use ($orderId, $validated, $staffId): GiaoHang {
             $order = DonHang::query()
                 ->whereKey($orderId)

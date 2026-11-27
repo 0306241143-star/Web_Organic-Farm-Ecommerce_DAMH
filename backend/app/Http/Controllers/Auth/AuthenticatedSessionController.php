@@ -19,6 +19,7 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Xác thực email và mật khẩu với thông báo lỗi phù hợp cho người dùng.
         $validated = $request->validate([
             'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
@@ -28,6 +29,7 @@ class AuthenticatedSessionController extends Controller
             'password.required' => 'Vui lòng nhập mật khẩu.',
         ]);
 
+        // Giới hạn số lần đăng nhập sai theo tổ hợp email và địa chỉ IP.
         $throttleKey = Str::transliterate(Str::lower($validated['email']) . '|' . $request->ip());
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
@@ -39,6 +41,7 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Tải vai trò và quyền để trả về thông tin phiên người dùng đầy đủ.
         $user = NguoiDung::with('vaiTro.quyens')
             ->where('Email', Str::lower(trim($validated['email'])))
             ->first();
@@ -51,6 +54,7 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Xóa bộ đếm khi đăng nhập thành công trước khi kiểm tra tình trạng tài khoản.
         RateLimiter::clear($throttleKey);
 
         if ($user->Trang_thai === 'Khoa') {
@@ -64,6 +68,7 @@ class AuthenticatedSessionController extends Controller
             );
         }
 
+        // Chuẩn hóa vai trò và tạo token truy cập cho phiên hiện tại.
         $normalizedRole = $user->getRoleSlug();
         $token = $user->createToken('auth_token')->plainTextToken;
 

@@ -33,6 +33,7 @@ const DELIVERY_WINDOWS = [
 ];
 
 function resolvePackagePricing(pkg) {
+  // Tính giá gốc, mức giảm và số tiền tiết kiệm để hiển thị đúng với gói định kỳ.
   const salePrice = Number(pkg?.price ?? 0);
   const durationMonths = Math.max(1, Number(pkg?.duration_months ?? 1));
 

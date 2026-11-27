@@ -52,6 +52,7 @@ export default function InventoryWastagePage() {
   // =========================================================================
   // 3. API HANDLERS & TẢI DỮ LIỆU
   // =========================================================================
+  // Tải danh sách lô; dữ liệu im lặng vẫn hiển thị thông báo cập nhật ngắn.
   const loadBatches = useCallback(async (isSilent = false) => {
     const startedAt = Date.now();
     if (!isSilent) setBatchesLoading(true);

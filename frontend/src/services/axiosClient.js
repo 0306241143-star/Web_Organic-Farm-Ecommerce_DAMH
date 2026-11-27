@@ -110,7 +110,7 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: normalize API errors and notify globally except field-level 422 validation.
+// Chuẩn hóa lỗi API và gửi thông báo toàn cục, riêng lỗi validation 422 giữ nguyên theo từng trường.
 axiosClient.interceptors.response.use(
   (response) => response.data,
   (error) => {

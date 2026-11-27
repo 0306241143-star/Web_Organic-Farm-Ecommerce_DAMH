@@ -13,11 +13,13 @@ class StoreFarmingLogRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        // FormRequest này không tự áp dụng kiểm tra quyền; tuyến có thể kiểm soát quyền riêng.
         return true;
     }
 
     public function rules(): array
     {
+        // Xác thực lô, loại hoạt động, thời gian, nội dung và định dạng tệp đính kèm.
         return [
             'Ma_lo_canh_tac'      => ['required', 'integer', 'exists:lo_canh_tac,Ma_lo_canh_tac'],
             'Loai_hoat_dong'      => ['required', 'string', 'in:Gieo_hat,Bon_phan,Tuoi_tieu,Thu_hoach,Khac'],
@@ -30,6 +32,7 @@ class StoreFarmingLogRequest extends FormRequest
 
     public function withValidator($validator): void
     {
+        // Bổ sung các điều kiện nghiệp vụ cần tra cứu hoặc kiểm tra sau quy tắc cơ bản.
         $validator->after(function ($validator) {
             // Chặn ghi nhật ký cho lô canh tác đã thu hoạch
             if ($this->filled('Ma_lo_canh_tac')) {
@@ -64,6 +67,7 @@ class StoreFarmingLogRequest extends FormRequest
 
     public function messages(): array
     {
+        // Chuẩn hóa thông báo lỗi nghiệp vụ bằng tiếng Việt cho người dùng.
         return [
             'Ma_lo_canh_tac.required'              => 'Vui lòng chọn lô canh tác.',
             'Ma_lo_canh_tac.exists'                => 'Lô canh tác không tồn tại trên hệ thống.',

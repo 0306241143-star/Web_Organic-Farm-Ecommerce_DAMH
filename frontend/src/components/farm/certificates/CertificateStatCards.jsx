@@ -1,6 +1,7 @@
 import { Award, Clock, PackageCheck, ShieldCheck } from "lucide-react";
 
 export default function CertificateStatCards({ stats }) {
+  // Tổng hợp các chỉ số chứng nhận để đánh giá tình trạng hồ sơ và nhu cầu gia hạn.
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
       <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all">

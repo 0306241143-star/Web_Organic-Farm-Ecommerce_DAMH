@@ -16,6 +16,7 @@ class RecurringOrderStockService
 
     public function availableDeliveryDate(DonHang $order): ?CarbonImmutable
     {
+        // Marker nội bộ trong ghi chú lưu ngày giao đã hoãn.
         if (preg_match(self::DELIVERY_MARKER_PATTERN, (string) $order->Ghi_chu, $matches) !== 1) {
             return null;
         }
@@ -25,6 +26,7 @@ class RecurringOrderStockService
 
     public function visibleNote(?string $note): ?string
     {
+        // Ẩn marker hoãn giao khỏi ghi chú người dùng nhìn thấy.
         $cleanNote = trim((string) preg_replace(self::DELIVERY_MARKER_PATTERN, '', (string) $note));
 
         return $cleanNote === '' ? null : $cleanNote;
@@ -32,6 +34,7 @@ class RecurringOrderStockService
 
     public function postpone(DonHang $order): CarbonImmutable
     {
+        // Hoãn sang tuần sau lần lượt cho đến khi ngày giao nằm trong tương lai.
         $nextDeliveryDate = CarbonImmutable::parse($order->Ngay_dat)->startOfDay()->addWeek();
         while ($nextDeliveryDate->lessThanOrEqualTo(CarbonImmutable::today())) {
             $nextDeliveryDate = $nextDeliveryDate->addWeek();
@@ -49,6 +52,7 @@ class RecurringOrderStockService
      */
     public function shortagesForOrder(DonHang $order): array
     {
+        // Tính phần còn thiếu sau khi trừ các lô đã phân bổ cho từng dòng đơn.
         $order->loadMissing('chiTiets.sanPham', 'chiTiets.phanBoLoHangs');
         $details = $order->chiTiets;
         $availableByProduct = [];
@@ -63,6 +67,7 @@ class RecurringOrderStockService
             }
 
             if (! array_key_exists($productId, $availableByProduct)) {
+                // Tính tồn khả dụng một lần cho mỗi sản phẩm để tránh truy vấn lặp.
                 $availableByProduct[$productId] = $this->stock->availableQuantity($productId);
             }
 
@@ -105,6 +110,7 @@ class RecurringOrderStockService
 
     public function tryAllocateOrder(DonHang $order): bool
     {
+        // Khóa đơn và tồn trong cùng transaction để phân bổ định kỳ nguyên tử.
         return DB::transaction(function () use ($order): bool {
             $lockedOrder = DonHang::query()
                 ->whereKey($order->Ma_don_hang)

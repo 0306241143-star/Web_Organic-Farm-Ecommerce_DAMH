@@ -6,6 +6,7 @@ export default function ShippingSettingTab({ value, onChange }) {
   const [previewDistanceKm, setPreviewDistanceKm] = useState("8.5");
 
   const numericShipRate = Math.max(0, Number(value) || 0);
+  // Mô phỏng phí giao hàng bằng khoảng cách thử nghiệm nhân đơn giá km.
   const simulatedShippingFee = Math.round(
     Math.max(0, Number(previewDistanceKm) || 0) * numericShipRate
   );

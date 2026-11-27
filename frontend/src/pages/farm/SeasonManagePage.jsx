@@ -82,6 +82,7 @@ export default function SeasonManagePage() {
   // =========================================================================
   // 3. TẢI DỮ LIỆU TỪ API
   // =========================================================================
+  // Đồng bộ mùa vụ, lô canh tác và KPI bằng một lượt tải nhằm giữ dữ liệu dashboard nhất quán.
   const fetchAllData = useCallback(async (isSilent = false, force = false) => {
     const startedAt = Date.now();
     if (!isSilent) setLoading(true);

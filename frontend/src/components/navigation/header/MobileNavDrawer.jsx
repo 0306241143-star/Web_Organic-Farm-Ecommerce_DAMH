@@ -18,6 +18,7 @@ export default function MobileNavDrawer({ isOpen, closeMenus, prefetchCatalog })
     user && ["admin", "farm_staff", "sales"].includes(user.role)
   );
 
+  // Đồng bộ trạng thái đang xem để làm nổi menu tương ứng với đường dẫn hiện tại.
   const isCurrentActive = (path) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
@@ -32,6 +33,7 @@ export default function MobileNavDrawer({ isOpen, closeMenus, prefetchCatalog })
 
   if (!isOpen) return null;
 
+  // Menu mobile thay đổi theo vai trò: khách hàng dùng tài khoản cá nhân, nhân viên đi thẳng cổng nội bộ.
   return (
     <div className="lg:hidden border-t border-[#c0c9bb]/30 bg-white px-4 pt-3 pb-6 shadow-lg animate-in fade-in duration-150">
       <div className="space-y-1">

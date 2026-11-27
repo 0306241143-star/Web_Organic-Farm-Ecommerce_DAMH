@@ -245,20 +245,6 @@ export default function LoginModal({ isOpen, onClose, redirectTo = null }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-0.5">
-            <label className="inline-flex items-center gap-2 cursor-pointer text-[#41493e]">
-              <input
-                type="checkbox"
-                checked={form.remember}
-                onChange={(e) =>
-                  setForm({ ...form, remember: e.target.checked })
-                }
-                className="w-4 h-4 rounded text-[#00450d] focus:ring-[#00450d]"
-              />
-              <span>Ghi nhớ đăng nhập</span>
-            </label>
-          </div>
-
           <button
             type="submit"
             disabled={submitting}

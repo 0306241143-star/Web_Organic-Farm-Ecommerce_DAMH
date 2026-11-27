@@ -28,12 +28,14 @@ export default function ProductPurchasePanel({ product }) {
   const canAddToCart = maxAddQuantity >= 0.01;
   const [isAdding, setIsAdding] = useState(false);
 
+  // Giữ số lượng trong giới hạn còn mua được sau khi trừ số lượng đang có trong giỏ.
   useEffect(() => {
     if (canAddToCart) {
       setQuantity((current) => Math.min(current, maxAddQuantity));
     }
   }, [canAddToCart, maxAddQuantity]);
 
+  // Làm tròn số lượng theo đơn vị thập phân và kẹp trong phạm vi cho phép.
   const updateQuantity = (value) => {
     const next = Number(value);
     if (!Number.isFinite(next)) return;
@@ -41,6 +43,7 @@ export default function ProductPurchasePanel({ product }) {
     setQuantity(Math.min(maxAddQuantity, Math.max(0.01, rounded)));
   };
 
+  // Chặn khách chưa đăng nhập hoặc tài khoản không phải khách hàng trước khi thao tác giỏ hàng.
   const requireCustomer = (guestMessage = "") => {
     if (isLoading) return false;
     if (!user) {
@@ -55,6 +58,7 @@ export default function ProductPurchasePanel({ product }) {
     return true;
   };
 
+  // Kiểm tra trùng thao tác, tồn kho và quyền tài khoản trước khi gọi API thêm giỏ hàng.
   const addToCart = async () => {
     if (
       isAdding ||

@@ -198,6 +198,7 @@ export default function RewardWalletPage() {
   });
   const [addressSubmitting, setAddressSubmitting] = useState(false);
 
+  // Tải lại địa chỉ sau mỗi thao tác thêm/sửa/xóa để đánh dấu địa chỉ mặc định chính xác.
   const fetchAddresses = useCallback(async () => {
     setAddressLoading(true);
     try {
@@ -368,6 +369,7 @@ export default function RewardWalletPage() {
   const [walletHistoryLoadingMore, setWalletHistoryLoadingMore] = useState(false);
   const [historyFilter, setHistoryFilter] = useState("all"); // all | earned | spent
 
+  // Nạp lịch sử ví theo trang; append giữ dữ liệu cũ khi người dùng tải thêm.
   const fetchWallet = useCallback(async (page = 1, append = false) => {
     if (page === 1) setWalletLoading(true);
     try {

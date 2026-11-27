@@ -86,6 +86,7 @@ export default function CustomerClaimPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Debounce ô tìm kiếm để tránh gọi API ở từng ký tự người dùng nhập.
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setSearch(searchInput.trim());

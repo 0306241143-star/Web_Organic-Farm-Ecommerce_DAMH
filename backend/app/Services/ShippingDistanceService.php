@@ -21,6 +21,7 @@ class ShippingDistanceService
      */
     public function estimate(DiaChiGiaoHang $address): array
     {
+        // Đọc đơn giá vận chuyển chung để áp dụng thống nhất cho mọi tuyến.
         $configuredPrice = DB::table('cau_hinh_he_thong')
             ->where('Khoa', 'don_gia_ship_km')
             ->value('Gia_tri');
@@ -57,6 +58,7 @@ class ShippingDistanceService
             && is_numeric($address->Kinh_do)
         ) {
             try {
+                // Gọi Goong để lấy độ dài tuyến lái xe thay vì dùng khoảng cách chim bay.
                 $response = Http::acceptJson()
                     ->timeout(10)
                     ->get($endpoint, [
@@ -77,6 +79,7 @@ class ShippingDistanceService
                 ) {
                     $distanceKm = round(((float) $meters) / 1000, 2);
 
+                    // Trả về khoảng cách thực tế cùng chi phí đã làm tròn theo km.
                     return [
                         'distance_km' => $distanceKm,
                         'shipping_fee' => (int) round($distanceKm * $pricePerKm),
@@ -104,6 +107,7 @@ class ShippingDistanceService
             $address
         );
 
+        // Khi dịch vụ bản đồ lỗi, vẫn trả kết quả ước tính để checkout không chặn.
         return [
             'distance_km' => $distanceKm,
             'shipping_fee' => (int) round($distanceKm * $pricePerKm),

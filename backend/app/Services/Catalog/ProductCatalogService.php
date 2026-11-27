@@ -204,6 +204,7 @@ class ProductCatalogService
 
     private function applySort(Collection $products, string $sort): Collection
     {
+        // Chọn thứ tự hiển thị theo tham số public; mặc định ưu tiên Flash Sale và còn hàng.
         return match ($sort) {
             'price_asc'  => $products->sortBy([['effective_price', 'asc'], ['id', 'desc']])->values(),
             'price_desc' => $products->sortBy([['effective_price', 'desc'], ['id', 'desc']])->values(),
@@ -225,6 +226,7 @@ class ProductCatalogService
 
     private function buildCatalogFacets(Collection $products): array
     {
+        // Tổng hợp số lượng chứng nhận để dùng làm bộ lọc phía giao diện.
         $certCounts = [];
         foreach ($products as $product) {
             foreach ($product['certification_standards'] ?? [] as $standard) {
@@ -259,6 +261,7 @@ class ProductCatalogService
 
     private function formatProduct(SanPham $product, bool $includeDetail = false): array
     {
+        // Gom toàn bộ lô từ các ô canh tác để tính tồn, HSD và truy xuất.
         $allBatches = $product->loCanhTacs
             ->flatMap(fn ($plot) => $plot->loHangs)
             ->values();
@@ -289,6 +292,7 @@ class ProductCatalogService
         foreach ($fefoBatches as $batch) {
             foreach ($batch->chiTietFlashSales as $detail) {
                 $program = $detail->flashSale;
+                // Bỏ qua chiến dịch ngoài thời gian hoặc không gắn lô hợp lệ.
                 if (
                     ! $program
                     || $program->Trang_thai !== 'Dang_dien_ra'
@@ -301,6 +305,7 @@ class ProductCatalogService
                 $remainingQuota = round((float) $detail->So_luong_gioi_han - (float) $detail->So_luong_da_ban, 2);
                 $salePrice = (float) $detail->Gia_giam;
 
+                // Chỉ nhận mức giảm còn quota và thấp hơn giá bán thường.
                 if ($remainingQuota <= 0 || $salePrice <= 0 || $salePrice >= $regularPrice) {
                     continue;
                 }
@@ -334,6 +339,7 @@ class ProductCatalogService
             ->values();
 
         $certifications = $mergedCerts->map(function (ChungNhan $cert) use ($includeDetail): array {
+            // Chuẩn hóa chứng nhận sản phẩm và lô thành một schema dùng chung.
             $data = [
                 'id'         => (int) $cert->Ma_chung_nhan,
                 'name'       => $cert->Ten_chung_nhan,

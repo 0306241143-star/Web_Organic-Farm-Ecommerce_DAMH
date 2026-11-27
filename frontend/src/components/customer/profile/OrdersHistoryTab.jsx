@@ -40,6 +40,7 @@ export default function OrdersHistoryTab({ initialSubTab = "orders", onSubTabCha
   }, [initialSubTab]);
 
   const handleSwitchSubTab = (nextSubTab) => {
+    // Đổi tab lịch sử và đồng bộ lựa chọn với thành phần cha.
     setSubTab(nextSubTab);
     onSubTabChange?.(nextSubTab);
   };
@@ -86,6 +87,7 @@ export default function OrdersHistoryTab({ initialSubTab = "orders", onSubTabCha
 
   useEffect(() => {
     let active = true;
+    // Tải lại dữ liệu đúng tab và bộ lọc hiện tại; tránh cập nhật sau khi rời tab.
     setLoading(true);
     setLoadError("");
     const load =
@@ -103,6 +105,7 @@ export default function OrdersHistoryTab({ initialSubTab = "orders", onSubTabCha
   }, [subTab, orderStatus, loadOrders, loadSubscriptions, loadClaims]);
 
   const loadMore = async () => {
+    // Chỉ tải trang kế tiếp khi phân trang còn dữ liệu.
     const meta =
       subTab === "orders"
         ? ordersMeta
@@ -125,6 +128,7 @@ export default function OrdersHistoryTab({ initialSubTab = "orders", onSubTabCha
   };
 
   const toggleOrderDetails = async (orderId) => {
+    // Mở rộng đơn hàng và tải chi tiết một lần khi dữ liệu chưa được lưu.
     if (expandedOrderId === orderId) {
       setExpandedOrderId(null);
       return;
@@ -142,6 +146,7 @@ export default function OrdersHistoryTab({ initialSubTab = "orders", onSubTabCha
   };
 
   const cancelOrder = async (order) => {
+    // Hỏi xác nhận trước, sau đó hủy đơn và làm mới danh sách cùng chi tiết.
     const confirmed = await confirmGlobalDialog({
       title: "Hủy đơn hàng",
       message: `Bạn có chắc muốn hủy đơn hàng #${order.order_id}? Điểm đã sử dụng sẽ được hoàn lại nếu có.`,
@@ -171,6 +176,7 @@ export default function OrdersHistoryTab({ initialSubTab = "orders", onSubTabCha
   };
 
   const continueOrderPayment = async (order) => {
+    // Khởi tạo lại phiên thanh toán và chỉ chuyển sang URL có giao thức hợp lệ.
     if (continuingPaymentOrderId !== null) return;
 
     setContinuingPaymentOrderId(order.order_id);
@@ -207,6 +213,7 @@ export default function OrdersHistoryTab({ initialSubTab = "orders", onSubTabCha
   };
 
   const changeSubscriptionStatus = async (subscription) => {
+    // Tạm ngưng hoặc tiếp tục lịch giao theo trạng thái hiện tại của gói.
     const pausing = subscription.can_pause;
     const confirmed = await confirmGlobalDialog({
       title: pausing ? "Tạm ngưng gói" : "Tiếp tục gói",

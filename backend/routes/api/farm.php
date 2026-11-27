@@ -9,8 +9,9 @@ use App\Http\Controllers\Api\FarmStaff\FarmingLogController;
 use App\Http\Controllers\Api\FarmStaff\SeasonController;
 use Illuminate\Support\Facades\Route;
 
-// Nhóm API Nhân viên Nông trại (bảo vệ bằng auth:sanctum + role:farm_staff)
+// Chỉ nhân viên nông trại có token Sanctum mới được dùng các endpoint này.
 Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(function () {
+    // Quản lý mùa vụ, lô canh tác và danh sách sản phẩm có thể trồng.
     Route::get('/seasons', [SeasonController::class, 'index']);
     Route::post('/seasons', [SeasonController::class, 'store']);
     Route::get('/seasons/{id}', [SeasonController::class, 'show']);
@@ -20,6 +21,7 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::put('/seasons/{id}/plots/{plotId}', [CultivationPlotController::class, 'update']);
     Route::delete('/seasons/{id}/plots/{plotId}', [CultivationPlotController::class, 'destroy']);
     Route::get('/products', [CultivationPlotController::class, 'getProducts']);
+    // Đọc/cập nhật hồ sơ và nhật ký hoạt động canh tác.
     Route::get('/info', [FarmInfoController::class, 'show']);
     Route::put('/info', [FarmInfoController::class, 'update']);
 
@@ -27,7 +29,7 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::post('/farming-logs', [FarmingLogController::class, 'store']);
     Route::delete('/farming-logs/{id}', [FarmingLogController::class, 'destroy']);
 
-    // Quản lý lô hàng thu hoạch & QR (CV04.18, CV04.20, CV04.21)
+    // Quản lý lô thu hoạch, ghi nhận hao hụt và tạo/in QR truy xuất nguồn gốc.
     Route::get('/batches/eligible-plots', [BatchController::class, 'eligiblePlots']);
     Route::get('/batches/disposals', [BatchController::class, 'disposalsList']);
     Route::get('/batches', [BatchController::class, 'index']);
@@ -38,12 +40,13 @@ Route::middleware(['auth:sanctum', 'role:farm_staff'])->prefix('farm')->group(fu
     Route::post('/batches/{id}/qr', [BatchQrController::class, 'generate']);
     Route::get('/batches/{id}/qr-print', [BatchQrController::class, 'printTemplate']);
 
-    // Quản lý chứng nhận chất lượng & kết quả kiểm định gắn vào lô hàng
+    // Quản lý chứng nhận và hồ sơ kiểm định liên quan đến lô hàng.
     Route::get('/certificates', [CertificateController::class, 'index']);
     Route::post('/certificates', [CertificateController::class, 'store']);
     Route::put('/certificates/{id}', [CertificateController::class, 'update']);
     Route::delete('/certificates/{id}', [CertificateController::class, 'destroy']);
 
+    // Các route tương thích bổ sung cho danh sách lô cần tiêu hủy và ghi nhận hao hụt.
     Route::post('/batches/{id}/wastage', [BatchController::class, 'recordWastage'])->whereNumber('id');
     Route::get('/disposals', [BatchController::class, 'disposalsList']);
 });

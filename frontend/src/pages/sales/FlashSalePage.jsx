@@ -73,6 +73,7 @@ export default function FlashSalePage() {
     setIsModalOpen(true);
   }, [prefillBatchId, isPrefillBatchAlreadyActive, searchParams, setSearchParams]);
 
+  // Tải chiến dịch và giữ thông báo tải riêng để không làm gián đoạn bảng đang xem.
   const fetchCampaigns = useCallback(async (isSilent = false) => {
     const startedAt = Date.now();
     if (!isSilent) setCampaignLoading(true);

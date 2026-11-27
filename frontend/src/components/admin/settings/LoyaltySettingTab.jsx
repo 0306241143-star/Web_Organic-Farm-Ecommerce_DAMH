@@ -5,6 +5,7 @@ import { Calculator, Coins, Sparkles } from "lucide-react";
 export default function LoyaltySettingTab({ value, onChange }) {
   const [previewPoints, setPreviewPoints] = useState("120");
 
+  // Tính số tiền giảm thử nghiệm từ tỷ lệ quy đổi và số điểm người dùng nhập.
   const numericPointValue = Math.max(0, Number(value) || 0);
   const simulatedPointDiscount = Math.round(
     Math.max(0, Number(previewPoints) || 0) * numericPointValue

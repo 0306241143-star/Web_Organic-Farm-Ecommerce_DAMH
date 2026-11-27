@@ -62,6 +62,7 @@ export default function UserManagementPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // Tải danh mục vai trò và quyền dùng chung cho bộ lọc và form chỉnh sửa.
   const fetchRolesAndPermissions = useCallback(async () => {
     try {
       const res = await adminApi.getRolesAndPermissions();

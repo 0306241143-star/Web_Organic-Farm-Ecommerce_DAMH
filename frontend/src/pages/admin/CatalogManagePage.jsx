@@ -64,6 +64,7 @@ export default function CatalogManagePage() {
   const [editingSubscription, setEditingSubscription] = useState(null);
   const [togglingSubId, setTogglingSubId] = useState(null);
 
+  // Tải đồng thời ba nhóm dữ liệu; Promise.allSettled giữ các phần còn lại hoạt động nếu một API lỗi.
   const fetchAllData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);

@@ -8,10 +8,12 @@ const inflightRequests = new Map();
 function cachedGet(key, fetcher) {
   const now = Date.now();
   const cached = memoryCache.get(key);
+  // Trả kết quả trong bộ nhớ nếu chưa hết thời hạn cache.
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
     return Promise.resolve(cached.payload);
   }
 
+  // Dùng chung một request đang chạy để tránh gọi API trùng cho cùng khóa.
   if (inflightRequests.has(key)) {
     return inflightRequests.get(key);
   }
@@ -31,6 +33,7 @@ function cachedGet(key, fetcher) {
 
 const sanitizeParams = (params = {}) => {
   const cleaned = {};
+  // Loại bỏ tham số rỗng và chuẩn hóa cờ bật thành giá trị API mong đợi.
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "" || value === false) {
       return;

@@ -26,6 +26,7 @@ export default function AdminSubscriptionListTab({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
+  // Áp dụng đồng thời bộ lọc trạng thái và từ khoá tìm kiếm.
   const filteredPackages = useMemo(() => {
     if (hideToolbar) return packages;
     return packages.filter((pkg) => {

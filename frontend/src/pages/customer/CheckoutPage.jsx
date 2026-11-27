@@ -124,6 +124,7 @@ export default function CheckoutPage() {
   const [createdOrder, setCreatedOrder] = useState(() => loadSavedPendingOrder());
   const [checkingPayment, setCheckingPayment] = useState(false);
 
+  // Chuẩn hóa item giỏ hàng để báo giá và tổng tiền dùng cùng đơn vị dữ liệu.
   const normalizedItems = useMemo(() => {
     return (Array.isArray(items) ? items : []).map((raw) => {
       const product = raw.product || {};
@@ -291,6 +292,7 @@ export default function CheckoutPage() {
     setPointsInput(String(Math.min(numeric, maxRedeemablePoints)));
   };
 
+  // Kiểm tra địa chỉ và số điểm trước khi tạo đơn; khóa idempotency ngăn gửi trùng.
   const handlePlaceOrder = async () => {
     if (submitting || normalizedItems.length === 0) return;
     if (!selectedAddressId) {

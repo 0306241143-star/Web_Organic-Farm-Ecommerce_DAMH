@@ -19,6 +19,8 @@ export default function CategoryFormModal({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Đồng bộ form với danh mục đang sửa hoặc khởi tạo form trống.
     if (editingCategory) {
       setForm({
         Ten_danh_muc: editingCategory.name || "",
@@ -38,6 +40,7 @@ export default function CategoryFormModal({
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
+    // Không cho gửi danh mục khi thiếu tên bắt buộc.
     e.preventDefault();
     setFormError("");
 

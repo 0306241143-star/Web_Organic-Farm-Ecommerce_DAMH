@@ -23,6 +23,7 @@ export default function FlashSaleForm({
   );
   const [items, setItems] = useState([newItem()]);
 
+  // Cập nhật từng dòng sản phẩm độc lập để không làm mất dữ liệu của các lô khác.
   const updateItem = (index, key, value) => {
     setItems((current) =>
       current.map((item, itemIndex) =>
@@ -31,6 +32,7 @@ export default function FlashSaleForm({
     );
   };
 
+  // Khi đổi lô, đặt giới hạn mở bán mặc định theo tồn kho còn lại của lô đó.
   const selectBatch = (index, batchId) => {
     const batch = batches.find((item) => String(item.batch_id) === batchId);
     setItems((current) =>
@@ -46,6 +48,7 @@ export default function FlashSaleForm({
     );
   };
 
+  // Chuyển dữ liệu form sang payload số trước khi gửi tạo chương trình Flash Sale.
   const submit = (event) => {
     event.preventDefault();
     onSubmit({
@@ -60,6 +63,7 @@ export default function FlashSaleForm({
     });
   };
 
+  // Chỉ cho phép chọn lô còn hàng, chưa quá hạn và còn tối đa hai ngày hữu dụng.
   const eligibleBatches = batches.filter(
     (batch) =>
       batch.remaining_quantity > 0 &&

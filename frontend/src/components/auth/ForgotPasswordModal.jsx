@@ -41,6 +41,8 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return undefined;
 
+    // Khóa cuộn trang nền khi form đặt lại mật khẩu đang mở.
+
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && !submitting) {
         onClose();
@@ -83,6 +85,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 
   // Bước 1: Gửi yêu cầu cấp mã khôi phục mật khẩu
   const handleRequestCode = async (e) => {
+    // Gửi thông tin đã chuẩn hoá để nhận mã xác thực.
     e.preventDefault();
     if (submitting) return;
 
@@ -125,6 +128,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
 
   // Bước 2: Xác nhận mã và cập nhật mật khẩu mới
   const handleResetPassword = async (e) => {
+    // Xác thực mã và cập nhật mật khẩu mới tại từng bước.
     e.preventDefault();
     if (submitting) return;
 

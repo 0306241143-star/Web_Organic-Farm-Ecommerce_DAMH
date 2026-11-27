@@ -29,6 +29,7 @@ export default function QrTraceabilityPage() {
   const [reloadCount, setReloadCount] = useState(0);
   const requestKey = `${code || ""}:${reloadCount}`;
 
+  // Mỗi mã QR tạo một lượt truy vấn riêng để tránh hiển thị dữ liệu cũ khi đổi mã.
   useEffect(() => {
     if (!code) return undefined;
 

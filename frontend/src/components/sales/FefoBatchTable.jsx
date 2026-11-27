@@ -68,6 +68,7 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+                {/* Tính trạng thái cận hạn và phần trăm tồn kho còn lại cho từng dòng FEFO. */}
                 {batches.map((batch) => {
                   const expired =
                     batch.days_until_expiry < 0 && batch.remaining_quantity > 0;

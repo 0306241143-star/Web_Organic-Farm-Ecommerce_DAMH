@@ -37,8 +37,10 @@ class R2StorageService
      */
     public function upload(UploadedFile $file, string $folder = self::FOLDER_FARMING_LOGS): array
     {
+        // Kiểm tra cấu hình R2 trước khi ghi dữ liệu bất kỳ.
         $this->ensureConfigured();
 
+        // Phân loại loại tệp để áp dụng luồng tối ưu khác nhau.
         $mediaType = $this->detectMediaType($file);
         $datePrefix = now()->format('Y/m');
         $cleanFolder = trim($folder, '/');
@@ -49,6 +51,7 @@ class R2StorageService
                 && $file->getSize() <= 512 * 1024;
 
             if ($alreadyOptimized) {
+                // WebP nhỏ đã tối ưu có thể upload trực tiếp mà không cần xử lý lại.
                 $path = "{$cleanFolder}/{$datePrefix}/" . Str::uuid()->toString() . '.webp';
                 $stream = fopen($file->getRealPath(), 'rb');
                 if ($stream === false) {
@@ -80,6 +83,7 @@ class R2StorageService
 
             $optimized = $this->optimizeImage($file);
             if ($optimized !== null) {
+                // Đặt tên ngẫu nhiên để tránh ghi đè tệp cũ trên object storage.
                 $path = "{$cleanFolder}/{$datePrefix}/" . Str::uuid()->toString() . '.webp';
 
                 $stored = Storage::disk($this->disk)->put($path, $optimized['binary'], [
@@ -168,6 +172,7 @@ class R2StorageService
      */
     public function uploadMany(array $files, string $folder = self::FOLDER_FARMING_LOGS): array
     {
+        // Chỉ upload tệp hợp lệ do Laravel xác thực để bỏ qua tệp lỗi.
         $results = [];
         foreach ($files as $file) {
             if ($file instanceof UploadedFile && $file->isValid()) {
@@ -183,6 +188,7 @@ class R2StorageService
      */
     public function delete(?string $pathOrUrl): bool
     {
+        // Cho phép caller truyền cả đường dẫn tương đối lẫn URL công khai.
         if (! is_string($pathOrUrl) || trim($pathOrUrl) === '') {
             return false;
         }
@@ -197,6 +203,7 @@ class R2StorageService
 
     public function url(string $path): string
     {
+        // Ưu tiên URL public tùy chỉnh; nếu thiếu thì dùng URL do disk sinh ra.
         $baseUrl = rtrim((string) config("filesystems.disks.{$this->disk}.url"), '/');
         $cleanPath = ltrim($path, '/');
 
@@ -212,6 +219,7 @@ class R2StorageService
      */
     private function optimizeImage(UploadedFile $file): ?array
     {
+        // Tự động bỏ qua tối ưu nếu thiếu thư viện hoặc GD.
         if (! class_exists(ImageManager::class) || ! extension_loaded('gd')) {
             return null;
         }
@@ -246,6 +254,7 @@ class R2StorageService
      */
     private function compressVideoIfAvailable(UploadedFile $file): ?string
     {
+        // Chỉ nén video khi FFmpeg và exec đều có sẵn.
         $ffmpeg = env('FFMPEG_BINARY');
         if (! is_string($ffmpeg) || trim($ffmpeg) === '' || ! function_exists('exec')) {
             return null;
@@ -301,6 +310,7 @@ class R2StorageService
 
     private function ensureConfigured(): void
     {
+        // Không kiểm tra khóa với disk khác R2 để tránh chặn lưu trữ cục bộ.
         if ($this->disk !== 'r2') {
             return;
         }

@@ -71,6 +71,7 @@ export default function SubscriptionPendingPayment({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    // Cập nhật đếm ngược thanh toán mỗi giây và dọn interval khi thoát.
     const updateTimer = () => {
       setSecondsLeft(Math.max(0, Math.floor((targetExpiryMs - Date.now()) / 1000)));
     };

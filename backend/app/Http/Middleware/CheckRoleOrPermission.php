@@ -13,8 +13,10 @@ class CheckRoleOrPermission
 
     public function handle(Request $request, Closure $next, string ...$items): Response
     {
+        // Lấy tài khoản hiện tại để kiểm tra vai trò hoặc quyền trên tuyến.
         $user = $request->user();
 
+        // Chặn yêu cầu chưa xác thực bằng phản hồi 401.
         if (!$user) {
             return $this->errorResponse(
                 message: 'Chưa đăng nhập hoặc phiên làm việc đã hết hạn.',
@@ -23,6 +25,7 @@ class CheckRoleOrPermission
             );
         }
 
+        // Thu hồi token và từ chối tài khoản đã bị khóa.
         if ($user->Trang_thai === 'Khoa') {
             $user->currentAccessToken()?->delete();
 
@@ -33,10 +36,12 @@ class CheckRoleOrPermission
             );
         }
 
+        // Danh sách trống nghĩa là tuyến không giới hạn vai trò hay quyền tại middleware này.
         if (empty($items)) {
             return $next($request);
         }
 
+        // Chấp nhận nếu người dùng khớp bất kỳ vai trò hoặc quyền nào đã cấu hình.
         foreach ($items as $item) {
             $normalized = trim($item);
             if ($user->hasRole(strtolower($normalized)) || $user->hasPermission($normalized)) {
@@ -44,6 +49,7 @@ class CheckRoleOrPermission
             }
         }
 
+        // Không khớp mục nào thì kết thúc bằng phản hồi 403.
         return $this->errorResponse(
             message: 'Bạn không có vai trò hoặc quyền hạn phù hợp để truy cập.',
             status: 403,

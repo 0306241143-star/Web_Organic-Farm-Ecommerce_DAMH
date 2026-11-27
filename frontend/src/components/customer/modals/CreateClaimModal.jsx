@@ -28,6 +28,7 @@ export default function CreateClaimModal({ order, onClose, onSubmitted }) {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
+    // Gửi lý do và tập tin bằng chứng của khiếu nại kèm mã đơn hàng.
     event.preventDefault();
     if (submitting) return;
 
@@ -48,6 +49,7 @@ export default function CreateClaimModal({ order, onClose, onSubmitted }) {
   };
 
   const handleFiles = (event) => {
+    // Kiểm tra số lượng, định dạng và dung lượng bằng chứng trước khi đính kèm.
     const files = Array.from(event.target.files || []);
     event.target.value = "";
     const showWarning = (message) => {

@@ -58,6 +58,7 @@ export default function SystemSettingsPage() {
       images: imgs.map((i) => ({ id: i.id, caption: i.caption || "" })),
     });
 
+  // Tải cấu hình số và thông tin nông trại thành hai nguồn độc lập để đồng bộ form ban đầu.
   const fetchAllSettings = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
@@ -149,6 +150,7 @@ export default function SystemSettingsPage() {
 
   const isDirty = activePage === "farm" ? isFarmDirty : isNumericDirty;
 
+  // Lưu theo tab đang mở: xác thực form nông trại/khuôn giá riêng trước khi gửi API.
   const handleSave = async (e) => {
     if (e) e.preventDefault();
 

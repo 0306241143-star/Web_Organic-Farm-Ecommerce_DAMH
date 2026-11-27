@@ -34,6 +34,8 @@ export default function UserPermissionModal({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Điền dữ liệu người dùng khi sửa hoặc đặt giá trị mặc định khi tạo mới.
     if (editingUser) {
       setForm({
         Ho_ten: editingUser.name || "",
@@ -64,6 +66,7 @@ export default function UserPermissionModal({
   );
 
   const handleSubmit = async (e) => {
+    // Chặn dữ liệu bắt buộc và mật khẩu không hợp lệ trước khi gửi.
     e.preventDefault();
     setFormError("");
 

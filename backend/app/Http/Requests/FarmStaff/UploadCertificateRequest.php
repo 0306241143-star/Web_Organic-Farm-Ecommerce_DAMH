@@ -14,13 +14,16 @@ class UploadCertificateRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        // FormRequest này không tự áp dụng kiểm tra quyền; tuyến có thể kiểm soát quyền riêng.
         return true;
     }
 
     public function rules(): array
     {
+        // Dùng ngày địa phương làm mốc để không chấp nhận ngày cấp trong tương lai.
         $today = Carbon::now('Asia/Ho_Chi_Minh')->toDateString();
 
+        // Kiểm tra thông tin chứng nhận, đối tượng liên kết và định dạng tệp tải lên.
         return [
             'Ma_lo_hang'     => ['nullable', 'integer', 'exists:lo_hang,Ma_lo_hang'],
             'Ma_san_pham'    => ['nullable', 'integer', 'exists:san_pham,Ma_san_pham'],
@@ -34,6 +37,7 @@ class UploadCertificateRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
+        // Chỉ cần một trong hai đối tượng (lô hàng hoặc sản phẩm) để gắn chứng nhận.
         $validator->after(function (Validator $v) {
             if (! $this->filled('Ma_lo_hang') && ! $this->filled('Ma_san_pham')) {
                 $v->errors()->add(
@@ -46,6 +50,7 @@ class UploadCertificateRequest extends FormRequest
 
     public function messages(): array
     {
+        // Nêu rõ lý do không hợp lệ cho từng trường chứng nhận và tệp đính kèm.
         return [
             'Ma_lo_hang.integer'          => 'Mã lô hàng không hợp lệ.',
             'Ma_lo_hang.exists'           => 'Lô hàng thu hoạch đã chọn không tồn tại trong hệ thống.',

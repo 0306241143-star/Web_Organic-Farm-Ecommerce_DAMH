@@ -78,6 +78,8 @@ export default function ProductFormModal({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Đồng bộ dữ liệu sửa hoặc reset ảnh, form khi mở modal tạo mới.
     if (editingProduct) {
       setForm({
         Ma_danh_muc: String(editingProduct.category_id || ""),
@@ -126,6 +128,7 @@ export default function ProductFormModal({
   if (!isOpen) return null;
 
   const handleSelectFiles = (fileList) => {
+    // Nén và chuẩn hoá ảnh hợp lệ trước khi thêm vào thư viện.
     const files = Array.from(fileList || []);
     if (files.length === 0) return;
 
@@ -181,6 +184,7 @@ export default function ProductFormModal({
   };
 
   const handleSubmit = async (e) => {
+    // Kiểm tra bắt buộc, chuẩn bị FormData và gửi theo chế độ tạo hoặc sửa.
     e.preventDefault();
     setFormError("");
 

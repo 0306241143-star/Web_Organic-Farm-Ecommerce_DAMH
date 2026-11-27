@@ -20,10 +20,12 @@ class ReportController extends Controller
 
     public function dashboard(Request $request): JsonResponse
     {
+        // Kiểm tra tham số khoảng thời gian mà quản trị viên gửi lên.
         $validated = $request->validate([
             'period' => ['sometimes', 'string', 'in:7d,30d,90d'],
         ]);
 
+        // Đo thời gian phản hồi và quy đổi khoảng báo cáo thành các ngày dữ liệu.
         $startedAt = microtime(true);
         $period = $validated['period'] ?? '30d';
         $periodDays = ['7d' => 7, '30d' => 30, '90d' => 90][$period];
@@ -32,6 +34,7 @@ class ReportController extends Controller
         $start = $startDate->toDateString();
         $end = $endDate->toDateString();
 
+        // Ưu tiên ngày giao thành công để xác định doanh thu thực tế của từng ngày.
         $completionDate = 'DATE(COALESCE(giao_hang.Ngay_giao_thanh_cong, don_hang.updated_at, don_hang.Ngay_dat))';
         $completedByDay = DB::table('don_hang')
             ->leftJoin('giao_hang', 'giao_hang.Ma_don_hang', '=', 'don_hang.Ma_don_hang')
@@ -75,6 +78,7 @@ class ReportController extends Controller
             ->get()
             ->keyBy('report_date');
 
+        // Điền đủ từng ngày trong khoảng báo cáo để chuỗi dữ liệu không bị khuyết.
         $series = [];
         for ($date = $startDate; $date->lte($endDate); $date = $date->addDay()) {
             $key = $date->toDateString();

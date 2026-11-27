@@ -14,6 +14,7 @@ export default function CategoryDropdown({
 
   useEffect(() => {
     if (!open) return;
+    // Đóng menu khi người dùng nhấn ra ngoài hoặc dùng phím Escape.
     const handleOutside = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };

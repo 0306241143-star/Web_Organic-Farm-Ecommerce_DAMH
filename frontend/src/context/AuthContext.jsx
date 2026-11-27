@@ -1,4 +1,4 @@
-/* Provides authentication session state and actions to the application (RBAC). */
+/* Cung cấp trạng thái phiên xác thực, thao tác đăng nhập và phân quyền cho toàn ứng dụng. */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import AuthContext from "./authStateContext";
 import { authApi } from "../services/authApi";

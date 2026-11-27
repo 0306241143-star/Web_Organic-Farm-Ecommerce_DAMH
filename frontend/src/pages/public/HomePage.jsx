@@ -16,6 +16,7 @@ export default function HomePage() {
   const [flashSales, setFlashSales] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Tải độc lập danh mục, sản phẩm nổi bật và Flash Sale; lỗi một nguồn không chặn các nguồn còn lại.
   useEffect(() => {
     let active = true;
 

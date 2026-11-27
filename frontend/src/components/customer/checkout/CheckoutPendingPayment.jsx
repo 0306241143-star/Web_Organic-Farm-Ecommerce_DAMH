@@ -53,6 +53,7 @@ export default function CheckoutPendingPayment({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    // Cập nhật thời gian còn lại cho phiên thanh toán và dọn interval khi thoát.
     const updateTimer = () => {
       setSecondsLeft(Math.max(0, Math.floor((targetExpiryMs - Date.now()) / 1000)));
     };

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 
+/* Khai báo token màu và kiểu chữ dùng chung cho các utility class của Tailwind. */
 @theme {
   --color-primary: #00450d;
   --color-primary-hover: #006e1c;
@@ -20,17 +21,19 @@
   --font-body: "Plus Jakarta Sans", sans-serif;
 }
 
+/* Thiết lập font mặc định và giới hạn giao diện ở chế độ sáng. */
 :root {
   font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
 
+/* Màu nền và chữ khi người dùng bôi chọn nội dung. */
 ::selection {
   background-color: #dcfce7;
   color: #00450d;
 }
 
-/* Slim, palette-matched scrollbars for modals and dropdown lists */
+/* Thanh cuộn mảnh, đồng bộ bảng màu cho modal và danh sách thả xuống. */
 * {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;

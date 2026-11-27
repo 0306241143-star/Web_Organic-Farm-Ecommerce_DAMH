@@ -27,6 +27,7 @@ export default function SeasonListSection({
 }) {
   const [collapsedSeasons, setCollapsedSeasons] = useState({});
 
+  // Thu gọn từng mùa vụ độc lập mà không làm thay đổi trạng thái của các mùa khác.
   const toggleSeasonCollapse = (seasonId) => {
     setCollapsedSeasons((prev) => ({
       ...prev,

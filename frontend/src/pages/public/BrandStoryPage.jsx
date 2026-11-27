@@ -174,6 +174,7 @@ export default function BrandStoryPage() {
   const [reloadTick, setReloadTick] = useState(0);
   const [selectedMedia, setSelectedMedia] = useState(null);
 
+  // Tải hồ sơ thương hiệu; requestKey và reloadTick làm dữ liệu cũ không che lỗi mới.
   useEffect(() => {
     let active = true;
 

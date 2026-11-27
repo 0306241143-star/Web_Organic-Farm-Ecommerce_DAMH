@@ -70,6 +70,7 @@ export default function FarmProfileSettingTab({
   const [geocoding, setGeocoding] = useState(false);
 
   const handleAutoGeocode = async () => {
+    // Gọi dịch vụ địa lý để chuyển địa chỉ đã nhập thành tọa độ bản đồ.
     const address = (farmForm.Dia_chi || "").trim();
     if (!address) {
       showGlobalToast("Vui lòng nhập địa chỉ cơ sở trước khi lấy tọa độ.", "error");
@@ -97,6 +98,7 @@ export default function FarmProfileSettingTab({
   };
 
   const handleSelectFiles = async (e) => {
+    // Nén ảnh được chọn sang WebP và tạo bản xem trước mà không giữ file gốc.
     const picked = Array.from(e.target.files || []);
     e.target.value = "";
     if (picked.length === 0) return;
@@ -112,6 +114,7 @@ export default function FarmProfileSettingTab({
   };
 
   const handleSetCoverExisting = (index) => {
+    // Đưa ảnh đã chọn lên đầu danh sách để làm ảnh đại diện.
     if (index <= 0) return;
     const next = [...existingImages];
     const [chosen] = next.splice(index, 1);
@@ -120,6 +123,7 @@ export default function FarmProfileSettingTab({
   };
 
   const handleCaptionExisting = (index, caption) => {
+    // Cập nhật chú thích cho đúng ảnh hiện có tại vị trí tương ứng.
     const next = existingImages.map((item, idx) =>
       idx === index ? { ...item, caption } : item
     );
@@ -127,6 +131,7 @@ export default function FarmProfileSettingTab({
   };
 
   const handleRemoveExisting = (index) => {
+    // Loại ảnh cũ khỏi danh sách sẽ được giữ lại khi lưu.
     onUpdateExistingImages(existingImages.filter((_, idx) => idx !== index));
   };
 
@@ -138,6 +143,7 @@ export default function FarmProfileSettingTab({
   };
 
   const handleRemoveNew = (index) => {
+    // Thu hồi URL xem trước và bỏ ảnh mới khỏi danh sách upload.
     const target = newImageFiles[index];
     if (target?.previewUrl) {
       URL.revokeObjectURL(target.previewUrl);
@@ -146,6 +152,7 @@ export default function FarmProfileSettingTab({
   };
 
   const handleAddExternalUrl = () => {
+    // Chỉ chấp nhận URL http(s) hợp lệ để thêm ảnh từ liên kết ngoài.
     const trimmed = urlInput.trim();
     if (!trimmed) return;
     if (!/^https?:\/\/.+/i.test(trimmed)) return;

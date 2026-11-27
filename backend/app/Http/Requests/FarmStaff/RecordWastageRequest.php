@@ -8,11 +8,13 @@ class RecordWastageRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        // FormRequest này không tự áp dụng kiểm tra quyền; tuyến có thể kiểm soát quyền riêng.
         return true;
     }
 
     public function rules(): array
     {
+        // Chỉ cho phép loại phiếu được hỗ trợ, số lượng dương và lý do có giới hạn độ dài.
         return [
             'loai_bien_dong' => ['required', 'in:Xuat_huy,Dieu_chinh'],
             'so_luong'       => ['required', 'numeric', 'gt:0'],
@@ -22,6 +24,7 @@ class RecordWastageRequest extends FormRequest
 
     public function messages(): array
     {
+        // Trả thông báo tiếng Việt gắn với các trường hợp nhập liệu thường gặp.
         return [
             'loai_bien_dong.required' => 'Vui lòng chọn loại phiếu kiểm kho.',
             'loai_bien_dong.in'       => 'Loại biến động kho không hợp lệ.',

@@ -25,6 +25,7 @@ class SalesOrderProcessingService
 
     public function confirmOrder(int $orderId, int $staffId): DonHang
     {
+        // Khóa đơn trong transaction để phê duyệt và xuất kho không bị chạy trùng.
         return DB::transaction(function () use ($orderId, $staffId): DonHang {
             $order = DonHang::query()
                 ->whereKey($orderId)
@@ -78,6 +79,7 @@ class SalesOrderProcessingService
             }
 
             foreach ($details as $detail) {
+                // Chỉ phân bổ phần còn thiếu nếu dòng đã có allocation trước đó.
                 $allocatedQuantity = (float) PhanBoLoHang::query()
                     ->where('Ma_ct_don_hang', $detail->Ma_ct_don_hang)
                     ->sum('So_luong_xuat');
@@ -113,6 +115,7 @@ class SalesOrderProcessingService
 
     public function confirmCodCollection(int $orderId): DonHang
     {
+        // Xác nhận thu tiền COD theo đúng thời điểm nhân viên ghi nhận.
         return DB::transaction(function () use ($orderId): DonHang {
             $order = DonHang::query()
                 ->whereKey($orderId)

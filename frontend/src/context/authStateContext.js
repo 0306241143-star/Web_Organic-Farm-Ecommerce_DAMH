@@ -1,4 +1,4 @@
-/* Internal React context shared by the authentication provider and hook. */
+/* React context nội bộ dùng chung cho AuthProvider và useAuth. */
 import { createContext } from "react";
 
 const AuthContext = createContext(null);

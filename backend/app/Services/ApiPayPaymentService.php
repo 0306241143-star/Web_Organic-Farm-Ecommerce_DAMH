@@ -18,6 +18,7 @@ class ApiPayPaymentService
      */
     public function configurationStatus(): array
     {
+        // Kiểm tra cấu hình ngân hàng trước để tránh lộ thông tin đăng nhập.
         $bankConfigured = is_string(config('services.apipay.bank_public_id'))
             && config('services.apipay.bank_public_id') !== '';
         $paymentConfigured = $bankConfigured
@@ -30,6 +31,7 @@ class ApiPayPaymentService
             && is_string(config('services.apipay.webhook_url'))
             && config('services.apipay.webhook_url') !== '';
 
+        // Chỉ báo trạng thái sẵn sàng dựa trên cặp khóa thanh toán và webhook.
         return [
             'bank_configured' => $bankConfigured,
             'payment_configured' => $paymentConfigured,
@@ -40,6 +42,7 @@ class ApiPayPaymentService
 
     public function createPaymentRequest(string $bankPublicId, int $amount, string $content): array
     {
+        // Gửi yêu cầu tạo thanh toán sang API của ApiPay.
         $response = $this->request('post', 'payment-requests', [
             'bankPublicId' => $bankPublicId,
             'amount' => (string) $amount,
@@ -47,6 +50,7 @@ class ApiPayPaymentService
         ]);
 
         $data = $response['data'] ?? null;
+        // Từ chối phản hồi thiếu mã thanh toán, URL thanh toán hoặc URL QR hợp lệ.
         if (
             ! is_array($data)
             || ! is_string($data['publicId'] ?? null)
@@ -69,9 +73,11 @@ class ApiPayPaymentService
 
     public function getPaymentRequest(string $publicId): array
     {
+        // Truy vấn trạng thái thanh toán bằng mã công khai được sinh trước đó.
         $response = $this->request('get', 'payment-requests/'.rawurlencode($publicId));
         $data = $response['data'] ?? null;
 
+        // Chỉ nhận trạng thái và URL thuộc đúng miền của ApiPay.
         if (
             ! is_array($data)
             || ! is_string($data['status'] ?? null)
@@ -86,6 +92,7 @@ class ApiPayPaymentService
 
     private function request(string $method, string $path, array $payload = []): array
     {
+        // Đọc khóa API phía máy chủ; khóa không được gửi lại cho giao diện.
         $accessKey = config('services.apipay.access_key');
         $secretKey = config('services.apipay.secret_key');
         $baseUrl = rtrim((string) config('services.apipay.api_base_url'), '/');
@@ -94,12 +101,14 @@ class ApiPayPaymentService
             throw new RuntimeException('ApiPay access key and secret key are not configured.');
         }
 
+        // ApiPay dùng cặp khóa truy cập trong header xác thực HTTP.
         $authorization = base64_encode($accessKey.':'.$secretKey);
         $request = Http::baseUrl($baseUrl)
             ->acceptJson()
             ->withToken($authorization)
             ->timeout(20);
 
+        // Chọn đúng phương thức HTTP theo hành động gọi API.
         $response = $method === 'post'
             ? $request->post($path, $payload)
             : $request->get($path);
@@ -108,6 +117,7 @@ class ApiPayPaymentService
             throw new RuntimeException('ApiPay request failed with HTTP status '.$response->status().'.');
         }
 
+        // Chỉ chấp nhận phản hồi JSON để tránh xử lý dữ liệu không hợp lệ.
         $json = $response->json();
         if (! is_array($json)) {
             throw new RuntimeException('ApiPay returned an invalid JSON response.');

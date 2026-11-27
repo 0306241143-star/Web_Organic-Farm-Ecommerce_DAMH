@@ -68,6 +68,7 @@ export default function FefoBatchTable({ batches = [], loading = false }) {
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
                 {batches.map((batch) => {
+                  // Tính phần trăm tồn còn và nhãn đặc biệt cho lô đã quá hạn.
                   const expired =
                     batch.days_until_expiry < 0 && batch.remaining_quantity > 0;
                   const initialQty = Number(batch.initial_quantity || 0);

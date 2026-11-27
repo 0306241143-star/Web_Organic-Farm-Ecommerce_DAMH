@@ -39,10 +39,12 @@ export default function AddressDistancePicker({
   const displayOrigin = quote?.origin_name || originName;
 
   const handleFieldChange = (field, value) => {
+    // Cập nhật từng trường địa chỉ và xóa kết quả khoảng cách cũ khi địa chỉ thay đổi.
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCreateAddress = async (e) => {
+    // Lưu địa chỉ mới và trả nó về form đặt hàng để tiếp tục thanh toán.
     e.preventDefault();
     if (saving) return;
 

@@ -49,6 +49,7 @@ export default function ForgotPasswordPage() {
   const [resetSuccessMessage, setResetSuccessMessage] = useState("");
   const [resetFieldErrors, setResetFieldErrors] = useState({});
 
+  // Kiểm tra email trước khi gọi API để phản hồi nhanh những lỗi cơ bản ở phía trình duyệt.
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
     setRequestErrorMessage("");

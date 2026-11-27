@@ -43,12 +43,14 @@ class InventoryFefoController extends Controller
 
     public function expiringBatches(Request $request): JsonResponse
     {
+        // Xác thực tham số phân trang trước khi tìm lô trong cửa sổ cảnh báo.
         $validated = $request->validate([
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
         $lastWarningDate = now()->addDays(self::EXPIRY_WARNING_DAYS)->toDateString();
+        // Chỉ lấy lô còn hàng, còn hạn và chưa được dùng cho Flash Sale đang hoạt động.
         $batches = $this->baseQuery()
             ->whereIn('Trang_thai', ['Con_hang', 'Sap_het_han'])
             ->where('So_luong_con_lai', '>', 0)

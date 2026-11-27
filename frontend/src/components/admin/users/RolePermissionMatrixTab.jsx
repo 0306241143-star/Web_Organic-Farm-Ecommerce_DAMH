@@ -23,6 +23,7 @@ export default function RolePermissionMatrixTab({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Tải và đánh dấu các quyền đang được gán cho vai trò được chọn.
     if (roles.length > 0 && !selectedRoleId) {
       // Mặc định mở vai trò Farm_Staff (3) hoặc Sales (2) để Admin dễ cấu hình
       const defaultRole = roles.find((r) => r.id === 3) || roles[0];
@@ -34,6 +35,7 @@ export default function RolePermissionMatrixTab({
   const activeRole = roles.find((r) => Number(r.id) === Number(selectedRoleId));
 
   const handleSelectRole = (role) => {
+    // Chọn vai trò sẽ làm bộ quyền cần lưu thay đổi theo vai trò đó.
     setSelectedRoleId(role.id);
     setDraftPermissionIds(role.permission_ids || []);
   };

@@ -1,4 +1,4 @@
-/* Restricts nested routes to users with one of the allowed roles (RBAC - ). */
+/* Kiểm tra vai trò RBAC cho route con và điều hướng về khu vực phù hợp. */
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 

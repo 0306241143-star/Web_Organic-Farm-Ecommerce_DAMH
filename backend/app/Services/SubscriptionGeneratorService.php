@@ -24,6 +24,7 @@ class SubscriptionGeneratorService
 
     public function registerSubscription(int $userId, array $validated): DangKyGoi
     {
+        // Ưu tiên địa chỉ hiện có; địa chỉ mới cần geocoding trước khi lưu.
         $shippingAddress = $validated['shipping_address'] ?? null;
         $address = isset($validated['address_id'])
             ? DiaChiGiaoHang::query()
@@ -34,6 +35,7 @@ class SubscriptionGeneratorService
         $coordinates = null;
 
         if ($shippingAddress !== null) {
+            // Idempotency key ngăn người dùng tạo hai gói khác nhau với cùng yêu cầu.
             $existingRegistration = DangKyGoi::query()
                 ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
                 ->first();
@@ -50,6 +52,7 @@ class SubscriptionGeneratorService
                 ]);
 
                 try {
+                    // Xác định tọa độ giao hàng để các bước sau tính khoảng cách chính xác.
                     $coordinates = $this->geocoder->geocode($fullAddress);
                 } catch (ConnectionException|RuntimeException $exception) {
                     Log::warning('Goong could not geocode a customer subscription address.', [
@@ -72,6 +75,7 @@ class SubscriptionGeneratorService
             $shippingAddress,
             $coordinates
         ): DangKyGoi {
+            // Khóa bản đăng ký để xử lý song song cùng idempotency key chỉ tạo một bản ghi.
             $existing = DangKyGoi::query()
                 ->where('Yeu_cau_idempotency', $validated['idempotency_key'])
                 ->lockForUpdate()
@@ -140,6 +144,7 @@ class SubscriptionGeneratorService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Tính ngày kết thúc theo chu kỳ tháng và loại trừ ngày cuối dư.
             $startDate = CarbonImmutable::createFromFormat('!Y-m-d', $validated['start_date']);
             $endDate = $startDate
                 ->addMonthsNoOverflow((int) $package->Ky_han_thang)

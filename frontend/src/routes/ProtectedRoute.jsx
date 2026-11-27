@@ -1,4 +1,4 @@
-/* Redirects unauthenticated users or locked accounts to the login page. */
+/* Chặn người chưa đăng nhập và tài khoản bị khóa khỏi route cần xác thực. */
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 

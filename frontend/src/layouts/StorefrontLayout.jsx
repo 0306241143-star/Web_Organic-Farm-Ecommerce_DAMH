@@ -20,6 +20,7 @@ export default function StorefrontLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Đóng modal xong thì đưa người dùng khỏi route mẫu /login hoặc /register.
   const handleCloseLoginModal = () => {
     closeLoginModal();
     if (location.pathname === "/login") {
@@ -41,6 +42,7 @@ export default function StorefrontLayout() {
     }
   };
 
+  // Trang giỏ hàng và thanh toán cần vùng cuộn tối đa nên ẩn footer để tránh chèn nội dung.
   const hideFooter =
     location.pathname === "/cart" ||
     location.pathname.startsWith("/cart/") ||

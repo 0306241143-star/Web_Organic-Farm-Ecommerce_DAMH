@@ -17,6 +17,7 @@ class LoginRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        // Cho phép gửi thông tin đăng nhập; việc xác thực được thực hiện trong authenticate().
         return true;
     }
 
@@ -27,6 +28,7 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
+        // Chỉ nhận email hợp lệ và mật khẩu dạng chuỗi trước khi thử đăng nhập.
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
@@ -40,8 +42,10 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
+        // Chặn thử đăng nhập quá nhiều lần trước khi kiểm tra thông tin xác thực.
         $this->ensureIsNotRateLimited();
 
+        // Nếu thông tin sai, tăng bộ đếm giới hạn; nếu đúng, xóa bộ đếm của khóa hiện tại.
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
@@ -60,10 +64,12 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
+        // Cho phép tiếp tục khi chưa vượt quá 5 lần thử trong khoảng giới hạn.
         if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
+        // Phát sự kiện khóa đăng nhập và trả thời gian còn phải chờ cho người dùng.
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
@@ -81,6 +87,7 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
+        // Kết hợp email đã chuẩn hóa với IP để giới hạn riêng từng nguồn đăng nhập.
         return Str::transliterate(Str::lower($this->input('email')).'|'.$this->ip());
     }
 }

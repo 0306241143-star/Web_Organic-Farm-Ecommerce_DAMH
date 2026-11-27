@@ -20,6 +20,7 @@ function formatShortDate(date) {
 }
 
 function TrendChart({ series, lines, label }) {
+  // Quy đổi dữ liệu chuỗi thời gian thành toạ độ SVG trong khung biểu đồ.
   const plotWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
   const plotHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
   const maxValue = Math.max(
