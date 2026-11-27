@@ -12,11 +12,13 @@ class StoreBatchRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        // FormRequest này không tự áp dụng kiểm tra quyền; tuyến có thể kiểm soát quyền riêng.
         return true;
     }
 
     protected function prepareForValidation(): void
     {
+        // Chuyển các tên trường giao diện sang tên thuộc tính hệ thống khi chưa có giá trị tương ứng.
         $mergeData = [];
 
         if ($this->has('plot_id') && ! $this->has('Ma_lo_canh_tac')) {
@@ -40,12 +42,14 @@ class StoreBatchRequest extends FormRequest
         }
 
         if (! empty($mergeData)) {
+            // Chỉ bổ sung các bí danh đã nhận, không ghi đè trường hệ thống do khách gửi.
             $this->merge($mergeData);
         }
     }
 
     public function rules(): array
     {
+        // Bảo đảm lô canh tác tồn tại, ngày tháng hợp lệ và sản lượng nằm trong giới hạn.
         return [
             'Ma_lo_canh_tac'     => ['required', 'integer', 'exists:lo_canh_tac,Ma_lo_canh_tac'],
             'Ngay_thu_hoach'     => ['required', 'date', 'before_or_equal:today'],
@@ -58,6 +62,7 @@ class StoreBatchRequest extends FormRequest
 
     public function messages(): array
     {
+        // Dùng thông báo tiếng Việt để chỉ rõ lỗi của từng trường thu hoạch.
         return [
             'Ma_lo_canh_tac.required'              => 'Vui lòng chọn lô canh tác cần thu hoạch.',
             'Ma_lo_canh_tac.exists'                => 'Lô canh tác không tồn tại trên hệ thống.',

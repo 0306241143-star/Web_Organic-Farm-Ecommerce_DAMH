@@ -11,6 +11,7 @@ export default function StockAlertPanel({
 }) {
   const [replacementResults, setReplacementResults] = useState({});
 
+  // Tải danh sách thay thế cho từng dòng thiếu hàng và lưu kết quả theo từng đơn.
   useEffect(() => {
     let active = true;
     Promise.all(
@@ -37,6 +38,7 @@ export default function StockAlertPanel({
       }
     });
 
+    // Tránh cập nhật state nếu panel thay đổi hoặc bị gỡ trước khi các request hoàn tất.
     return () => {
       active = false;
     };

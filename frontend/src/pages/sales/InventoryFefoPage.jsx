@@ -31,6 +31,7 @@ export default function InventoryFefoPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  // Tải tồn kho và cảnh báo định kỳ cùng nhau để bảng FEFO có trạng thái đầy đủ.
   const fetchInventoryData = useCallback(async (isSilent = false) => {
     const startedAt = Date.now();
     if (!isSilent) setLoading(true);

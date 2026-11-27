@@ -18,6 +18,7 @@ class RegisteredUserController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Kiểm tra dữ liệu đăng ký, tính duy nhất và quy tắc độ mạnh của mật khẩu.
         $validated = $request->validate([
             'name'     => ['required', 'string', 'max:150'],
             'email'    => ['required', 'string', 'lowercase', 'email', 'max:150', 'unique:nguoi_dung,Email'],
@@ -33,8 +34,10 @@ class RegisteredUserController extends Controller
             'password.confirmed' => 'Xác nhận mật khẩu không trùng khớp.',
         ]);
 
+        // Gán vai trò khách hàng mặc định khi không tìm thấy bản ghi vai trò tương ứng.
         $customerRole = VaiTro::where('Ten_vai_tro', 'Customer')->value('Ma_vai_tro') ?? 4;
 
+        // Tạo tài khoản đang hoạt động với mật khẩu đã băm.
         $user = NguoiDung::create([
             'Ma_vai_tro'      => $customerRole,
             'Ho_ten'          => $validated['name'],
@@ -44,6 +47,7 @@ class RegisteredUserController extends Controller
             'Trang_thai'      => 'Hoat_dong',
         ]);
 
+        // Phát sự kiện đăng ký để các listener có thể thực hiện xử lý kế tiếp.
         event(new Registered($user));
 
         $token = $user->createToken('auth_token')->plainTextToken;

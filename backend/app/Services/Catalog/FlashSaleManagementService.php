@@ -17,12 +17,14 @@ class FlashSaleManagementService
 {
     public function create(int $staffId, array $validated): ChuongTrinhFlashSale
     {
+        // Tạo campaign và từng dòng quota trong transaction để rollback hoàn toàn nếu có lô sai.
         return DB::transaction(function () use ($staffId, $validated): ChuongTrinhFlashSale {
             $start = Carbon::parse($validated['start_time']);
             $end = Carbon::parse($validated['end_time']);
             $items = collect($validated['items']);
             $batchIds = $items->pluck('batch_id')->map(fn ($id) => (int) $id)->all();
 
+            // Khóa lô ngay khi kiểm tra để không có hai chiến dịch thay đổi cùng quota.
             $batches = LoHang::query()
                 ->whereIn('Ma_lo_hang', $batchIds)
                 ->with('loCanhTac.sanPham')
@@ -44,6 +46,7 @@ class FlashSaleManagementService
                     ->where('Thoi_gian_ket_thuc', '>', $start))
                 ->exists();
 
+            // Không cho cùng lô tham gia hai Flash Sale có khoảng thời gian giao nhau.
             if ($conflictingBatch) {
                 throw ValidationException::withMessages([
                     'items' => 'Lô hàng đã thuộc một chương trình Flash Sale có thời gian giao nhau.',
@@ -51,6 +54,7 @@ class FlashSaleManagementService
             }
 
             foreach ($items as $item) {
+                // Lô Flash Sale phải còn hàng, đủ quota và thuộc cửa sổ sắp hết hạn.
                 $batch = $batches->get((int) $item['batch_id']);
                 $product = $batch->loCanhTac?->sanPham;
                 $stock = (float) $batch->So_luong_con_lai;

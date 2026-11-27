@@ -44,6 +44,7 @@ class OrderCreationService
      */
     public function createRetailOrder(int $userId, array $validated): array
     {
+        // Bắt buộc địa chỉ thuộc người đặt để tránh tham chiếu địa chỉ người khác.
         $address = DiaChiGiaoHang::query()
             ->where('Ma_dia_chi', (int) $validated['address_id'])
             ->where('Ma_nguoi_dung', $userId)
@@ -62,6 +63,7 @@ class OrderCreationService
         }
 
         try {
+            // Ước tính khoảng cách và phí trước khi mở transaction ghi đơn.
             $delivery = $this->shipping->estimate($address);
         } catch (ConnectionException|RuntimeException $exception) {
             throw new ShippingEstimationException(
@@ -82,6 +84,7 @@ class OrderCreationService
             $requestedPoints,
             $validated
         ): DonHang {
+            // Khóa tài khoản, giỏ và tồn để áp dụng điểm và FEFO an toàn.
             $this->rewards->lockCustomer($userId);
             $availablePoints = max(0, $this->rewards->balance($userId));
             $lockedCart = GioHang::query()
@@ -97,6 +100,7 @@ class OrderCreationService
 
             $subtotal = round((float) collect($items)->sum('line_total'), 2);
             $redemption = $this->rewards->calculateRedemption($requestedPoints, $availablePoints, $subtotal);
+            // Tổng tiền phải nằm trong giới hạn thanh toán trực tuyến.
             $total = (int) round($subtotal - $redemption['points_discount'] + $delivery['shipping_fee']);
 
             if ($total < 1 || $total > 300_000_000) {
@@ -120,6 +124,7 @@ class OrderCreationService
             ]);
 
             foreach ($items as $item) {
+                // Lưu chi tiết và giữ liên kết với Flash Sale nếu dòng được áp giá khuyến mãi.
                 $detail = ChiTietDonHang::query()->create([
                     'Ma_don_hang' => $createdOrder->Ma_don_hang,
                     'Ma_san_pham' => $item['id'],

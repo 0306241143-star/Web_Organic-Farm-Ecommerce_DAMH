@@ -147,6 +147,7 @@ export default function SubscriptionRegisterPage() {
   useEffect(() => {
     let active = true;
 
+    // Chế độ xem nội bộ chỉ nạp gói mẫu; khách hàng thật nạp thêm địa chỉ và phương án thanh toán.
     const loadData = isInternalPreview
       ? Promise.all([
         storefrontApi.getSubscriptions(),
@@ -330,6 +331,7 @@ export default function SubscriptionRegisterPage() {
     }
   };
 
+  // Tạo đăng ký bằng khóa idempotency để tránh nhân đôi gói khi người dùng bấm nhiều lần.
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isInternalPreview) {

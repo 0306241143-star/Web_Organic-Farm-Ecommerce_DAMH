@@ -1,3 +1,4 @@
+// Các hàm gọi API danh mục, gói nông sản và dữ liệu cửa hàng công khai.
 import axiosClient from "./axiosClient";
 
 let categoriesCache = null;

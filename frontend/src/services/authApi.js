@@ -1,4 +1,4 @@
-/* API calls for registration, authentication, and password recovery. */
+/* Các hàm gọi API đăng ký, xác thực phiên và khôi phục mật khẩu. */
 import axiosClient from "./axiosClient";
 
 export const authApi = {

@@ -3,6 +3,7 @@ import { ExternalLink, FileText, X } from "lucide-react";
 
 export default function MediaViewer({ media, onClose }) {
   useEffect(() => {
+    // Hỗ trợ đóng trình xem media bằng phím Escape.
     if (!media) return undefined;
 
     const previousOverflow = document.body.style.overflow;

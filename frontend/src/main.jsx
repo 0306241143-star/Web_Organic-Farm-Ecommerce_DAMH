@@ -1,3 +1,4 @@
+// Kết nối React vào root DOM và bật kiểm tra nghiêm ngặt trong development.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

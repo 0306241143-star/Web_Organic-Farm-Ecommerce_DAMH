@@ -10,6 +10,7 @@ export default function ApiTestPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [result, setResult] = useState(null);
 
+  // Dùng chung luồng gọi API để chuẩn hóa trạng thái lỗi và validation của các thao tác kiểm thử.
   const runRequest = async (request) => {
     setFieldErrors({});
     setResult(null);

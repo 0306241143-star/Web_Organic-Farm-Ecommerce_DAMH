@@ -1,4 +1,4 @@
-/* Internal React context shared by the cart provider and hook. */
+/* React context nội bộ dùng chung cho CartProvider và useCart. */
 import { createContext } from "react";
 
 const CartContext = createContext(null);

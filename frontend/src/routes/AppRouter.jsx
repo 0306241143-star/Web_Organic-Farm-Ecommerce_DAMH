@@ -1,4 +1,4 @@
-/* Declares routes for authentication and the five application areas with lazy code-splitting for maximum speed. */
+/* Khai báo route xác thực, cửa hàng và các khu vực nghiệp vụ; tách trang bằng lazy loading. */
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -8,7 +8,7 @@ import RoleGuard from "./RoleGuard";
 import CatalogManagePage from "../pages/admin/CatalogManagePage";
 import InventoryWastagePage from "../pages/farm/InventoryWastagePage";
 
-// Lazy-loaded pages for bundle splitting & ultra-fast initial page loads
+// Tải trang theo nhu cầu để giảm dung lượng ban đầu.
 const AdminDashboardPage = lazy(() => import("../pages/admin/AdminDashboardPage"));
 const SystemSettingsPage = lazy(() => import("../pages/admin/SystemSettingsPage"));
 const UserManagementPage = lazy(() => import("../pages/admin/UserManagementPage"));
@@ -45,6 +45,7 @@ export default function AppRouter() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          {/* Nhóm route công khai và chức năng khách hàng trong bố cục cửa hàng. */}
           <Route element={<StorefrontLayout />}>
             <Route index element={<HomePage />} />
             <Route path="products" element={<ProductCatalogPage />} />
@@ -75,6 +76,7 @@ export default function AppRouter() {
             </Route>
           </Route>
 
+          {/* Nhóm route quản trị nghiệp vụ; các guard kiểm tra đăng nhập và vai trò. */}
           <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
               <Route element={<RoleGuard roles={["farm_staff"]} />}>
@@ -99,6 +101,7 @@ export default function AppRouter() {
             </Route>
           </Route>
 
+          {/* Chỉ bật trang kiểm thử API ở môi trường development. */}
           {import.meta.env.DEV && <Route path="test-api" element={<ApiTestPage />} />}
         </Routes>
       </Suspense>

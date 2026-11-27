@@ -17,6 +17,7 @@ class SalesComplaintResolutionService
 
     public function receive(int $claimId, int $staffId): KhieuNai
     {
+        // Tiếp nhận khiếu nại atomically để hai nhân viên không cùng xử lý.
         return DB::transaction(function () use ($claimId, $staffId): KhieuNai {
             $claim = KhieuNai::query()
                 ->whereKey($claimId)
@@ -40,6 +41,7 @@ class SalesComplaintResolutionService
 
     public function resolve(int $claimId, int $staffId, array $data): KhieuNai
     {
+        // Giải quyết hồ sơ, hoàn tiền hoặc giao bù trong một transaction.
         return DB::transaction(function () use ($claimId, $staffId, $data): KhieuNai {
             $claim = KhieuNai::query()
                 ->whereKey($claimId)
@@ -95,6 +97,7 @@ class SalesComplaintResolutionService
 
     private function createRefund(KhieuNai $claim, DonHang $order, float $amount): HoanTien
     {
+        // Hoàn tiền không được âm hoặc vượt tổng tiền đơn gốc.
         if ($amount <= 0 || $amount > (float) $order->Tong_tien) {
             throw ValidationException::withMessages([
                 'so_tien_hoan' => 'Số tiền hoàn phải lớn hơn 0 và không vượt quá tổng tiền đơn hàng.',
@@ -108,6 +111,7 @@ class SalesComplaintResolutionService
             ->lockForUpdate()
             ->first();
 
+        // Chỉ hoàn trên giao dịch thanh toán thành công gần nhất.
         if (! $payment) {
             throw ValidationException::withMessages([
                 'phuong_an_xu_ly' => 'Không tìm thấy giao dịch thanh toán thành công để ghi nhận hoàn tiền.',
@@ -120,6 +124,7 @@ class SalesComplaintResolutionService
             ->sum('So_tien');
         $remainingPaidAmount = round((float) $payment->So_tien - $alreadyRefunded, 2);
 
+        // Trừ cả hồ sơ hoàn đang chờ xử lý để tránh hoàn trùng hoặc vượt số đã thanh.
         if ($amount > $remainingPaidAmount) {
             throw ValidationException::withMessages([
                 'so_tien_hoan' => 'Số tiền hoàn vượt quá số tiền khách đã thanh toán còn có thể hoàn.',
@@ -140,6 +145,7 @@ class SalesComplaintResolutionService
         int $staffId,
         array $items
     ): DonHang {
+        // Đảm bảo mọi dòng giao bù đều thuộc đúng đơn gốc.
         $details = ChiTietDonHang::query()
             ->where('Ma_don_hang', $originalOrder->Ma_don_hang)
             ->whereIn('Ma_ct_don_hang', collect($items)->pluck('chi_tiet_don_hang_id'))
@@ -172,6 +178,7 @@ class SalesComplaintResolutionService
         ]);
 
         foreach ($items as $item) {
+            // Số lượng bù chỉ được phép trong phạm vi số lượng khách đã mua.
             $detail = $details->get((int) $item['chi_tiet_don_hang_id']);
             $quantity = (float) $item['so_luong_bu'];
 

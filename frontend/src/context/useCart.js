@@ -1,4 +1,4 @@
-/* Reads the current shopping cart context. */
+/* Truy cập ngữ cảnh giỏ hàng hiện tại; yêu cầu sử dụng trong CartProvider. */
 import { useContext } from "react";
 import CartContext from "./cartStateContext";
 

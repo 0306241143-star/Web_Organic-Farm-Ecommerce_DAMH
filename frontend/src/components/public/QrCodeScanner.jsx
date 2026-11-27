@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, CameraOff, Search } from "lucide-react";
 
+// Chuẩn hóa cả mã QR thô lẫn đường dẫn truy xuất thành mã ngắn để tra cứu.
 function extractTraceCode(value) {
   const rawValue = String(value || "").trim();
   if (!rawValue) return "";
@@ -38,6 +39,7 @@ export default function QrCodeScanner({ onCodeScanned }) {
   const frameRef = useRef(null);
   const scanningRef = useRef(false);
 
+  // Dừng vòng quét và giải phóng camera để tránh rò rỉ stream khi chuyển trạng thái.
   const stopCamera = () => {
     scanningRef.current = false;
     if (frameRef.current !== null) {
@@ -50,12 +52,14 @@ export default function QrCodeScanner({ onCodeScanned }) {
     setIsScanning(false);
   };
 
+  // Dọn dẹp requestAnimationFrame và luồng camera khi component bị gỡ khỏi giao diện.
   useEffect(() => () => {
     scanningRef.current = false;
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
+  // Chặn submit rỗng và chuyển mã hợp lệ sang trang kết quả truy xuất.
   const submitCode = (event) => {
     event.preventDefault();
     const code = extractTraceCode(manualCode);
@@ -69,6 +73,7 @@ export default function QrCodeScanner({ onCodeScanned }) {
     onCodeScanned(code);
   };
 
+  // Khởi động camera từng frame và dừng ngay khi phát hiện mã QR hợp lệ.
   const startCamera = async () => {
     if (scanningRef.current) return;
     setErrorMessage("");

@@ -65,6 +65,7 @@ export default function SalesOrderPage() {
   );
   const [detailSubTab, setDetailSubTab] = useState("items");
 
+  // Tải đơn hàng cùng cảnh báo tồn kho để trang có đủ dữ liệu điều phối và FEFO.
   const fetchOrders = useCallback(
     async (isSilent = false, announceRefresh = false) => {
       if (!isSilent) setLoading(true);

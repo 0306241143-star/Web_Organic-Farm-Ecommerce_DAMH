@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+// Tạo response kiểm tra kết nối theo cùng cấu trúc JSON chuẩn của API.
 $standardOk = fn(string $message, mixed $data = null) => response()->json([
     'success'    => true,
     'message'    => $message,
@@ -16,9 +17,12 @@ $standardOk = fn(string $message, mixed $data = null) => response()->json([
     'errors'     => null,
 ], 200);
 
+// Endpoint đơn giản để kiểm tra API có phản hồi hay không.
 Route::get('/ping', fn() => $standardOk('Kết nối Laravel API thành công.'));
 
+// Chỉ đăng ký các endpoint phục vụ kiểm thử ở môi trường local và testing.
 if (app()->environment(['local', 'testing'])) {
+    // Kiểm tra API nhận JSON và trả lỗi validation theo định dạng chuẩn.
     Route::post('/test/json', function (Request $request) use ($standardOk) {
         $validated = $request->validate([
             'ten_san_pham' => ['required', 'string', 'max:100'],
@@ -33,6 +37,7 @@ if (app()->environment(['local', 'testing'])) {
         return $standardOk('Nhận dữ liệu JSON thành công.', $validated);
     });
 
+    // Kiểm tra upload multipart, giới hạn loại tệp/dung lượng và metadata trả về.
     Route::post('/test/upload', function (Request $request) use ($standardOk) {
         $request->validate([
             'mo_ta' => ['required', 'string', 'max:255'],
@@ -54,13 +59,14 @@ if (app()->environment(['local', 'testing'])) {
         ]);
     });
 
+    // Các endpoint này giả lập mã HTTP lỗi để kiểm tra exception handler.
     Route::get('/test/error-401', fn() => abort(401));
     Route::get('/test/error-403', fn() => abort(403));
     Route::get('/test/error-500', function () {
         throw new \RuntimeException('Giả lập lỗi hệ thống nội bộ 500 để kiểm thử Exception Handler.');
     });
 
-    // Các endpoint kiểm thử phân quyền RBAC (chỉ khả dụng trong local/testing)
+    // Các route kiểm tra middleware phải chặn người dùng không đúng vai trò.
     Route::middleware(['auth:sanctum', 'role:admin'])->get('/test/rbac/admin', function () use ($standardOk) {
         return $standardOk('Quyền Quản trị viên (Admin) hợp lệ.');
     });
@@ -78,19 +84,22 @@ if (app()->environment(['local', 'testing'])) {
     });
 }
 
-// Các API xác thực người dùng công khai (CV04.3 - CV04.5)
+// Các API xác thực công khai, không yêu cầu access token.
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
 Route::post('/reset-password', [NewPasswordController::class, 'store']);
 
-// Các API yêu cầu đăng nhập qua Sanctum Token (CV04.4 & CV04.6)
+// Gom các endpoint cần access token Sanctum vào cùng middleware xác thực.
 Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
+    // Thu hồi token hiện tại để kết thúc phiên đăng nhập.
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
 
+    // Trả thông tin người dùng và quyền của phiên hiện tại.
     Route::get('/user', function (Request $request) use ($standardOk) {
         $user = $request->user();
 
+        // Thu hồi token ngay nếu tài khoản bị khóa sau khi người dùng đăng nhập.
         if ($user->Trang_thai === 'Khoa') {
             $user->currentAccessToken()?->delete();
 
@@ -104,9 +113,11 @@ Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
             ], 403);
         }
 
+        // Nạp vai trò và quyền khi chưa có sẵn để tránh truy vấn lặp.
         $user->loadMissing('vaiTro.quyens');
         $roleSlug = $user->getRoleSlug();
 
+        // Chuẩn hóa dữ liệu hồ sơ và danh sách quyền cho frontend.
         return $standardOk('Lấy thông tin phiên làm việc thành công.', [
             'user' => [
                 'id'     => $user->Ma_nguoi_dung,
@@ -122,9 +133,10 @@ Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
     });
 });
 
-// Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
+// Webhook không dùng Sanctum; controller xác minh nguồn gửi bằng chữ ký HMAC.
 Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
 
+// Tách route theo vai trò/ngữ cảnh để mỗi nhóm quản lý endpoint riêng.
 require __DIR__ . '/api/public.php';
 require __DIR__ . '/api/customer.php';
 require __DIR__ . '/api/farm.php';

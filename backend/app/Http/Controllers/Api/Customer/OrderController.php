@@ -21,6 +21,7 @@ class OrderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Kiểm tra bộ lọc trạng thái, loại đơn và phân trang do khách hàng gửi.
         $validated = $request->validate([
             'status' => ['nullable', 'in:Cho_thanh_toan,Cho_xac_nhan,Da_xac_nhan,Dang_giao,Hoan_thanh,Da_huy'],
             'order_type' => ['nullable', 'in:Mua_le,Dinh_ky,Giao_bu'],
@@ -28,6 +29,7 @@ class OrderController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
+        // Chỉ truy xuất đơn thuộc khách hàng hiện tại, đồng thời áp dụng các bộ lọc tùy chọn.
         $orders = DonHang::query()
             ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
             ->when(
@@ -52,6 +54,7 @@ class OrderController extends Controller
 
     public function show(Request $request, int $orderId): JsonResponse
     {
+        // Tìm đơn cụ thể của khách hàng hiện tại để tránh lộ dữ liệu đơn người khác.
         $order = DonHang::query()
             ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
             ->where('Ma_don_hang', $orderId)
@@ -66,6 +69,7 @@ class OrderController extends Controller
 
     private function formatOrder(DonHang $order): array
     {
+        // Gom dữ liệu địa chỉ, giao hàng, gói đăng ký và hạn khiếu nại để định dạng phản hồi.
         $address = $order->diaChi;
         $delivery = $order->giaoHang;
         $registration = $order->dangKyGoi;

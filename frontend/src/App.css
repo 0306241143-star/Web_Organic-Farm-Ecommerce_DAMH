@@ -1,3 +1,4 @@
+/* Nút đếm của màn hình mẫu Vite: màu lấy từ các biến accent của theme. */
 .counter {
   font-size: 16px;
   padding: 5px 10px;
@@ -17,6 +18,7 @@
   }
 }
 
+/* Bố cục minh họa logo nhiều lớp trên trang mẫu. */
 .hero {
   position: relative;
 
@@ -56,6 +58,7 @@
   }
 }
 
+/* Căn giữa nội dung chính và thu gọn khoảng cách trên màn hình nhỏ. */
 #center {
   display: flex;
   flex-direction: column;
@@ -70,6 +73,7 @@
   }
 }
 
+/* Chia phần hướng dẫn thành các cột; chuyển thành một cột ở màn hình hẹp. */
 #next-steps {
   display: flex;
   border-top: 1px solid var(--border);
@@ -95,6 +99,7 @@
   }
 }
 
+/* Đường phân cách của khối tài liệu, chuyển từ cạnh phải xuống cạnh dưới khi responsive. */
 #docs {
   border-right: 1px solid var(--border);
 
@@ -104,6 +109,7 @@
   }
 }
 
+/* Danh sách liên kết dạng nút ở cuối khối hướng dẫn. */
 #next-steps ul {
   list-style: none;
   padding: 0;
@@ -153,6 +159,7 @@
   }
 }
 
+/* Khoảng đệm phân tách phần nội dung với chân trang. */
 #spacer {
   height: 88px;
   border-top: 1px solid var(--border);
@@ -161,6 +168,7 @@
   }
 }
 
+/* Hai dấu tick trang trí ở hai đầu thanh phân cách. */
 .ticks {
   position: relative;
   width: 100%;

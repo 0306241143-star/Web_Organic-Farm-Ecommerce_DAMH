@@ -18,6 +18,7 @@ class CartPricingService
      */
     public function priceCart(GioHang $cart, bool $lockForUpdate = false): array
     {
+        // Tải quan hệ sản phẩm một lần để snapshot giá được lấy từ dữ liệu mới nhất.
         $cart->loadMissing('chiTiets.sanPham');
         $cartItems = $cart->chiTiets
             ->filter(fn ($item) => $item->sanPham !== null)
@@ -32,6 +33,7 @@ class CartPricingService
         }
 
         if ($lockForUpdate) {
+            // Khóa dòng sản phẩm để giá và tồn không đổi trong phiên tạo đơn.
             $products = SanPham::query()
                 ->whereIn('Ma_san_pham', $productIds)
                 ->lockForUpdate()
@@ -45,6 +47,7 @@ class CartPricingService
 
         $stocks = $this->availableStockFor($productIds, $lockForUpdate);
 
+        // Tìm Flash Sale đang diễn ra, còn hạn, còn quota và lô còn khả dụng.
         $saleQuery = DB::table('chi_tiet_flash_sale as ctfs')
             ->join('chuong_trinh_flash_sale as fs', 'fs.Ma_flash_sale', '=', 'ctfs.Ma_flash_sale')
             ->join('lo_hang as lh', 'lh.Ma_lo_hang', '=', 'ctfs.Ma_lo_hang')
@@ -75,6 +78,7 @@ class CartPricingService
         }
 
         $sales = $saleQuery->get()
+            // Chỉ giữ chương trình đủ số lượng cả theo quota lẫn tồn của lô.
             ->filter(fn ($sale) => (
                 (float) $sale->So_luong_gioi_han - (float) $sale->So_luong_da_ban
             ) >= (float) $requestedQuantities->get((int) $sale->Ma_san_pham, 0))
@@ -84,6 +88,7 @@ class CartPricingService
             ->unique('Ma_san_pham')
             ->keyBy('Ma_san_pham');
 
+        // Chuẩn hóa từng dòng thành dữ liệu giá, tồn và tình trạng khả dụng.
         return $cartItems->map(function ($item) use ($stocks, $sales): array {
             $product = $item->sanPham;
             $productId = (int) $item->Ma_san_pham;

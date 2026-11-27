@@ -56,6 +56,7 @@ export default function BatchHarvestPage() {
 
 
   // Tải danh sách lô hàng thu hoạch
+  // Lấy danh sách lô thu hoạch trước khi đồng bộ lựa chọn đang mở từ URL.
   const fetchBatches = useCallback(async (isSilent = false) => {
     const startedAt = Date.now();
     if (!isSilent) setLoading(true);

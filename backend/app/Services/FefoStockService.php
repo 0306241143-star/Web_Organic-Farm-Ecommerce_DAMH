@@ -26,6 +26,7 @@ class FefoStockService
      */
     public function allocateBatches(int $productId, float $quantity, ?int $onlyBatchId = null): array
     {
+        // Số lượng xuất kho phải dương và là số hữu hạn.
         if ($quantity <= 0 || ! is_finite($quantity)) {
             throw ValidationException::withMessages([
                 'cart' => 'Số lượng cần xuất kho không hợp lệ.',
@@ -33,6 +34,7 @@ class FefoStockService
         }
 
         return DB::transaction(function () use ($productId, $quantity, $onlyBatchId): array {
+            // Trừ dần từ lô có HSD gần nhất, đồng thời khóa lô để tránh đặt hàng đồng thời.
             $remaining = round($quantity, 2);
             $allocations = [];
             $batches = $this->availableBatches($productId, true, $onlyBatchId);
@@ -60,6 +62,7 @@ class FefoStockService
             }
 
             if ($remaining > 0) {
+                // Rollback transaction nếu FEFO không còn đủ tồn để đáp ứng toàn bộ số lượng.
                 throw ValidationException::withMessages([
                     'cart' => 'Sản phẩm không còn đủ số lượng trong kho. Hãy cập nhật giỏ hàng.',
                 ]);

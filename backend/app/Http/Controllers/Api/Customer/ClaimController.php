@@ -27,10 +27,12 @@ class ClaimController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Cho phép phân trang và giới hạn kích thước trang để tránh truy vấn quá lớn.
         $validated = $request->validate([
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
+        // Chỉ lấy khiếu nại thuộc tài khoản đang đăng nhập để bảo vệ dữ liệu khách hàng.
         $claims = KhieuNai::query()
             ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
             ->with(['donHang', 'tepBangChungs', 'hoanTien'])
@@ -46,6 +48,7 @@ class ClaimController extends Controller
 
     public function show(Request $request, int $claimId): JsonResponse
     {
+        // Khóa truy vấn theo chủ sở hữu đơn khiếu nại để ngăn truy cập chéo.
         $claim = KhieuNai::query()
             ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
             ->where('Ma_khieu_nai', $claimId)
@@ -69,6 +72,7 @@ class ClaimController extends Controller
         $claim = null;
 
         try {
+            // Khóa đơn, tạo khiếu nại và ghi bằng chứng trong cùng một transaction.
             $claim = DB::transaction(function () use ($validated, $userId, $storage, $evidenceFiles, &$uploadedPaths): KhieuNai {
                 $order = DonHang::query()
                     ->where('Ma_don_hang', $validated['order_id'])
@@ -120,6 +124,7 @@ class ClaimController extends Controller
                 return $claim->load(['donHang', 'tepBangChungs', 'hoanTien']);
             });
         } catch (Throwable $exception) {
+            // Dọn các tệp đã upload nếu transaction hoặc ghi dữ liệu thất bại.
             foreach ($uploadedPaths as $path) {
                 try {
                     Storage::disk(config('filesystems.default_cloud', 'r2'))->delete($path);

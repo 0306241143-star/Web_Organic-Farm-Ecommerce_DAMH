@@ -1,4 +1,4 @@
-/* API calls for farm seasons, logs, batches, and certificates. */
+/* Các hàm gọi API mùa vụ, nhật ký canh tác, lô hàng và chứng nhận nông trại. */
 import axiosClient from "./axiosClient";
 
 let farmInfoCache = null;

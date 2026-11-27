@@ -103,6 +103,7 @@ export default function CartPage() {
   const [pendingProductIds, setPendingProductIds] = useState([]);
   const [clearingAll, setClearingAll] = useState(false);
 
+  // Chuẩn hóa dữ liệu giỏ hàng từ nhiều dạng API để các thành phần phía dưới dùng cùng một cấu trúc.
   const normalizedItems = useMemo(() => {
     return (Array.isArray(items) ? items : []).map((raw) => {
       const product = raw.product || {};
@@ -158,6 +159,7 @@ export default function CartPage() {
     });
   }, [items]);
 
+  // Tổng tiền, tổng số lượng và cảnh báo tồn kho được tính lại từ dữ liệu giỏ hàng đã chuẩn hóa.
   const { totalQuantity, subtotal, hasStockIssue } = useMemo(() => {
     let qtySum = 0;
     let moneySum = 0;

@@ -11,6 +11,7 @@ class RewardPointService
 {
     public function conversionRate(): int
     {
+        // Đọc quy đổi điểm từ cấu hình hệ thống để thống nhất với checkout.
         $configuredRate = DB::table('cau_hinh_he_thong')
             ->where('Khoa', 'diem_quy_doi_vnd')
             ->value('Gia_tri');
@@ -22,6 +23,7 @@ class RewardPointService
 
     public function balance(int $userId): int
     {
+        // Cộng dồn điểm cộng và trừ để lấy số dư hiện tại.
         return (int) DiemTichLuy::query()
             ->where('Ma_nguoi_dung', $userId)
             ->sum('So_diem');
@@ -32,6 +34,7 @@ class RewardPointService
      */
     public function lockCustomer(int $userId): NguoiDung
     {
+        // Khóa tài khoản trong transaction để hai lượt đổi điểm không vượt số dư.
         return NguoiDung::query()
             ->whereKey($userId)
             ->lockForUpdate()
@@ -40,6 +43,7 @@ class RewardPointService
 
     public function calculateRedemption(int $requestedPoints, int $availablePoints, float $subtotal): array
     {
+        // Giới hạn điểm dùng bởi số dư, yêu cầu và tổng tiền có thể quy đổi.
         $rate = $this->conversionRate();
         $maxDiscountablePoints = (int) ceil(max(0, $subtotal) / $rate);
         $pointsToUse = min(max(0, $requestedPoints), max(0, $availablePoints), $maxDiscountablePoints);
@@ -72,6 +76,7 @@ class RewardPointService
      */
     public function refundOrderPoints(DonHang $order): int
     {
+        // Không hoàn lại nếu đơn không ghi nhận điểm đã sử dụng.
         if ((int) $order->So_diem_su_dung <= 0) {
             return 0;
         }

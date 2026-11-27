@@ -20,6 +20,7 @@ class OrderCancellationService
 
     public function cancelOrder(DonHang $order, string $reason): DonHang
     {
+        // Hủy đơn, hoàn tồn và hoàn điểm trong cùng một giao dịch.
         $result = DB::transaction(function () use ($order, $reason): array {
             $userId = (int) $order->Ma_nguoi_dung;
             $this->rewards->lockCustomer($userId);
@@ -65,6 +66,7 @@ class OrderCancellationService
 
             $cancelledOrder = $lockedOrder->refresh();
             $pointsRefunded = $this->rewards->refundOrderPoints($cancelledOrder);
+            // Ghi nhận lý do hủy để truy vết ngoài dữ liệu trạng thái đơn.
             Log::info('Retail order cancelled.', [
                 'order_id' => $cancelledOrder->Ma_don_hang,
                 'reason' => $reason,
@@ -84,6 +86,7 @@ class OrderCancellationService
 
     public function expirePendingPayment(DonHang $candidate): bool
     {
+        // Chỉ hết hạn đơn chưa thanh toán của ApiPay để tránh chạm đơn đã xử lý.
         return DB::transaction(function () use ($candidate): bool {
             $this->rewards->lockCustomer((int) $candidate->Ma_nguoi_dung);
 
@@ -125,6 +128,7 @@ class OrderCancellationService
 
     private function restoreAllocatedStock(DonHang $order): float
     {
+        // Gom lượng xuất theo từng lô để cộng tồn đúng một lần mỗi lô.
         $allocations = DB::table('phan_bo_lo_hang as allocation')
             ->join('chi_tiet_don_hang as detail', 'detail.Ma_ct_don_hang', '=', 'allocation.Ma_ct_don_hang')
             ->where('detail.Ma_don_hang', $order->Ma_don_hang)

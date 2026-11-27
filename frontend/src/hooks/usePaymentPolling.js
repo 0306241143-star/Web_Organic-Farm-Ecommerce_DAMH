@@ -5,6 +5,7 @@ export default function usePaymentPolling() {
   const activePolls = useRef(0);
   const isMounted = useRef(false);
 
+  // Theo dõi mount để không cập nhật state sau khi hook đã bị gỡ.
   useEffect(() => {
     isMounted.current = true;
     return () => {

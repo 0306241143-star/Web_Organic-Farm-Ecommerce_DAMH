@@ -37,6 +37,7 @@ class CheckoutController extends Controller
 
     public function store(Request $request, ApiPayPaymentService $apiPay): JsonResponse
     {
+        // Chỉ nhận mã đơn hàng hợp lệ và kiểm tra cấu hình cổng thanh toán trước.
         $validated = $request->validate([
             'order_id' => ['required', 'integer', 'min:1'],
         ]);
@@ -52,6 +53,7 @@ class CheckoutController extends Controller
             ]);
         }
 
+        // Bảo đảm đơn thuộc đúng khách hàng và vẫn còn ở trạng thái chờ thanh toán.
         $order = DonHang::query()
             ->where('Ma_don_hang', $validated['order_id'])
             ->where('Ma_nguoi_dung', $request->user()->getAuthIdentifier())
@@ -74,6 +76,8 @@ class CheckoutController extends Controller
             ]);
         }
 
+        // Đối soát yêu cầu ApiPay đang chờ để tránh khởi tạo thanh toán trùng lặp.
+        // Tái sử dụng yêu cầu thanh toán đang mở thay vì tạo bản ghi thanh toán trùng.
         $existingPayment = ThanhToan::query()
             ->where('Ma_don_hang', $order->Ma_don_hang)
             ->where('Phuong_thuc', 'ApiPay')
@@ -106,6 +110,7 @@ class CheckoutController extends Controller
             }
 
             if (in_array($remoteStatus, ['PAID', 'COMPLETED', 'SUCCESS'], true)) {
+                // Đồng bộ thanh toán và trạng thái đơn khi ApiPay xác nhận đã thu tiền.
                 DB::transaction(function () use ($order, $existingPayment, $remotePayment): void {
                     $existingPayment->update([
                         'Ma_giao_dich_apipay' => $remotePayment['transactionId'] ?? $existingPayment->Ma_giao_dich_apipay,
@@ -139,6 +144,7 @@ class CheckoutController extends Controller
             }
         }
 
+        // Khóa đơn và kiểm tra lại số tiền, trạng thái cùng yêu cầu thanh toán đang chờ.
         $payment = DB::transaction(function () use ($order, $amount): ThanhToan {
             $lockedOrder = DonHang::query()
                 ->whereKey($order->Ma_don_hang)

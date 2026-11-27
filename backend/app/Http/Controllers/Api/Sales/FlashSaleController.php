@@ -21,6 +21,7 @@ class FlashSaleController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Kiểm tra trạng thái lọc và các tham số phân trang của chương trình.
         $validated = $request->validate([
             'status' => ['nullable', 'in:ALL,Sap_dien_ra,Dang_dien_ra,Da_ket_thuc'],
             'page' => ['nullable', 'integer', 'min:1'],
@@ -30,6 +31,7 @@ class FlashSaleController extends Controller
         $status = $validated['status'] ?? 'ALL';
         $query = ChuongTrinhFlashSale::query();
 
+        // Chuyển trạng thái giao diện thành điều kiện truy vấn theo thời gian thực.
         if ($status === 'Da_ket_thuc') {
             $query->where(fn ($campaignQuery) => $campaignQuery
                 ->where('Trang_thai', 'Da_ket_thuc')

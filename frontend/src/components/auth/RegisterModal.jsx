@@ -42,6 +42,8 @@ export default function RegisterModal({ isOpen, onClose, redirectTo = null }) {
   useEffect(() => {
     if (!isOpen) return undefined;
 
+    // Khoá cuộn trang nền và hỗ trợ đóng form bằng phím Escape.
+
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && !submitting) {
         onClose();
@@ -84,6 +86,7 @@ export default function RegisterModal({ isOpen, onClose, redirectTo = null }) {
   };
 
   const handleSubmit = async (e) => {
+    // Kiểm tra dữ liệu bắt buộc và quy tắc mật khẩu trước khi gọi API.
     e.preventDefault();
     if (submitting) return;
 

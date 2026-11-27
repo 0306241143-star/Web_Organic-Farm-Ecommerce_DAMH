@@ -1,5 +1,6 @@
 import { Image, Sprout } from "lucide-react";
 
+// Chuẩn hóa thời gian nhật ký để hiển thị thống nhất theo múi giờ và ngôn ngữ Việt Nam.
 function formatDateTime(value) {
   if (!value) return "Chưa cập nhật thời gian";
   const date = new Date(String(value).replace(" ", "T"));
@@ -11,6 +12,7 @@ function formatDateTime(value) {
 }
 
 export default function QrTraceTimeline({ entries = [] }) {
+  // Hiển thị trạng thái rỗng thay vì render một timeline không có mốc canh tác.
   if (!entries.length) {
     return (
       <p className="rounded-2xl bg-[#f8faf8] p-4 text-sm text-[#5a6357]">

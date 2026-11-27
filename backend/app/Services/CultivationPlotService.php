@@ -9,6 +9,7 @@ class CultivationPlotService
 {
     public function findLinkedBatchReason(iterable $batches): ?string
     {
+        // Dừng ở quan hệ đầu tiên để báo lý do không thể xóa lô canh tác.
         foreach ($batches as $batch) {
             $batchId = $batch->Ma_lo_hang;
             if (DB::table('phan_bo_lo_hang')->where('Ma_lo_hang', $batchId)->exists()) {
@@ -27,6 +28,7 @@ class CultivationPlotService
 
     public function deletePlotCascade(LoCanhTac $plot): void
     {
+        // Xóa toàn bộ dữ liệu phụ thuộc trong cùng transaction để tránh trạng thái thiếu nhất quán.
         DB::transaction(function () use ($plot): void {
             foreach ($plot->nhatKyCanhTacs as $log) {
                 $log->tepNhatKys()->delete();

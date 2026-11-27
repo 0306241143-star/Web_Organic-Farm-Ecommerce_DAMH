@@ -21,6 +21,7 @@ class RecurringStockAlertController extends Controller
 
     public function index(RecurringOrderStockService $stockAlerts): JsonResponse
     {
+        // Gom cảnh báo từ nhiều đơn định kỳ chờ xác nhận theo từng nhóm nhỏ.
         $alerts = [];
         DonHang::query()
             ->where('Loai_don', 'Dinh_ky')
@@ -28,6 +29,7 @@ class RecurringStockAlertController extends Controller
             ->with(['khachHang:Ma_nguoi_dung,Ho_ten', 'chiTiets.sanPham', 'chiTiets.phanBoLoHangs'])
             ->chunkById(100, function ($orders) use (&$alerts, $stockAlerts): void {
                 foreach ($orders as $order) {
+                    // Bỏ qua đơn đủ hàng; chỉ giữ đơn thực sự cần thay sản phẩm hoặc hoãn.
                     $alert = $stockAlerts->alertForOrder($order);
                     if ($alert === null) {
                         continue;
@@ -53,6 +55,7 @@ class RecurringStockAlertController extends Controller
         RecurringOrderStockService $stockAlerts,
         FefoStockService $stock
     ): JsonResponse {
+        // Đảm bảo đơn đang chờ xác nhận thuộc luồng định kỳ trước khi truy vấn dòng hàng.
         $order = $this->eligibleOrder($orderId);
         $detail = ChiTietDonHang::query()
             ->where('Ma_don_hang', $order->Ma_don_hang)
@@ -67,6 +70,7 @@ class RecurringStockAlertController extends Controller
             ]);
         }
 
+        // Chỉ gợi ý sản phẩm đang bán, cùng đơn vị và còn tồn kho đến hạn hợp lệ.
         $products = SanPham::query()
             ->where('san_pham.Trang_thai', 'Dang_ban')
             ->where('san_pham.Don_vi_tinh', $detail->sanPham?->Don_vi_tinh)
@@ -97,11 +101,13 @@ class RecurringStockAlertController extends Controller
         RecurringOrderStockService $stockAlerts,
         FefoStockService $stock
     ): JsonResponse {
+        // Chặn dữ liệu dòng thay thế sai trước khi mở transaction ghi dữ liệu.
         $validated = $request->validate([
             'detail_id' => ['required', 'integer', 'min:1'],
             'product_id' => ['required', 'integer', 'min:1'],
         ]);
 
+        // Khóa và cập nhật đơn, dòng hàng và phân bổ lô trong cùng một transaction.
         $order = DB::transaction(function () use ($orderId, $validated, $stockAlerts, $stock): DonHang {
             $order = $this->eligibleOrder($orderId, true);
             $detail = ChiTietDonHang::query()
@@ -159,6 +165,7 @@ class RecurringStockAlertController extends Controller
 
     public function postpone(int $orderId, RecurringOrderStockService $stockAlerts): JsonResponse
     {
+        // Hoãn trong transaction để tái kiểm tra thiếu hàng và tránh thay đổi đồng thời.
         $deliveryDate = DB::transaction(function () use ($orderId, $stockAlerts) {
             $order = $this->eligibleOrder($orderId, true);
             if ($stockAlerts->shortagesForOrder($order) === []) {
@@ -178,6 +185,7 @@ class RecurringStockAlertController extends Controller
 
     private function eligibleOrder(int $orderId, bool $lock = false): DonHang
     {
+        // Tùy chọn khóa bản ghi đơn để các thao tác thay thế hoặc hoãn không chạy chồng nhau.
         $order = DonHang::query()
             ->whereKey($orderId)
             ->when($lock, fn ($query) => $query->lockForUpdate())

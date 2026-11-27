@@ -1,4 +1,4 @@
-/* API calls for Admin reports, user accounts, and system settings. */
+/* Các hàm gọi API báo cáo, tài khoản người dùng và cấu hình hệ thống cho quản trị viên. */
 import axiosClient from "./axiosClient";
 
 let dashboardMetricsCache = null;

@@ -18,6 +18,7 @@ class GoongGeocodingService
      */
     public function geocode(string $address): array
     {
+        // Định vị phải được thực hiện qua thông tin cấu hình phía máy chủ.
         $apiKey = config('services.goong.api_key');
         $endpoint = config('services.goong.geocoding_url');
 
@@ -36,10 +37,12 @@ class GoongGeocodingService
             throw new RuntimeException('Goong Geocoding returned HTTP status '.$response->status().'.');
         }
 
+        // Đọc tọa độ của kết quả đầu tiên do Goong trả về.
         $location = $response->json('results.0.geometry.location');
         $latitude = is_array($location) ? ($location['lat'] ?? null) : null;
         $longitude = is_array($location) ? ($location['lng'] ?? null) : null;
 
+        // Kiểm tra cả kiểu dữ liệu và giới hạn kinh/vĩ độ trước khi trả về.
         if (
             ! is_numeric($latitude)
             || ! is_numeric($longitude)

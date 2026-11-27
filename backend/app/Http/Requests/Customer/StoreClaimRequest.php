@@ -12,19 +12,23 @@ use Illuminate\Http\UploadedFile;
 
 class StoreClaimRequest extends FormRequest
 {
+    // Giới hạn tổng dung lượng minh chứng và dung lượng riêng của từng ảnh.
     private const MAX_TOTAL_EVIDENCE_BYTES = 35 * 1024 * 1024;
 
     private const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
     public function authorize(): bool
     {
+        // FormRequest này không tự áp dụng kiểm tra quyền; tuyến có thể kiểm soát quyền riêng.
         return true;
     }
 
     public function withValidator(Validator $validator): void
     {
+        // Sau các quy tắc cơ bản, cộng dung lượng các tệp hợp lệ để giới hạn tổng tải lên.
         $validator->after(function (Validator $validator): void {
             $files = $this->file('evidence', []);
+            // Không tính tổng nếu dữ liệu minh chứng không có dạng danh sách tệp.
             if (! is_array($files)) {
                 return;
             }
@@ -42,17 +46,20 @@ class StoreClaimRequest extends FormRequest
 
     public function rules(): array
     {
+        // Kiểm tra nội dung khiếu nại và số lượng minh chứng được gửi.
         return [
             'order_id' => ['required', 'integer', 'min:1'],
             'reason' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'min:10', 'max:5000'],
             'evidence' => ['nullable', 'array', 'max:5'],
             'evidence.*' => [
+                // Chỉ nhận tệp thuộc nhóm định dạng cho phép và giới hạn dung lượng từng tệp.
                 'required',
                 'file',
                 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,video/x-m4v',
                 'max:20480',
                 function (string $attribute, mixed $file, \Closure $fail): void {
+                    // Giới hạn ảnh riêng; video vẫn theo giới hạn chung của tệp minh chứng.
                     if (! $file instanceof UploadedFile) {
                         return;
                     }

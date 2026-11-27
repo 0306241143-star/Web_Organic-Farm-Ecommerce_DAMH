@@ -1,4 +1,4 @@
-/* Shared dashboard frame with persistent sidebar only (top header removed on desktop). */
+/* Khung dashboard dùng chung: thanh sidebar cố định, không có top header trên desktop. */
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Menu, Sprout } from "lucide-react";

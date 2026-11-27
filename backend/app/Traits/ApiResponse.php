@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 trait ApiResponse
 {
+    // Mã lỗi dùng thống nhất giữa các API để frontend có thể phân loại phản hồi.
     public const ERR_BAD_REQUEST        = 'BAD_REQUEST';
     public const ERR_UNAUTHENTICATED    = 'UNAUTHENTICATED';
     public const ERR_FORBIDDEN          = 'FORBIDDEN';
@@ -27,6 +28,7 @@ trait ApiResponse
         mixed $meta = null,
         array $headers = []
     ): JsonResponse {
+        // Giữ cấu trúc response cố định để mọi endpoint thành công có cùng hợp đồng dữ liệu.
         return response()->json([
             'success'    => true,
             'message'    => $message,
@@ -45,6 +47,7 @@ trait ApiResponse
         string $message = 'Lấy danh sách dữ liệu thành công.',
         mixed $items = null
     ): JsonResponse {
+        // Ưu tiên danh sách đã được định dạng; nếu không có thì dùng items từ paginator.
         return $this->successResponse(
             message: $message,
             data: $items ?? $paginator->items(),
@@ -69,6 +72,7 @@ trait ApiResponse
         mixed $meta = null,
         array $headers = []
     ): JsonResponse {
+        // Response lỗi luôn để data rỗng và đưa thông tin lỗi vào error_code/errors.
         return response()->json([
             'success'    => false,
             'message'    => $message,

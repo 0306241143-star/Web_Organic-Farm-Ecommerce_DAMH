@@ -80,6 +80,7 @@ const navigate = useNavigate();
     let active = true;
     setLoading(true);
     setLoadError("");
+    // Chọn API và điều kiện lọc theo tab đang mở để không tải dữ liệu không cần thiết.
     const load =
       activeTab === "orders"
         ? loadOrders(1, orderStatus)

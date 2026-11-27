@@ -22,6 +22,7 @@ class ClaimResolveController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Kiểm tra từ khóa, trạng thái và phân trang trước khi truy vấn khiếu nại.
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'in:Cho_xu_ly,Dang_xu_ly,Da_giai_quyet,Tu_choi'],
@@ -37,6 +38,7 @@ class ClaimResolveController extends Controller
             'per_page.max' => 'Mỗi trang không được vượt quá 50 hồ sơ.',
         ]);
 
+        // Nạp quan hệ cần thiết và áp dụng bộ lọc trạng thái hoặc tìm kiếm linh hoạt.
         $query = KhieuNai::query()
             ->with([
                 'donHang.khachHang',
@@ -73,6 +75,7 @@ class ClaimResolveController extends Controller
             ->orderByDesc('Ma_khieu_nai')
             ->paginate((int) ($validated['per_page'] ?? 10));
 
+        // Tổng hợp số lượng theo từng trạng thái để hiển thị các tab lọc.
         $counts = KhieuNai::query()
             ->selectRaw('Trang_thai, COUNT(*) AS tong')
             ->groupBy('Trang_thai')
@@ -120,6 +123,7 @@ class ClaimResolveController extends Controller
         Request $request,
         SalesComplaintResolutionService $resolution
     ): JsonResponse {
+        // Ghi nhận nhân viên hiện tại đang tiếp nhận và chuyển hồ sơ sang trạng thái xử lý.
         $claim = $resolution->receive(
             $claimId,
             (int) $request->user()->getAuthIdentifier()

@@ -1,4 +1,4 @@
-/* API calls for order processing, FEFO inventory, delivery, and claims. */
+/* Các hàm gọi API xử lý đơn hàng, tồn kho FEFO, giao hàng và khiếu nại. */
 import axiosClient from "./axiosClient";
 
 export const salesApi = {

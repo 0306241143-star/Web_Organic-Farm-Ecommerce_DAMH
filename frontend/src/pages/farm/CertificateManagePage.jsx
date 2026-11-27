@@ -65,6 +65,7 @@ export default function CertificateManagePage() {
     showGlobalToast(msg, type);
   }, []);
 
+  // Tải lại danh sách chứng nhận; chế độ im lặng giữ bộ lọc và phân trang hiện tại.
   const fetchCertificates = useCallback(async (isSilent = false) => {
     const startedAt = Date.now();
     if (!isSilent) setLoading(true);

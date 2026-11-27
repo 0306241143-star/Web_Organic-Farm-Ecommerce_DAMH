@@ -191,6 +191,7 @@ export default function AdminDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
 
+  // Khoảng thời gian là khóa tải dữ liệu để báo cáo luôn đồng bộ với bộ lọc hiện tại.
   const loadReport = useCallback(
     () => adminApi.getReportDashboard({ period }),
     [period]

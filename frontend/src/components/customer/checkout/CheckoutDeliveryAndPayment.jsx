@@ -39,6 +39,7 @@ export default function CheckoutDeliveryAndPayment({
         </h2>
 
         <div className="space-y-2.5">
+          {/* Lựa chọn phương thức quyết định luồng thanh toán ở bước gửi đơn. */}
           <label
             className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer ${
               paymentMethod === "ApiPay"

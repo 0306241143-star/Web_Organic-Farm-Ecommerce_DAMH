@@ -23,6 +23,7 @@ export default function RecordWastageModal({ batch, onClose, onSubmit, submittin
   const numericQty = Number(quantity) || 0;
   const remainingAfter = Math.max(0, Number((maxQty - numericQty).toFixed(2)));
 
+  // Kiểm tra số lượng trước khi gửi; tồn kho sau ghi nhận không được âm.
   const handleFormSubmit = (e) => {
     e.preventDefault();
     setError("");
