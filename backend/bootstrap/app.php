@@ -164,7 +164,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             // 500: Chỉ lỗi hệ thống chưa xử lý mới trả về 500
-            return $buildError(
+            return  $buildError(
                 config('app.debug') ? $e->getMessage() : 'Lỗi xử lý nội bộ máy chủ.',
                 500,
                 $codes::ERR_SERVER

@@ -217,7 +217,8 @@ export default function RevenueAndWastageCharts({
                 formatValue: (value) => `${quantityFormatter.format(value)} đơn vị hao hụt`,
               },
             ]}
-            label="Biểu đồ lượng thu hoạch và hao hụt theo ngày"
+
+            label= "Biểu đồ lượng thu hoạch và hao hụt theo ngày"
           />
           <div className="mt-2 flex items-center gap-4 text-[11px] text-slate-500">
             <span className="inline-flex items-center gap-1.5">

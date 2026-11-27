@@ -73,8 +73,9 @@ export const adminApi = {
         headers: { "Content-Type": "multipart/form-data" },
       });
     }
-    return axiosClient.put("/admin/settings/farm", formData);
+    return   axiosClient.put("/admin/settings/farm", formData);
   },
+
   deleteFarmImage: (imageId) =>
     axiosClient.delete(`/admin/settings/farm/images/${imageId}`),
 

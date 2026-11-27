@@ -103,5 +103,7 @@ export default function AppRouter() {
         </Routes>
       </Suspense>
     </BrowserRouter>
-  );
+  )  ;
+
+  
 }

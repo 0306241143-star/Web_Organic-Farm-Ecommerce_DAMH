@@ -35,7 +35,7 @@ class CheckRole
 
         $allowedRoles = array_map(fn ($r) => strtolower(trim($r)), $roles);
 
-        if (!empty($allowedRoles) && !$user->hasRole($allowedRoles)) {
+        if  (!empty($allowedRoles) && !$user->hasRole($allowedRoles)) {
             return $this->errorResponse(
                 message: 'Vai trò hiện tại không có quyền truy cập chức năng này.',
                 status: 403,

@@ -40,7 +40,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::post('/subscriptions', [SubscriptionPackageController::class, 'store']);
     Route::put('/subscriptions/{id}', [SubscriptionPackageController::class, 'update']);
     Route::patch('/subscriptions/{id}/status', [SubscriptionPackageController::class, 'updateStatus']);
-    Route::delete('/subscriptions/{id}', [SubscriptionPackageController::class, 'destroy']);
+    Route::delete ('/subscriptions/{id}', [SubscriptionPackageController::class, 'destroy']);
 
     // Cấu hình thông tin & hình ảnh nông trại (Admin)
     Route::get('/settings/farm', [FarmProfileController::class, 'show']);

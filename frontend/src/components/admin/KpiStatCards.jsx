@@ -107,9 +107,10 @@ export default function KpiStatCards({
                 )}
               </div>
               <span
+
                 className={`w-10 h-10 rounded-xl ring-1 flex items-center justify-center shrink-0 ${COLOR_STYLES[metric.color]}`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon  className="w-5 h-5" />
               </span>
             </div>
             <p className="mt-3 text-[11px] font-medium text-slate-500">

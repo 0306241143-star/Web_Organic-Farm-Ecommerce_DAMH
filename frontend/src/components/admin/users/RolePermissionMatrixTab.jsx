@@ -18,6 +18,7 @@ export default function RolePermissionMatrixTab({
   loading = false,
   onRolePermissionsUpdated,
 }) {
+  
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [draftPermissionIds, setDraftPermissionIds] = useState([]);
   const [saving, setSaving] = useState(false);

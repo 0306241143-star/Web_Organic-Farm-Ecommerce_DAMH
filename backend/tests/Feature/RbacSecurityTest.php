@@ -64,6 +64,7 @@ class RbacSecurityTest extends TestCase
         ])->assertUnauthorized();
     }
 
+
     public function test_a_locked_account_token_is_revoked_on_its_next_protected_request(): void
     {
         $farmStaff = NguoiDung::query()
@@ -80,7 +81,7 @@ class RbacSecurityTest extends TestCase
             'token' => hash('sha256', $token),
         ]);
         $this->app['auth']->forgetGuards();
-        $this->getJson('/api/test/rbac/farm', $headers)
-            ->assertUnauthorized();
+        $this-> getJson('/api/test/rbac/farm', $headers)
+             ->assertUnauthorized();
     }
 }

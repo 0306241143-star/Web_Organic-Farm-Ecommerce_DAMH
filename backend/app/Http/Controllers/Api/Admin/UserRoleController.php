@@ -399,8 +399,9 @@ class UserRoleController extends Controller
         ];
     }
 
-    private function mapRoleLabel(int $roleId, string $fallback): string
+    private   function mapRoleLabel(int $roleId, string $fallback): string
     {
+
         return match ($roleId) {
             1 => 'Quản trị viên (Admin)',
             2 => 'Nhân viên Bán hàng (Sales)',

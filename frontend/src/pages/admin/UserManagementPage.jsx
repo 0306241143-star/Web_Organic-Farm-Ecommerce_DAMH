@@ -413,12 +413,13 @@ export default function UserManagementPage() {
             />
           )}
         </div>
+
       </div>
 
       {/* Modal Tạo / Cập nhật tài khoản */}
       <UserPermissionModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose ={() => setIsModalOpen(false)}
         editingUser={editingUser}
         roles={roles}
         onSaved={handleUserSaved}

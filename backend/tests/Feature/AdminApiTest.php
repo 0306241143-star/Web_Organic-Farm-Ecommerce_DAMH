@@ -115,10 +115,12 @@ class AdminApiTest extends TestCase
             $this->markTestSkipped('Admin user not found.');
         }
 
-        $token = $adminUser->createToken('test_admin_token_3')->plainTextToken;
+        $token = $adminUser ->createToken('test_admin_token_3')->plainTextToken;
         $headers = ['Authorization' => 'Bearer ' . $token];
 
         // 1. Lấy cài đặt hệ thống
+
+
         $this->getJson('/api/admin/settings', $headers)
             ->assertOk()
             ->assertJsonPath('success', true)

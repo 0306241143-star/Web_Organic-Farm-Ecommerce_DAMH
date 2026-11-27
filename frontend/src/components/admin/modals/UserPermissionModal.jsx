@@ -324,8 +324,9 @@ export default function UserPermissionModal({
             </div>
           </div>
 
-          <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
+          <div   className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
             <button
+            
               type="button"
               onClick={onClose}
               disabled={submitting}

@@ -123,7 +123,7 @@ Route::middleware('auth:sanctum')->group(function () use ($standardOk) {
 });
 
 // Webhook công khai từ ApiPay (không qua auth:sanctum, xác thực bằng HMAC signature)
-Route::post('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
+Route::post ('/webhooks/apipay', \App\Http\Controllers\Api\Webhook\ApiPayWebhookController::class);
 
 require __DIR__ . '/api/public.php';
 require __DIR__ . '/api/customer.php';
