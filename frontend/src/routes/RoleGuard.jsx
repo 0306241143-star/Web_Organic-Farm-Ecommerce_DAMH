@@ -25,7 +25,7 @@ export default function RoleGuard({ roles = [] }) {
 
 function matchRoleFallback(role) {
   switch (role) {
-    case  "admin":
+    case "admin":
       return "/admin";
     case "sales":
       return "/sales/orders";

@@ -5,13 +5,21 @@ use App\Http\Controllers\Api\Sales\DeliveryController;
 use App\Http\Controllers\Api\Sales\FlashSaleController;
 use App\Http\Controllers\Api\Sales\InventoryFefoController;
 use App\Http\Controllers\Api\Sales\OrderProcessController;
+use App\Http\Controllers\Api\Sales\RecurringStockAlertController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'role:sales'])->prefix('sales')->group(function () {
     Route::get('/orders', [OrderProcessController::class, 'index']);
+    Route::get('/recurring-stock-alerts', [RecurringStockAlertController::class, 'index']);
     Route::get('/orders/{orderId}', [OrderProcessController::class, 'show'])->whereNumber('orderId');
     Route::post('/orders/{orderId}/confirm', [OrderProcessController::class, 'confirm'])->whereNumber('orderId');
     Route::post('/orders/{orderId}/confirm-cod-payment', [OrderProcessController::class, 'confirmCodPayment'])->whereNumber('orderId');
+    Route::get('/orders/{orderId}/stock-alert/replacements/{detailId}', [RecurringStockAlertController::class, 'replacements'])
+        ->whereNumber(['orderId', 'detailId']);
+    Route::post('/orders/{orderId}/stock-alert/replace', [RecurringStockAlertController::class, 'replace'])
+        ->whereNumber('orderId');
+    Route::post('/orders/{orderId}/stock-alert/postpone', [RecurringStockAlertController::class, 'postpone'])
+        ->whereNumber('orderId');
     Route::post('/orders/{orderId}/delivery', [DeliveryController::class, 'dispatch'])->whereNumber('orderId');
     Route::get('/inventory', [InventoryFefoController::class, 'index']);
     Route::get('/expiring-batches', [InventoryFefoController::class, 'expiringBatches']);

@@ -157,7 +157,7 @@ class R2StorageService
             'path'          => $path,
             'url'           => $this->url($path),
             'media_type'    => $mediaType,
-            'mime_type'     => $file->getClientMimeType(),
+            'mime_type'     => $file->getMimeType(),
             'original_name' => $file->getClientOriginalName(),
             'size_bytes'    => $file->getSize(),
         ];
@@ -273,7 +273,7 @@ class R2StorageService
 
     private function detectMediaType(UploadedFile $file): string
     {
-        $mime = (string) $file->getClientMimeType();
+        $mime = (string) $file->getMimeType();
         if (str_starts_with($mime, 'video/')) {
             return 'Video';
         }

@@ -150,8 +150,7 @@ class ReportController extends Controller
                     'active' => NguoiDung::where('Trang_thai', 'Hoat_dong')->count(),
                 ],
                 'system_health' => [
-
-                    'api_response_ms'  => round((microtime(true) - $startedAt) * 1000, 2),
+                    'api_response_ms' => round((microtime(true) - $startedAt) * 1000, 2),
                     'db_connection' => $dbConnection ? 'connected' : 'disconnected',
                     'status' => $dbConnection ? 'healthy' : 'degraded',
                 ],

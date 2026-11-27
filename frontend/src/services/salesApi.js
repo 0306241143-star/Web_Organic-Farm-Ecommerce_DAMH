@@ -3,7 +3,17 @@ import axiosClient from "./axiosClient";
 
 export const salesApi = {
   getOrders: (params) => axiosClient.get("/sales/orders", { params }),
+  getRecurringStockAlerts: () => axiosClient.get("/sales/recurring-stock-alerts"),
   confirmOrder: (orderId) => axiosClient.post(`/sales/orders/${orderId}/confirm`),
+  getReplacementProducts: (orderId, detailId) =>
+    axiosClient.get(`/sales/orders/${orderId}/stock-alert/replacements/${detailId}`),
+  replaceShortageProduct: (orderId, detailId, productId) =>
+    axiosClient.post(`/sales/orders/${orderId}/stock-alert/replace`, {
+      detail_id: detailId,
+      product_id: productId,
+    }),
+  postponeShortageOrder: (orderId) =>
+    axiosClient.post(`/sales/orders/${orderId}/stock-alert/postpone`),
   confirmCodPayment: (orderId) =>
     axiosClient.post(`/sales/orders/${orderId}/confirm-cod-payment`),
   dispatchOrder: (orderId, data) =>

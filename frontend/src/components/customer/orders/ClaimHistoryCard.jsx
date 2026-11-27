@@ -1,4 +1,4 @@
-/* Thẻ hiển thị thông tin khiếu nại và hình ảnh minh chứng của khách hàng. */
+/* Thẻ hiển thị thông tin khiếu nại và tệp minh chứng của khách hàng. */
 import {
   CLAIM_RESOLUTION,
   CLAIM_STATUS,
@@ -45,13 +45,24 @@ export default function ClaimHistoryCard({ claim }) {
       {claim.evidence?.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {claim.evidence.map((file) => (
-            <a key={file.id} href={file.url} target="_blank" rel="noreferrer">
-              <img
+            String(file.type).toLowerCase() === "video" ? (
+              <video
+                key={file.id}
                 src={file.url}
-                alt="Ảnh minh chứng khiếu nại"
-                className="h-16 w-16 rounded-lg border object-cover"
+                controls
+                preload="metadata"
+                aria-label="Video minh chứng khiếu nại"
+                className="max-h-48 w-full max-w-sm rounded-lg border bg-slate-950"
               />
-            </a>
+            ) : (
+              <a key={file.id} href={file.url} target="_blank" rel="noreferrer">
+                <img
+                  src={file.url}
+                  alt="Ảnh minh chứng khiếu nại"
+                  className="h-16 w-16 rounded-lg border object-cover"
+                />
+              </a>
+            )
           ))}
         </div>
       )}

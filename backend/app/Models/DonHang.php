@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class DonHang extends Model
 {
@@ -30,7 +31,7 @@ class DonHang extends Model
         return $this->belongsTo(NguoiDung::class, 'Ma_nguoi_dung', 'Ma_nguoi_dung');
     }
 
-    public  function thanhToans(): HasMany
+    public function thanhToans(): HasMany
     {
         return $this->hasMany(ThanhToan::class, 'Ma_don_hang', 'Ma_don_hang');
     }
@@ -48,5 +49,19 @@ class DonHang extends Model
     public function khieuNais(): HasMany
     {
         return $this->hasMany(KhieuNai::class, 'Ma_don_hang', 'Ma_don_hang');
+    }
+
+    public function claimDeadlineAt(): ?Carbon
+    {
+        $deliveredAt = $this->giaoHang?->Ngay_giao_thanh_cong;
+
+        return $deliveredAt ? Carbon::parse($deliveredAt)->addHours(24) : null;
+    }
+
+    public function isClaimWindowOpen(): bool
+    {
+        $deadline = $this->claimDeadlineAt();
+
+        return $deadline !== null && now()->lessThanOrEqualTo($deadline);
     }
 }

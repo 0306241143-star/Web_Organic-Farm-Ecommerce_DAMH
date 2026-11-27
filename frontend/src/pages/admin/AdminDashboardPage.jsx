@@ -15,14 +15,10 @@ import RevenueAndWastageCharts from "../../components/admin/RevenueAndWastageCha
 
 const TABS = [
   { id: "overview", label: "Tổng quan", shortLabel: "Tổng quan", icon: BarChart3 },
-  { id: "revenue", label: "Doanh  thu & Đơn hàng", shortLabel: "Doanh thu", icon: ShoppingBag },
+  { id: "revenue", label: "Doanh thu & Đơn hàng", shortLabel: "Doanh thu", icon: ShoppingBag },
   { id: "inventory", label: "Kho & Hao hụt", shortLabel: "Kho & Hao hụt", icon: PackageX },
   { id: "customers", label: "Khách hàng", shortLabel: "Khách hàng", icon: UsersRound },
 ];
-
-
-
-
 
 const PERIODS = [
   { value: "7d", label: "7 ngày" },

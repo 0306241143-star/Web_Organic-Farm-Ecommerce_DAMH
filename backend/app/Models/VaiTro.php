@@ -4,9 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class VaiTro   extends Model
+class VaiTro extends Model
 {
-
     protected $table = 'vai_tro';
     protected $primaryKey = 'Ma_vai_tro';
     protected $guarded = [];

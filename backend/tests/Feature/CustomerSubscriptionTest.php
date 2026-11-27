@@ -8,6 +8,7 @@ use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -54,6 +55,12 @@ class CustomerSubscriptionTest extends TestCase
                 ],
             ]),
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
     }
 
     public function test_customer_can_create_an_idempotent_subscription_with_weekly_delivery_days(): void
@@ -361,6 +368,174 @@ class CustomerSubscriptionTest extends TestCase
         ]);
 
         CarbonImmutable::setTestNow();
+    }
+
+    public function test_recurring_shortage_is_visible_to_sales_without_creating_a_new_table(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 11, 17, 6, 0, 0));
+        $this->setProductStock(2, 0);
+
+        Artisan::call('subscriptions:generate-orders');
+
+        $order = DB::table('don_hang')
+            ->where('Ma_dang_ky_goi', 1)
+            ->whereDate('Ngay_dat', '2026-11-17')
+            ->first();
+        $this->assertNotNull($order);
+        $this->assertSame('Cho_xac_nhan', $order->Trang_thai);
+        $this->assertSame(0, DB::table('phan_bo_lo_hang')
+            ->join('chi_tiet_don_hang', 'chi_tiet_don_hang.Ma_ct_don_hang', '=', 'phan_bo_lo_hang.Ma_ct_don_hang')
+            ->where('chi_tiet_don_hang.Ma_don_hang', $order->Ma_don_hang)
+            ->count());
+        $this->assertFalse(Schema::hasTable('canh_bao_thieu_hang'));
+
+        $this->actingAs(NguoiDung::query()->findOrFail(2), 'sanctum')
+            ->getJson('/api/sales/recurring-stock-alerts')
+            ->assertOk()
+            ->assertJsonPath('data.0.order_id', (int) $order->Ma_don_hang)
+            ->assertJsonPath('data.0.stock_alert.items.0.product_id', 2)
+            ->assertJsonPath('data.0.stock_alert.items.0.missing_quantity', 1);
+
+        $this->setProductStock(2, 10);
+        $this->setProductExpiry(3, '2026-12-30');
+        Artisan::call('subscriptions:generate-orders');
+        $this->assertSame(1.0, (float) DB::table('phan_bo_lo_hang')
+            ->join('chi_tiet_don_hang', 'chi_tiet_don_hang.Ma_ct_don_hang', '=', 'phan_bo_lo_hang.Ma_ct_don_hang')
+            ->where('chi_tiet_don_hang.Ma_don_hang', $order->Ma_don_hang)
+            ->where('chi_tiet_don_hang.Ma_san_pham', 2)
+            ->sum('phan_bo_lo_hang.So_luong_xuat'));
+
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_sales_can_replace_a_shortage_and_postpone_using_existing_order_note(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 11, 17, 6, 0, 0));
+        $this->setProductStock(2, 0);
+        $this->setProductExpiry(5, '2026-12-30');
+
+        Artisan::call('subscriptions:generate-orders');
+        $order = DB::table('don_hang')
+            ->where('Ma_dang_ky_goi', 1)
+            ->whereDate('Ngay_dat', '2026-11-17')
+            ->first();
+        $detailId = DB::table('chi_tiet_don_hang')
+            ->where('Ma_don_hang', $order->Ma_don_hang)
+            ->where('Ma_san_pham', 2)
+            ->value('Ma_ct_don_hang');
+        $sales = NguoiDung::query()->findOrFail(2);
+
+        $this->actingAs($sales, 'sanctum')
+            ->getJson("/api/sales/orders/{$order->Ma_don_hang}/stock-alert/replacements/{$detailId}")
+            ->assertOk()
+            ->assertJsonFragment(['product_id' => 5]);
+
+        $this->actingAs($sales, 'sanctum')
+            ->postJson("/api/sales/orders/{$order->Ma_don_hang}/stock-alert/replace", [
+                'detail_id' => $detailId,
+                'product_id' => 5,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.resolved', true);
+
+        $this->assertDatabaseHas('chi_tiet_don_hang', [
+            'Ma_ct_don_hang' => $detailId,
+            'Ma_san_pham' => 5,
+        ]);
+        $this->assertSame(1.0, (float) DB::table('phan_bo_lo_hang')
+            ->where('Ma_ct_don_hang', $detailId)
+            ->sum('So_luong_xuat'));
+
+        $this->setProductStock(2, 0);
+        $this->setProductStock(5, 0);
+        $this->actingAs($sales, 'sanctum')
+            ->postJson("/api/sales/orders/{$order->Ma_don_hang}/stock-alert/postpone")
+            ->assertOk()
+            ->assertJsonPath('data.scheduled_delivery_at', '2026-11-24');
+        $this->actingAs($sales, 'sanctum')
+            ->postJson("/api/sales/orders/{$order->Ma_don_hang}/confirm")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['order_id']);
+
+        $this->assertStringContainsString(
+            '[[RECURRING_DELIVERY:2026-11-24]]',
+            DB::table('don_hang')->where('Ma_don_hang', $order->Ma_don_hang)->value('Ghi_chu')
+        );
+
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_postponed_order_retries_when_due_and_does_not_duplicate_the_delivery(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 11, 17, 6, 0, 0));
+        $this->setProductStock(2, 0);
+        $this->setProductExpiry(3, '2026-12-30');
+
+        Artisan::call('subscriptions:generate-orders');
+        $order = DB::table('don_hang')
+            ->where('Ma_dang_ky_goi', 1)
+            ->whereDate('Ngay_dat', '2026-11-17')
+            ->first();
+        $sales = NguoiDung::query()->findOrFail(2);
+
+        $this->actingAs($sales, 'sanctum')
+            ->postJson("/api/sales/orders/{$order->Ma_don_hang}/stock-alert/postpone")
+            ->assertOk()
+            ->assertJsonPath('data.scheduled_delivery_at', '2026-11-24');
+
+        $this->setProductStock(2, 10);
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 11, 24, 6, 0, 0));
+        Artisan::call('subscriptions:generate-orders');
+        Artisan::call('subscriptions:generate-orders');
+
+        $this->assertSame(1, DB::table('don_hang')
+            ->where('Ma_dang_ky_goi', 1)
+            ->whereDate('Ngay_dat', '2026-11-17')
+            ->count());
+        $this->assertSame(1.0, (float) DB::table('phan_bo_lo_hang')
+            ->join('chi_tiet_don_hang', 'chi_tiet_don_hang.Ma_ct_don_hang', '=', 'phan_bo_lo_hang.Ma_ct_don_hang')
+            ->where('chi_tiet_don_hang.Ma_don_hang', $order->Ma_don_hang)
+            ->where('chi_tiet_don_hang.Ma_san_pham', 2)
+            ->sum('phan_bo_lo_hang.So_luong_xuat'));
+        $this->assertSame(0, DB::table('don_hang')
+            ->where('Ma_dang_ky_goi', 1)
+            ->whereDate('Ngay_dat', '2026-11-24')
+            ->count());
+
+        $customer = NguoiDung::query()->findOrFail(5);
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/customer/orders/{$order->Ma_don_hang}")
+            ->assertOk()
+            ->assertJsonPath('data.scheduled_delivery_at', '2026-11-24')
+            ->assertJsonPath('data.note', 'Đơn tự động sinh từ gói định kỳ • Khung giờ nhận: 08:00 - 10:00');
+
+        CarbonImmutable::setTestNow();
+    }
+
+    private function setProductStock(int $productId, float $quantity): void
+    {
+        DB::table('lo_hang')
+            ->whereIn('Ma_lo_canh_tac', function ($query) use ($productId): void {
+                $query->select('Ma_lo_canh_tac')
+                    ->from('lo_canh_tac')
+                    ->where('Ma_san_pham', $productId);
+            })
+            ->update([
+                'So_luong_con_lai' => $quantity,
+                'Trang_thai' => $quantity > 0 ? 'Con_hang' : 'Het_hang',
+                'Han_su_dung' => '2026-12-30',
+            ]);
+    }
+
+    private function setProductExpiry(int $productId, string $expiryDate): void
+    {
+        DB::table('lo_hang')
+            ->whereIn('Ma_lo_canh_tac', function ($query) use ($productId): void {
+                $query->select('Ma_lo_canh_tac')
+                    ->from('lo_canh_tac')
+                    ->where('Ma_san_pham', $productId);
+            })
+            ->update(['Han_su_dung' => $expiryDate]);
     }
 
     private function validPayload(): array

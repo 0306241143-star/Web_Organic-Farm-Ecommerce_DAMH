@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
+  AlertTriangle,
   ClipboardList,
   RefreshCw,
   Search,
@@ -40,6 +41,7 @@ export default function SalesOrderPage() {
   const orderIdParam = searchParams.get("order_id") || "";
 
   const [orders, setOrders] = useState([]);
+  const [stockAlerts, setStockAlerts] = useState([]);
   const [status, setStatus] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -64,21 +66,25 @@ export default function SalesOrderPage() {
   const [detailSubTab, setDetailSubTab] = useState("items");
 
   const fetchOrders = useCallback(
-    async (isSilent = false) => {
+    async (isSilent = false, announceRefresh = false) => {
       if (!isSilent) setLoading(true);
       else setRefreshing(true);
       setError("");
 
       try {
-        const response = await salesApi.getOrders({
-          status: status || undefined,
-          payment_method: paymentMethod || undefined,
-          order_id: orderIdParam || undefined,
-          page,
-          per_page: PER_PAGE,
-        });
+        const [response, alertResponse] = await Promise.all([
+          salesApi.getOrders({
+            status: status || undefined,
+            payment_method: paymentMethod || undefined,
+            order_id: orderIdParam || undefined,
+            page,
+            per_page: PER_PAGE,
+          }),
+          salesApi.getRecurringStockAlerts(),
+        ]);
 
         const list = response.data || [];
+        setStockAlerts(alertResponse.data || []);
         setOrders(list);
         setMeta(
           response.meta || {
@@ -102,7 +108,7 @@ export default function SalesOrderPage() {
           return list[0]?.order_id ?? null;
         });
 
-        if (isSilent) {
+        if (isSilent && announceRefresh) {
           showGlobalToast("Đã cập nhật danh sách đơn hàng!");
         }
       } catch (requestError) {
@@ -119,6 +125,14 @@ export default function SalesOrderPage() {
 
   useEffect(() => {
     fetchOrders(false);
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      fetchOrders(true);
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
   }, [fetchOrders]);
 
   const filteredOrders = useMemo(() => {
@@ -212,6 +226,50 @@ export default function SalesOrderPage() {
     }
   };
 
+  const handleReplaceShortageProduct = async (order, detailId, productId) => {
+    setBusyAction(`replace:${order.order_id}:${detailId}`);
+    try {
+      const response = await salesApi.replaceShortageProduct(
+        order.order_id,
+        detailId,
+        productId
+      );
+      showGlobalToast(response.message || "Đã cập nhật sản phẩm thay thế.");
+      await fetchOrders(true);
+    } catch (requestError) {
+      notifyApiErrorToast(requestError, "Không thể thay thế sản phẩm thiếu.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handlePostponeShortageOrder = async (order) => {
+    setBusyAction(`postpone:${order.order_id}`);
+    try {
+      const response = await salesApi.postponeShortageOrder(order.order_id);
+      showGlobalToast(
+        `Đã hoãn đơn #${order.order_id} đến ${new Date(
+          response.data?.scheduled_delivery_at
+        ).toLocaleDateString("vi-VN")}.`
+      );
+      await fetchOrders(true);
+    } catch (requestError) {
+      notifyApiErrorToast(requestError, "Không thể hoãn đơn định kỳ.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const openStockAlert = (alert) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("order_id", String(alert.order_id));
+    setSearchParams(nextParams);
+    setStatus("Cho_xac_nhan");
+    setPaymentMethod("");
+    setPage(1);
+    setSelectedOrderId(alert.order_id);
+  };
+
   const handlePageChange = (nextPage) => {
     setPage(nextPage);
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
@@ -255,7 +313,7 @@ export default function SalesOrderPage() {
               </span>
               <button
                 type="button"
-                onClick={() => fetchOrders(true)}
+                onClick={() => fetchOrders(true, true)}
                 disabled={refreshing}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer"
                 title="Làm mới danh sách"
@@ -335,8 +393,49 @@ export default function SalesOrderPage() {
       </div>
 
       {/* Khu vực nội dung chính: Mobile cuộn tự nhiên, Desktop (lg+) chia 2 cột */}
-      <div className="flex-1 lg:min-h-0 max-w-[1440px] w-full mx-auto px-3.5 sm:px-6 py-3 sm:py-4 lg:overflow-hidden">
-        <div className="grid lg:h-full lg:min-h-0 grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-stretch">
+      <div className="flex-1 lg:min-h-0 max-w-[1440px] w-full mx-auto px-3.5 sm:px-6 py-3 sm:py-4 lg:overflow-hidden flex flex-col gap-2">
+        {stockAlerts.length > 0 && (
+          <section className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-900">
+            <div className="flex items-center gap-2 font-extrabold">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-700" />
+              <span>{stockAlerts.length} đơn định kỳ thiếu hàng hoặc đang được hoãn</span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {stockAlerts.slice(0, 3).map((alert) => {
+                const missingItems = alert.stock_alert?.items || [];
+                const summary = missingItems
+                  .map((item) => `${item.product_name} thiếu ${item.missing_quantity} ${item.unit || ""}`)
+                  .join(", ");
+
+                return (
+                  <button
+                    key={alert.order_id}
+                    type="button"
+                    onClick={() => openStockAlert(alert)}
+                    className="rounded-full border border-rose-200 bg-white px-2.5 py-1 text-left font-semibold hover:bg-rose-100"
+                  >
+                    Đơn #{alert.order_id}
+                    {summary ? `: ${summary}` : ` · Hoãn đến ${alert.stock_alert.postponed_until}`}
+                  </button>
+                );
+              })}
+              {stockAlerts.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus("Cho_xac_nhan");
+                    setPaymentMethod("Mien_phi_goi");
+                    setPage(1);
+                  }}
+                  className="rounded-full px-2 py-1 font-bold underline"
+                >
+                  Xem các đơn định kỳ
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+        <div className="grid flex-1 lg:h-full min-h-0 grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-stretch">
           <div className="lg:col-span-7 min-w-0 lg:min-h-0 flex flex-col gap-3">
             <div className="lg:flex-1 lg:min-h-0 flex flex-col rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs">
               {error && (
@@ -391,6 +490,8 @@ export default function SalesOrderPage() {
                 runOrderAction(order, "cod", "Đã ghi nhận thu tiền COD.")
               }
               onOpenDispatch={setDispatchingOrder}
+              onReplaceShortageProduct={handleReplaceShortageProduct}
+              onPostponeShortageOrder={handlePostponeShortageOrder}
             />
           </aside>
         </div>
@@ -425,6 +526,8 @@ export default function SalesOrderPage() {
                 runOrderAction(order, "cod", "Đã ghi nhận thu tiền COD.")
               }
               onOpenDispatch={setDispatchingOrder}
+              onReplaceShortageProduct={handleReplaceShortageProduct}
+              onPostponeShortageOrder={handlePostponeShortageOrder}
             />
           </div>
         </div>

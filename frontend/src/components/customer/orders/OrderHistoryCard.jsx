@@ -71,6 +71,11 @@ export default function OrderHistoryCard({
             {ORDER_TYPE[order.order_type] || order.order_type}
           </span>
           <span className="text-slate-500">{formatOrderDateTime(order.ordered_at)}</span>
+          {order.scheduled_delivery_at && (
+            <span className="text-slate-500">
+              Dự kiến giao: {formatOrderDateTime(order.scheduled_delivery_at)}
+            </span>
+          )}
           <OrderStatusBadge status={order.status} labels={ORDER_STATUS} />
         </div>
 
@@ -196,6 +201,11 @@ export default function OrderHistoryCard({
               : order.address?.detail || "Chưa có thông tin giao hàng"}
           </span>
           <div className="flex flex-wrap gap-2">
+            {order.claim_window_expired && (
+              <span className="self-center text-xs font-semibold text-slate-500">
+                Đã quá hạn khiếu nại (24 giờ từ lúc giao thành công)
+              </span>
+            )}
             {order.status === "Cho_thanh_toan" && onContinuePayment && (
               <button
                 type="button"

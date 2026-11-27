@@ -3,6 +3,16 @@ import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { customerApi } from "../../../services/customerApi";
 import { notifyApiErrorToast } from "../../../services/axiosClient";
 
+const MAX_EVIDENCE_FILES = 5;
+const MAX_TOTAL_EVIDENCE_BYTES = 35 * 1024 * 1024;
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const VIDEO_TYPES = new Set([
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+]);
+
 const REASONS = [
   "Sản phẩm bị hư hỏng",
   "Thiếu sản phẩm",
@@ -39,14 +49,35 @@ export default function CreateClaimModal({ order, onClose, onSubmitted }) {
 
   const handleFiles = (event) => {
     const files = Array.from(event.target.files || []);
-    if (files.length > 5) {
-      event.target.value = "";
-      setEvidence([]);
+    event.target.value = "";
+    const showWarning = (message) => {
       window.dispatchEvent(new CustomEvent("app:toast", {
-        detail: { type: "warning", message: "Chỉ được tải tối đa 5 ảnh minh chứng." },
+        detail: { type: "warning", message },
       }));
+    };
+
+    if (files.length > MAX_EVIDENCE_FILES) {
+      showWarning("Chỉ được tải tối đa 5 tệp minh chứng.");
       return;
     }
+
+    const invalidFile = files.find((file) => {
+      const isImage = IMAGE_TYPES.has(file.type);
+      const isVideo = VIDEO_TYPES.has(file.type);
+      return !isImage && !isVideo
+        || (isImage && file.size > 10 * 1024 * 1024)
+        || (isVideo && file.size > 20 * 1024 * 1024);
+    });
+    if (invalidFile) {
+      showWarning("Chỉ hỗ trợ ảnh JPG, PNG, WebP tối đa 10 MB hoặc video MP4, MOV, WebM, M4V tối đa 20 MB.");
+      return;
+    }
+
+    if (files.reduce((total, file) => total + file.size, 0) > MAX_TOTAL_EVIDENCE_BYTES) {
+      showWarning("Tổng dung lượng ảnh và video không được vượt quá 35 MB.");
+      return;
+    }
+
     setEvidence(files);
   };
 
@@ -69,7 +100,7 @@ export default function CreateClaimModal({ order, onClose, onSubmitted }) {
               Gửi khiếu nại đơn #{order.order_id}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Mô tả vấn đề và đính kèm ảnh để đội ngũ hỗ trợ kiểm tra.
+              Mô tả vấn đề và đính kèm ảnh hoặc video để đội ngũ hỗ trợ kiểm tra.
             </p>
           </div>
           <button
@@ -119,19 +150,19 @@ export default function CreateClaimModal({ order, onClose, onSubmitted }) {
 
           <div>
             <label htmlFor="claim-evidence" className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Ảnh minh chứng (tối đa 5 ảnh, 10 MB/ảnh)
+              Ảnh/video minh chứng (tối đa 5 tệp; ảnh 10 MB, video 20 MB; tổng 35 MB)
             </label>
             <label
               htmlFor="claim-evidence"
               className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-5 text-sm font-semibold text-emerald-800 hover:bg-emerald-50"
             >
               <ImagePlus className="h-5 w-5" />
-              Chọn ảnh JPG, PNG hoặc WebP
+              Chọn ảnh JPG, PNG, WebP hoặc video MP4, MOV, WebM, M4V
             </label>
             <input
               id="claim-evidence"
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,video/x-m4v"
               multiple
               onChange={handleFiles}
               className="sr-only"

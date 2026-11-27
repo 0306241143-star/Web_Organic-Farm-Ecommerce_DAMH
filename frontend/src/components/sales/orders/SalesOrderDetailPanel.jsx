@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import StockAlertPanel from "./StockAlertPanel";
 
 const STATUS_LABELS = {
   Cho_thanh_toan: "Chờ thanh toán",
@@ -141,6 +142,8 @@ export default function SalesOrderDetailPanel({
   onConfirmOrder,
   onConfirmCodPayment,
   onOpenDispatch,
+  onReplaceShortageProduct,
+  onPostponeShortageOrder,
 }) {
   // Khung hướng dẫn khi chưa chọn đơn trên Desktop
   if (!selectedOrder) {
@@ -231,6 +234,9 @@ export default function SalesOrderDetailPanel({
               <span className="font-normal text-slate-500 tabular-nums">
                 {activeOrder.customer?.phone || activeOrder.customer?.email || "—"} ·{" "}
                 {formatFullDateTime(activeOrder.ordered_at)}
+                {activeOrder.scheduled_delivery_at
+                  ? ` · Dự kiến giao ${formatFullDateTime(activeOrder.scheduled_delivery_at)}`
+                  : ""}
               </span>
             </p>
           </div>
@@ -250,6 +256,16 @@ export default function SalesOrderDetailPanel({
 
       {/* Nội dung cuộn nội bộ */}
       <div className="overflow-y-auto scrollbar-thin flex-1 min-h-0">
+        {activeOrder.stock_alert && (
+          <StockAlertPanel
+            order={activeOrder}
+            stockAlert={activeOrder.stock_alert}
+            busyAction={busyAction}
+            onReplace={onReplaceShortageProduct}
+            onPostpone={onPostponeShortageOrder}
+          />
+        )}
+
         {/* Khối thông tin tóm tắt & Địa chỉ giao nhận */}
         <div className="p-4 sm:p-5 space-y-3.5">
           <div className="grid grid-cols-2 gap-2.5 text-xs">

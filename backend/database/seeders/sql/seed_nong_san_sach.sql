@@ -250,5 +250,5 @@ INSERT INTO Tep_bang_chung (Ma_tep, Ma_khieu_nai, Loai_tep, Duong_dan) VALUES
 (2, 1, 'Video', '/uploads/complaints/kn1_mo_hop_video.mp4'),
 (3, 2, 'Hinh_anh', '/uploads/complaints/kn2_kiem_hang.jpg');
 
-INSERT INTO  Hoan_tien (Ma_hoan_tien, Ma_khieu_nai, Ma_thanh_toan, So_tien, Ma_giao_dich_hoan_tham_chieu_cu, Trang_thai, Ngay_hoan) VALUES
+INSERT INTO Hoan_tien (Ma_hoan_tien, Ma_khieu_nai, Ma_thanh_toan, So_tien, Ma_giao_dich_hoan_tham_chieu_cu, Trang_thai, Ngay_hoan) VALUES
 (1, 2, 2, 20000.00, 'APIPAY_REFUND_20261112_001', 'Thanh_cong', '2026-11-12 18:20:00');

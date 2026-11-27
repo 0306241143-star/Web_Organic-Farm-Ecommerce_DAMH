@@ -162,9 +162,8 @@ export function AuthProvider({ children }) {
       isFarmStaff: user?.role === "farm_staff",
       isSales: user?.role === "sales",
       isAdmin: user?.role === "admin",
-    }) ,
+    }),
     [
-      
       user,
       isLoading,
       isLoginModalOpen,

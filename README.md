@@ -7,9 +7,9 @@ XanhFarm là ứng dụng web kết nối nông trại với người tiêu dùn
 | Khu vực | Chức năng chính |
 | --- | --- |
 | Khách vãng lai | Xem trang chủ, danh mục và chi tiết sản phẩm; tìm kiếm, lọc sản phẩm; xem câu chuyện nông trại; tra cứu nguồn gốc bằng mã QR. |
-| Khách hàng | Quản lý giỏ hàng và địa chỉ; đặt hàng; đăng ký gói định kỳ; theo dõi đơn hàng, điểm thưởng và gửi khiếu nại kèm bằng chứng. |
+| Khách hàng | Quản lý giỏ hàng và địa chỉ; đặt hàng; đăng ký gói định kỳ; theo dõi đơn hàng, điểm thưởng và gửi khiếu nại kèm bằng chứng trong vòng 24 giờ từ khi giao hàng thành công. |
 | Nhân viên nông trại | Quản lý mùa vụ, lô canh tác, nhật ký, lô thu hoạch, chứng nhận và hồ sơ kiểm định; ghi nhận hao hụt và truy xuất lô. |
-| Nhân viên bán hàng (Sales) | Xử lý đơn hàng, điều phối giao hàng, quản lý tồn kho theo FEFO, chương trình Flash Sale và khiếu nại khách hàng. |
+| Nhân viên bán hàng (Sales) | Xử lý đơn hàng, điều phối giao hàng, quản lý tồn kho theo FEFO, chương trình Flash Sale, khiếu nại khách hàng và xử lý cảnh báo thiếu hàng cho đơn định kỳ. |
 | Quản trị viên (Admin) | Quản lý sản phẩm, danh mục, gói định kỳ, tài khoản và phân quyền; cấu hình hệ thống; xem báo cáo doanh thu, đơn hàng, hao hụt và khách mua lại. |
 
 Giao diện React được thiết kế responsive theo hướng mobile-first. API Laravel kiểm soát truy cập bằng Sanctum và RBAC; các API được tổ chức theo nhóm vai trò.

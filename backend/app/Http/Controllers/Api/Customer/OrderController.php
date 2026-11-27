@@ -8,6 +8,7 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\DonHang;
+use App\Services\RecurringOrderStockService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,8 @@ use Illuminate\Http\Request;
 class OrderController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private RecurringOrderStockService $recurringStock) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -66,19 +69,22 @@ class OrderController extends Controller
         $address = $order->diaChi;
         $delivery = $order->giaoHang;
         $registration = $order->dangKyGoi;
+        $claimDeadline = $order->claimDeadlineAt();
+        $hasClaims = $order->khieuNais->isNotEmpty();
 
         return [
             'order_id' => (int) $order->Ma_don_hang,
             'order_type' => $order->Loai_don,
             'status' => $order->Trang_thai,
             'ordered_at' => $order->Ngay_dat,
+            'scheduled_delivery_at' => $this->recurringStock->availableDeliveryDate($order)?->toDateString(),
             'subtotal' => (float) $order->Tien_hang,
             'distance_km' => (float) $order->Khoang_cach_km,
             'shipping_fee' => (float) $order->Phi_giao_hang,
             'points_used' => (int) $order->So_diem_su_dung,
             'points_discount' => (float) $order->Tien_giam_tu_diem,
             'total' => (float) $order->Tong_tien,
-            'note' => $order->Ghi_chu,
+            'note' => $this->recurringStock->visibleNote($order->Ghi_chu),
             'address' => $address ? [
                 'recipient_name' => $address->Ten_nguoi_nhan,
                 'phone' => $address->So_dien_thoai_nguoi_nhan,
@@ -122,8 +128,14 @@ class OrderController extends Controller
                 'submitted_at' => $claim->created_at,
                 'resolved_at' => $claim->Ngay_xu_ly,
             ])->all(),
+            'claim_deadline_at' => $claimDeadline?->toIso8601String(),
+            'claim_window_expired' => $order->Trang_thai === 'Hoan_thanh'
+                && ! $hasClaims
+                && $claimDeadline !== null
+                && now()->greaterThan($claimDeadline),
             'can_claim' => $order->Trang_thai === 'Hoan_thanh'
-                && $order->khieuNais->isEmpty(),
+                && ! $hasClaims
+                && $order->isClaimWindowOpen(),
             'can_cancel' => in_array($order->Trang_thai, ['Cho_thanh_toan', 'Cho_xac_nhan'], true)
                 && ! $order->thanhToans->contains(fn ($payment) => $payment->Trang_thai === 'Thanh_cong'),
         ];

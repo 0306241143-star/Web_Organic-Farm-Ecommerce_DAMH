@@ -73,12 +73,19 @@ class ClaimController extends Controller
                 $order = DonHang::query()
                     ->where('Ma_don_hang', $validated['order_id'])
                     ->where('Ma_nguoi_dung', $userId)
+                    ->with('giaoHang')
                     ->lockForUpdate()
                     ->firstOrFail();
 
                 if ($order->Trang_thai !== 'Hoan_thanh') {
                     throw ValidationException::withMessages([
                         'order_id' => 'Chỉ có thể gửi khiếu nại cho đơn hàng đã hoàn thành.',
+                    ]);
+                }
+
+                if (! $order->isClaimWindowOpen()) {
+                    throw ValidationException::withMessages([
+                        'order_id' => 'Chỉ có thể gửi khiếu nại trong vòng 24 giờ kể từ thời điểm giao hàng thành công.',
                     ]);
                 }
 
@@ -103,7 +110,9 @@ class ClaimController extends Controller
                     $uploadedPaths[] = $uploaded['path'];
                     TepBangChung::query()->create([
                         'Ma_khieu_nai' => $claim->Ma_khieu_nai,
-                        'Loai_tep' => 'Hinh_anh',
+                        'Loai_tep' => str_starts_with((string) $file->getMimeType(), 'video/')
+                            ? 'Video'
+                            : 'Hinh_anh',
                         'Duong_dan' => $uploaded['url'],
                     ]);
                 }
